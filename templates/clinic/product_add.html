@@ -1,0 +1,73 @@
+{% extends 'clinic/base.html' %}
+{% block content %}
+
+<div class="container bg-light p-4 rounded shadow-sm" style="max-width: 700px;">
+
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <h4 class="mb-4">Add New Product</h4>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label>Product Name <span class="text-danger">*</span></label>
+            <input type="text" name="product_name"
+                   value="{{ form_data.product_name }}"
+                   class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Product Type <span class="text-danger">*</span></label>
+            <input type="text" name="product_type"
+                   value="{{ form_data.product_type }}"
+                   class="form-control"
+                   placeholder="e.g. Cream, Toner, Serum" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Description</label>
+            <textarea name="description" class="form-control" rows="2">{{ form_data.description }}</textarea>
+        </div>
+
+        <div class="mb-3">
+            <label>Unit Cost (₱) <span class="text-danger">*</span></label>
+            <input type="number" name="unit_cost"
+                   value="{{ form_data.unit_cost }}"
+                   class="form-control"
+                   step="0.01" min="0" required>
+        </div>
+
+        <div class="mb-3">
+            <label>Supplier <span class="text-danger">*</span></label>
+            <select name="supplier" class="form-select" required>
+                <option value="" disabled {% if not form_data.supplier %}selected{% endif %}>
+                    Select Supplier
+                </option>
+                {% for s in suppliers %}
+                <option value="{{ s.supplier_id }}"
+                        {% if form_data.supplier == s.supplier_id|stringformat:"s" %}selected{% endif %}>
+                    {{ s.supplier_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+            <a href="{% url 'product_add' %}" class="btn btn-outline-secondary">Clear</a>
+            <button type="submit" class="btn btn-success px-4">Add Product</button>
+        </div>
+
+    </form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'clinic/base.html' %}
+{% block content %}
+
+<h2>Patient Database</h2>
+
+<div class="card shadow-sm p-4">
+
+<div class="row">
+
+    <!-- LEFT SIDE : PATIENT INFO -->
+    <div class="col-md-4 border-end">
+
+        <a href="{% url 'patient_db' %}" class="btn btn-link mb-3">
+            ← Back
+        </a>
+
+        <h4>
+            {{ patient.last_name }},
+            {{ patient.first_name }}
+            {{ patient.middle_name }}
+            {{ patient.suffix }}
+        </h4>
+
+        <hr>
+
+        <p><strong>ID:</strong> {{ patient.patient_id }}</p>
+        <p><strong>Contact:</strong> {{ patient.patient_contact_number }}</p>
+        <p><strong>Address:</strong> {{ patient.patient_address }}</p>
+        <p><strong>Birthday:</strong> {{ patient.birthday }}</p>
+        <p><strong>Sex:</strong> {{ patient.sex }}</p>
+
+    </div>
+
+
+    <!-- RIGHT SIDE : CHARGESLIP HISTORY -->
+    <div class="col-md-8">
+
+        <h4>Chargeslip History</h4>
+
+        {% for txn in transactions %}
+        <a href="{% url 'view_chargeslip' txn.transaction_id %}"
+        class="text-decoration-none text-dark">
+
+            <div class="card mb-3 shadow-sm hover-shadow">
+                <div class="card-body">
+
+                    <strong>Transaction #{{ txn.transaction_id }}</strong><br>
+                    Date: {{ txn.transaction_date }} <br>
+                    Mode: {{ txn.mode_of_payment }} <br>
+                    Total Amount:
+                    <strong>₱{{ txn.total_amount }}</strong>
+
+                </div>
+            </div>
+
+        </a>
+        {% endfor %}
+
+    </div>
+
+</div>
+</div>
+
+{% endblock %}

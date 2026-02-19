@@ -1,0 +1,52 @@
+/* styles.css */
+
+/* Make sidebar full height */
+body, html {
+    height: 100%;
+}
+
+.sidebar {
+    min-height: 100vh;
+    background-color: #f8f9fa;
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Remove padding from anchor so image defines size */
+.sidebar a {
+    display: inline-block;
+    margin: 10px 0;
+}
+
+/* Images as buttons, keep original size */
+.image-button img {
+    display: block;
+    width: 100px; /* adjust as needed */
+    height: auto;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+/* Hover zoom */
+.image-button img:hover {
+    transform: scale(1.05);
+}
+
+/* Use normal hover with src change using JavaScript or CSS background-image trick */
+/* Option 1: Using CSS background image on the anchor */
+
+.chargeslip-btn {
+    display: block;
+    width: 100px; 
+    height: auto; 
+}
+
+.chargeslip-btn img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+/* Option 2: Change image on hover using HTML data attribute */

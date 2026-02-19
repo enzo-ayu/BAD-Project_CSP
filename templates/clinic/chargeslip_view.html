@@ -1,0 +1,157 @@
+{% extends 'clinic/base.html' %}
+{% block content %}
+
+<div class="container mt-4">
+
+<div class="card shadow-sm p-4">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between mb-3">
+        <a href="javascript:history.back()" class="text-decoration-none">
+            ← Back
+        </a>
+
+        <div>
+            <strong>Trans. Date:</strong>
+            {{ transaction.transaction_date }}
+        </div>
+
+        <div>
+            <strong>Trans. ID:</strong>
+            {{ transaction.transaction_id }}
+        </div>
+
+        <div>
+            <strong>Patient ID:</strong>
+            {{ patient.patient_id }}
+        </div>
+    </div>
+
+    <hr>
+
+    <!-- PATIENT INFO -->
+    <div class="row mb-3">
+
+        <div class="col-md-3">
+            <small class="text-muted">Last Name</small>
+            <div>{{ patient.last_name }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted">First Name</small>
+            <div>{{ patient.first_name }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted">Middle Name</small>
+            <div>{{ patient.middle_name }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted">Suffix</small>
+            <div>{{ patient.suffix|default:"-" }}</div>
+        </div>
+
+    </div>
+
+    <div class="row mb-4">
+
+        <div class="col-md-3">
+            <small class="text-muted">Address</small>
+            <div>{{ patient.patient_address }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted">Contact No.</small>
+            <div>{{ patient.patient_contact_number }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted">Birthday</small>
+            <div>{{ patient.birthday }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted">Sex</small>
+            <div>{{ patient.sex }}</div>
+        </div>
+
+    </div>
+
+    <hr>
+
+    <!-- PRODUCTS + TREATMENTS -->
+    <div class="row">
+        <!-- TREATMENTS -->
+        <div class="col-md-6">
+            <h6 class="fw-bold">Treatment Availed</h6>
+
+            {% for item in treatments %}
+            <div class="d-flex justify-content-between">
+                <div>• {{ item.treatment.treatment_name }}</div>
+                <div>Qty: {{ item.quantity_purchased }}</div>
+                <div>Php {{ item.subtotal }}</div>
+            </div>
+            {% empty %}
+            <small>No treatments</small>
+            {% endfor %}
+
+            <hr>
+            <div class="text-end fw-bold">
+                Treatment Total: Php {{ treatment_total }}
+            </div>
+        </div>
+        
+        <!-- PRODUCTS -->
+        <div class="col-md-6">
+            <h6 class="fw-bold">Products Availed</h6>
+
+            {% for item in products %}
+            <div class="d-flex justify-content-between">
+                <div>• {{ item.product.product_name }}</div>
+                <div>Qty: {{ item.quantity_purchased }}</div>
+                <div>Php {{ item.subtotal }}</div>
+            </div>
+            {% empty %}
+            <small>No products</small>
+            {% endfor %}
+
+            <hr>
+            <div class="text-end fw-bold">
+                Product Total: Php {{ product_total }}
+            </div>
+        </div>
+
+    </div>
+
+    <hr>
+
+    <!-- PAYMENT -->
+    <div class="row mt-3">
+
+        <div class="col-md-6">
+            <strong>Mode of Payment:</strong>
+            {{ transaction.mode_of_payment }}
+        </div>
+
+        <div class="col-md-6 text-end">
+            <strong>Total Amount:</strong>
+            Php {{ transaction.total_amount }}
+        </div>
+
+    </div>
+
+    <hr>
+
+    <!-- NOTES -->
+    <div>
+        <strong>Patient Notes:</strong>
+        <div class="mt-2 text-muted">
+            {{ notes|default:"-" }}
+        </div>
+    </div>
+
+</div>
+</div>
+
+{% endblock %}
