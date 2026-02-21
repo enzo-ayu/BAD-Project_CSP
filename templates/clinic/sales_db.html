@@ -32,6 +32,8 @@
     .dayContainer { width: 100% !important; min-width: 100% !important; max-width: 100% !important; }
 </style>
 
+
+<!-- MESSAGE ALERT CODE -->
 {% if messages %}
 <div class="mb-3">
     {% for message in messages %}
@@ -43,6 +45,8 @@
 </div>
 {% endif %}
 
+
+<!-- FILTER NAV BUTTONS -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Sales History</h2>
 
@@ -59,8 +63,10 @@
     </form>
 </div>
 
+
+<!-- ACTUAL TABLE -->
 <table class="table table-bordered bg-white">
-    <thead class="table-info">
+    <thead>
         <tr>
             <th>Date</th>
             <th>Patient</th>

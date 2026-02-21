@@ -3,10 +3,11 @@
 <style>
 #treatmentTotal,
 #productTotal,
-#grandTotal {
+#grandTotal,
+.price-input[readonly] {
     background-color: #f0f0f0;  
-    font-weight: normal;        
-    color: #E4E7EA;                
+    color: #000000 !important; 
+    font-weight: normal;       
 }
 </style>
 
@@ -47,7 +48,7 @@
                     <!-- Existing Patient -->
                     <div class="row mb-2">
                         <div class="col-md-12">
-                            <select name="patient" class="form-select patient-field" id="existingPatient">
+                            <select name="patient" class="form-select" id="existingPatient">
                                 <option value="" selected disabled>Choose existing patient name...</option>
                                 {% for p in patients %}
                                 <option value="{{ p.patient_id }}"

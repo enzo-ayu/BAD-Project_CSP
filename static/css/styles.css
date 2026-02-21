@@ -136,14 +136,69 @@ body.sb-expanded .sidebar-text {
     background-color: #fffbea;
 }
 
-/* Readonly totals styling */
+/* ----------------------------- */
+/* Readonly totals and cost fields */
+/* ----------------------------- */
 .form-control[readonly] {
-    background-color: #e9ecef;
-    color: #E4E7EA;
+    background-color: #e9ecef;  /* light gray background */
+    color: #000000;             /* black text */
     font-weight: 600;
     cursor: default;
 }
 
 .form-control[readonly]:focus {
     box-shadow: none;
+}
+
+/* ----------------------------- */
+/* Sales Table - Clean Card */
+/* ----------------------------- */
+
+.table {
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background-color: #ffffff;
+}
+
+/* Remove Bootstrap striping completely */
+.table tbody tr {
+    background-color: #ffffff !important;
+}
+
+/* Add line below every row */
+.table tbody tr {
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* Remove last row border */
+.table tbody tr:last-child {
+    border-bottom: none;
+}
+
+/* Remove default borders */
+.table-bordered th,
+.table-bordered td {
+    border: none;
+}
+
+/* Header styling */
+table.table > thead > tr > th {
+    background-color: #CE548D !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    padding: 14px;
+}
+
+/* Body cells */
+.table tbody td {
+    padding: 12px 14px;
+    color: #000000 !important;
+    vertical-align: middle;
+}
+
+/* Remove hover gray effect */
+.table tbody tr:hover {
+    background-color: #ffffff !important;
 }

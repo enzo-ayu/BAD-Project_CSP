@@ -7,21 +7,23 @@
 
     <!-- HEADER -->
     <div class="d-flex justify-content-between mb-3">
-        <a href="javascript:history.back()" class="text-decoration-none">
-            ← Back
-        </a>
+        <a href="{% url 'sales_db' %}" class="text-decoration-none text-muted">← Back</a>
+    </div>
 
-        <div>
+    <br>
+    
+    <div class="row">
+        <div class="col-md-6">
             <strong>Trans. Date:</strong>
             {{ transaction.transaction_date }}
         </div>
 
-        <div>
+        <div class="col-md-3">
             <strong>Trans. ID:</strong>
             {{ transaction.transaction_id }}
         </div>
 
-        <div>
+        <div class="col-md-3">
             <strong>Patient ID:</strong>
             {{ patient.patient_id }}
         </div>
@@ -33,57 +35,56 @@
     <div class="row mb-3">
 
         <div class="col-md-3">
-            <small class="text-muted">Last Name</small>
+            <small class="text-muted fw-semibold">Last Name</small>
             <div>{{ patient.last_name }}</div>
         </div>
 
         <div class="col-md-3">
-            <small class="text-muted">First Name</small>
+            <small class="text-muted fw-semibold">First Name</small>
             <div>{{ patient.first_name }}</div>
         </div>
 
         <div class="col-md-3">
-            <small class="text-muted">Middle Name</small>
+            <small class="text-muted fw-semibold">Middle Name</small>
             <div>{{ patient.middle_name }}</div>
         </div>
 
         <div class="col-md-3">
-            <small class="text-muted">Suffix</small>
+            <small class="text-muted fw-semibold">Suffix</small>
             <div>{{ patient.suffix|default:"-" }}</div>
         </div>
 
     </div>
-
+    <br>
     <div class="row mb-4">
 
         <div class="col-md-3">
-            <small class="text-muted">Address</small>
+            <small class="text-muted fw-semibold">Address</small>
             <div>{{ patient.patient_address }}</div>
         </div>
 
         <div class="col-md-3">
-            <small class="text-muted">Contact No.</small>
+            <small class="text-muted fw-semibold">Contact No.</small>
             <div>{{ patient.patient_contact_number }}</div>
         </div>
 
         <div class="col-md-3">
-            <small class="text-muted">Birthday</small>
+            <small class="text-muted fw-semibold">Birthday</small>
             <div>{{ patient.birthday }}</div>
         </div>
 
         <div class="col-md-3">
-            <small class="text-muted">Sex</small>
+            <small class="text-muted fw-semibold">Sex</small>
             <div>{{ patient.sex }}</div>
         </div>
-
     </div>
-
+    <!-- <br> -->
     <hr>
 
     <!-- PRODUCTS + TREATMENTS -->
     <div class="row">
         <!-- TREATMENTS -->
-        <div class="col-md-6">
+        <div class="col-md-5">
             <h6 class="fw-bold">Treatment Availed</h6>
 
             {% for item in treatments %}
@@ -101,7 +102,7 @@
                 Treatment Total: Php {{ treatment_total }}
             </div>
         </div>
-        
+        <div class="col-md-1"></div>
         <!-- PRODUCTS -->
         <div class="col-md-6">
             <h6 class="fw-bold">Products Availed</h6>

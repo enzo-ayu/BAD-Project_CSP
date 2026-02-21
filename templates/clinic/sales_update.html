@@ -20,225 +20,216 @@
 {% csrf_token %}
 
 <div class="row mt-3">
+    <!-- LEFT COLUMN: Transaction Info -->
     <div class="col-md-4">
-        <label>Transaction ID</label>
-        <input class="form-control"
-               value="{{ sale.transaction_id|stringformat:'07d' }}" disabled>
+        <div class="mb-3">
+            <label>Transaction ID</label>
+            <input class="form-control" value="{{ sale.transaction_id|stringformat:'07d' }}" disabled>
+        </div>
+        <div class="mb-3">
+            <label>Transaction Date <span class="text-danger">*</span></label>
+            <input type="date" name="transaction_date"
+                   value="{{ sale.transaction_date|date:'Y-m-d' }}"
+                   class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label>Mode of Payment <span class="text-danger">*</span></label>
+            <select name="mode_of_payment" class="form-control" required>
+                <option value="" disabled>Select...</option>
+                <option value="Cash" {% if sale.mode_of_payment == "Cash" %}selected{% endif %}>Cash</option>
+                <option value="Card" {% if sale.mode_of_payment == "Card" %}selected{% endif %}>Card</option>
+                <option value="GCash" {% if sale.mode_of_payment == "GCash" %}selected{% endif %}>GCash</option>
+                <option value="Bank Transfer" {% if sale.mode_of_payment == "Bank Transfer" %}selected{% endif %}>Bank Transfer</option>
+            </select>
+        </div>
     </div>
-    <div class="col-md-4">
-        <label>Transaction Date <span class="text-danger">*</span></label>
-        <input type="date" name="transaction_date"
-               value="{{ sale.transaction_date|date:'Y-m-d' }}"
-               class="form-control" required>
-    </div>
-    <div class="col-md-4">
-        <label>Mode of Payment <span class="text-danger">*</span></label>
-        <select name="mode_of_payment" class="form-control" required>
-            <option value="" disabled>Select...</option>
-            <option value="Cash" {% if sale.mode_of_payment == "Cash" %}selected{% endif %}>Cash</option>
-            <option value="Card" {% if sale.mode_of_payment == "Card" %}selected{% endif %}>Card</option>
-            <option value="GCash" {% if sale.mode_of_payment == "GCash" %}selected{% endif %}>GCash</option>
-            <option value="Bank Transfer" {% if sale.mode_of_payment == "Bank Transfer" %}selected{% endif %}>Bank Transfer</option>
-        </select>
-    </div>
-</div>
 
-<hr>
+    <!-- RIGHT COLUMN: Products & Treatments Tables -->
+    <div class="col-md-8">
 
-<!-- ================= PRODUCTS ================= -->
-<h5 class="mt-4">Products</h5>
-<div id="product-section">
-{% for item in products %}
-<div class="row mb-2 align-items-center product-row">
-    <div class="col-md-5">
-        <select name="product_ids" class="form-control product-select">
-            <option value="" disabled>Select Product</option>
-            {% for p in all_products %}
-            <option value="{{ p.product_id }}" data-price="{{ p.unit_cost }}"
-                    {% if p == item.product %}selected{% endif %}>
-                {{ p.product_name }}
-            </option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-2">
-        <input type="number" name="product_qtys"
-               value="{{ item.quantity_purchased }}"
-               class="form-control product-qty" min="1">
-    </div>
-    <div class="col-md-3">
-        <input type="text" value="{{ item.subtotal }}"
-               class="form-control product-subtotal" readonly>
-    </div>
-    <div class="col-md-2">
-        <button type="button" class="btn btn-danger btn-sm remove-btn">✕</button>
-    </div>
-</div>
-{% endfor %}
-</div>
+        <!-- PRODUCTS TABLE -->
+        <h5>Products</h5>
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Subtotal</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="product-section">
+                {% for item in products %}
+                <tr class="product-row">
+                    <td>
+                        <select name="product_ids" class="form-control product-select">
+                            <option value="" disabled>Select Product</option>
+                            {% for p in all_products %}
+                            <option value="{{ p.product_id }}" data-price="{{ p.unit_cost }}"
+                                    {% if p == item.product %}selected{% endif %}>
+                                {{ p.product_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="number" name="product_qtys" value="{{ item.quantity_purchased }}" class="form-control product-qty" min="1"></td>
+                    <td><input type="text" value="{{ item.subtotal }}" class="form-control product-subtotal" readonly></td>
+                    <td><button type="button" class="btn btn-danger btn-sm remove-btn">✕</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-primary mb-3" id="addProductBtn">+ Add Product</button>
 
-<button type="button" class="btn btn-sm btn-primary mt-2" id="addProductBtn">
-    + Add Product
-</button>
+        <!-- TREATMENTS TABLE -->
+        <h5>Treatments</h5>
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Treatment</th>
+                    <th>Qty</th>
+                    <th>Subtotal</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="treatment-section">
+                {% for item in treatments %}
+                <tr class="treatment-row">
+                    <td>
+                        <select name="treatment_ids" class="form-control treatment-select">
+                            <option value="" disabled>Select Treatment</option>
+                            {% for t in all_treatments %}
+                            <option value="{{ t.treatment_id }}" data-price="{{ t.treatment_cost }}"
+                                    {% if t == item.treatment %}selected{% endif %}>
+                                {{ t.treatment_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="number" name="treatment_qtys" value="{{ item.quantity_purchased }}" class="form-control treatment-qty" min="1"></td>
+                    <td><input type="text" value="{{ item.subtotal }}" class="form-control treatment-subtotal" readonly></td>
+                    <td><button type="button" class="btn btn-danger btn-sm remove-btn">✕</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-primary mb-3" id="addTreatmentBtn">+ Add Treatment</button>
 
-<hr>
+        <!-- TOTALS -->
+        <div class="d-flex justify-content-end">
+            <div class="w-50">
+                <div class="mb-2">
+                    <label>Product Total</label>
+                    <input type="text" id="productTotal" class="form-control" readonly>
+                </div>
+                <div class="mb-2">
+                    <label>Treatment Total</label>
+                    <input type="text" id="treatmentTotal" class="form-control" readonly>
+                </div>
+                <div class="mb-2">
+                    <label>Total Amount</label>
+                    <input type="text" id="grandTotal" name="grandTotal" class="form-control fw-bold" readonly>
+                </div>
+            </div>
+        </div>
 
-<!-- ================= TREATMENTS ================= -->
-<h5 class="mt-4">Treatments</h5>
-<div id="treatment-section">
-{% for item in treatments %}
-<div class="row mb-2 align-items-center treatment-row">
-    <div class="col-md-5">
-        <select name="treatment_ids" class="form-control treatment-select">
-            <option value="" disabled>Select Treatment</option>
-            {% for t in all_treatments %}
-            <option value="{{ t.treatment_id }}" data-price="{{ t.treatment_cost }}"
-                    {% if t == item.treatment %}selected{% endif %}>
-                {{ t.treatment_name }}
-            </option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-2">
-        <input type="number" name="treatment_qtys"
-               value="{{ item.quantity_purchased }}"
-               class="form-control treatment-qty" min="1">
-    </div>
-    <div class="col-md-3">
-        <input type="text" value="{{ item.subtotal }}"
-               class="form-control treatment-subtotal" readonly>
-    </div>
-    <div class="col-md-2">
-        <button type="button" class="btn btn-danger btn-sm remove-btn">✕</button>
-    </div>
-</div>
-{% endfor %}
-</div>
-
-<button type="button" class="btn btn-sm btn-primary mt-2" id="addTreatmentBtn">
-    + Add Treatment
-</button>
-
-<hr>
-
-<!-- ================= TOTALS ================= -->
-<div class="row mt-4">
-    <div class="col-md-4 offset-md-8">
-        <label>Product Total</label>
-        <input type="text" id="productTotal" class="form-control mb-2" readonly>
-        <label>Treatment Total</label>
-        <input type="text" id="treatmentTotal" class="form-control mb-2" readonly>
-        <label>Total Amount</label>
-        <input type="text" id="grandTotal" name="grandTotal"
-               class="form-control fw-bold" readonly>
     </div>
 </div>
 
 <div class="d-flex justify-content-between mt-4">
-    <button type="button" class="btn btn-danger"
-            data-bs-toggle="modal" data-bs-target="#deleteModal">
+    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
         Delete Sale
     </button>
     <button type="submit" class="btn btn-info text-white px-4">
         Save Changes
     </button>
 </div>
-
 </form>
+
 </div>
 
-<!-- ====== DELETE CONFIRMATION MODAL ====== -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">Delete Sale</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                Are you sure you want to delete
-                <strong>Sale #{{ sale.transaction_id }}</strong>?
-                <br>
-                <small class="text-muted">This action cannot be undone.</small>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form method="POST" action="{% url 'sales_delete' sale.transaction_id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ================= TEMPLATES (FOR CLONING) ================= -->
+<!-- ================= TEMPLATES ================= -->
 <template id="product-template">
-<div class="row mb-2 align-items-center product-row">
-    <div class="col-md-5">
+<tr class="product-row">
+    <td>
         <select name="product_ids" class="form-control product-select">
             <option value="" selected disabled>Select Product</option>
             {% for p in all_products %}
-            <option value="{{ p.product_id }}" data-price="{{ p.unit_cost }}">
-                {{ p.product_name }}
-            </option>
+            <option value="{{ p.product_id }}" data-price="{{ p.unit_cost }}">{{ p.product_name }}</option>
             {% endfor %}
         </select>
-    </div>
-    <div class="col-md-2">
-        <input type="number" name="product_qtys" value="1"
-               class="form-control product-qty" min="1">
-    </div>
-    <div class="col-md-3">
-        <input type="text" value="0.00" class="form-control product-subtotal" readonly>
-    </div>
-    <div class="col-md-2">
-        <button type="button" class="btn btn-danger btn-sm remove-btn">✕</button>
-    </div>
-</div>
+    </td>
+    <td><input type="number" name="product_qtys" value="1" class="form-control product-qty" min="1"></td>
+    <td><input type="text" value="0.00" class="form-control product-subtotal" readonly></td>
+    <td><button type="button" class="btn btn-danger btn-sm remove-btn">✕</button></td>
+</tr>
 </template>
 
 <template id="treatment-template">
-<div class="row mb-2 align-items-center treatment-row">
-    <div class="col-md-5">
+<tr class="treatment-row">
+    <td>
         <select name="treatment_ids" class="form-control treatment-select">
             <option value="" selected disabled>Select Treatment</option>
             {% for t in all_treatments %}
-            <option value="{{ t.treatment_id }}" data-price="{{ t.treatment_cost }}">
-                {{ t.treatment_name }}
-            </option>
+            <option value="{{ t.treatment_id }}" data-price="{{ t.treatment_cost }}">{{ t.treatment_name }}</option>
             {% endfor %}
         </select>
-    </div>
-    <div class="col-md-2">
-        <input type="number" name="treatment_qtys" value="1"
-               class="form-control treatment-qty" min="1">
-    </div>
-    <div class="col-md-3">
-        <input type="text" value="0.00" class="form-control treatment-subtotal" readonly>
-    </div>
-    <div class="col-md-2">
-        <button type="button" class="btn btn-danger btn-sm remove-btn">✕</button>
-    </div>
-</div>
+    </td>
+    <td><input type="number" name="treatment_qtys" value="1" class="form-control treatment-qty" min="1"></td>
+    <td><input type="text" value="0.00" class="form-control treatment-subtotal" readonly></td>
+    <td><button type="button" class="btn btn-danger btn-sm remove-btn">✕</button></td>
+</tr>
 </template>
 
 <!-- ================= JAVASCRIPT ================= -->
 <script>
-let pageReady = false;
-
 // ================= SELECT2 INIT =================
 function initSelect2() {
-    $('#product-section .product-select').select2({
+    $('.product-select').select2({
         placeholder: 'Search product...',
-        width: '100%'
+        width: '100%',
+        dropdownParent: $('#product-section')
     });
-    $('#treatment-section .treatment-select').select2({
+    $('.treatment-select').select2({
         placeholder: 'Search treatment...',
-        width: '100%'
+        width: '100%',
+        dropdownParent: $('#treatment-section')
     });
 }
 
+// ================= ADD ROWS =================
+document.getElementById("addProductBtn").addEventListener("click", function() {
+    const template = document.getElementById("product-template").content.cloneNode(true);
+    const tbody = document.getElementById("product-section");
+    tbody.appendChild(template);
+
+    const newSelect = tbody.querySelector(".product-row:last-child .product-select");
+    $(newSelect).select2({ placeholder: 'Search product...', width: '100%', dropdownParent: $('#product-section') });
+    attachSelectListeners(newSelect);
+
+    calculateTotals();
+});
+
+document.getElementById("addTreatmentBtn").addEventListener("click", function() {
+    const template = document.getElementById("treatment-template").content.cloneNode(true);
+    const tbody = document.getElementById("treatment-section");
+    tbody.appendChild(template);
+
+    const newSelect = tbody.querySelector(".treatment-row:last-child .treatment-select");
+    $(newSelect).select2({ placeholder: 'Search treatment...', width: '100%', dropdownParent: $('#treatment-section') });
+    attachSelectListeners(newSelect);
+
+    calculateTotals();
+});
+
+// ================= ATTACH CHANGE LISTENER =================
+function attachSelectListeners(selectElement) {
+    selectElement.addEventListener('change', function() {
+        setPrice(selectElement);
+    });
+}
+
+// ================= REMOVE ROW =================
 document.addEventListener("click", function(e) {
     if (e.target.classList.contains("remove-btn")) {
         const row = e.target.closest(".product-row, .treatment-row");
@@ -247,84 +238,78 @@ document.addEventListener("click", function(e) {
     }
 });
 
-document.getElementById("addProductBtn").addEventListener("click", function() {
-    document.getElementById("product-section")
-        .appendChild(document.getElementById("product-template").content.cloneNode(true));
-    // Re-init Select2 on the newly added row only
-    $('#product-section .product-select').not('.select2-hidden-accessible').select2({
-        placeholder: 'Search product...',
-        width: '100%'
-    });
-    calculateTotals();
+// ================= QUANTITY INPUT CHANGES =================
+document.addEventListener("input", function(e) {
+    if (e.target.classList.contains("product-qty") || e.target.classList.contains("treatment-qty")) {
+        calculateTotals();
+    }
 });
 
-document.getElementById("addTreatmentBtn").addEventListener("click", function() {
-    document.getElementById("treatment-section")
-        .appendChild(document.getElementById("treatment-template").content.cloneNode(true));
-    // Re-init Select2 on the newly added row only
-    $('#treatment-section .treatment-select').not('.select2-hidden-accessible').select2({
-        placeholder: 'Search treatment...',
-        width: '100%'
-    });
-    calculateTotals();
-});
+// ================= SET PRICE & MERGE DUPLICATES =================
+function setPrice(selectElement) {
+    const row = selectElement.closest(".product-row, .treatment-row");
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const actualId = selectedOption.dataset.id;
+    const price = parseFloat(selectElement.value) || 0;
 
-function mergeDuplicateProducts(changedSelect) {
-    const id = changedSelect.value;
-    if (!id) return;
-    const currentRow = changedSelect.closest(".product-row");
-    const currentQty = parseInt(currentRow.querySelector(".product-qty").value || "0");
+    // Update hidden ID input and price input
+    row.querySelector(".id-input").value = actualId;
+    row.querySelector(".price-input").value = price.toFixed(2);
+
+    // Merge duplicates if needed
+    if (selectElement.classList.contains("product-select")) mergeDuplicateProducts(selectElement);
+    if (selectElement.classList.contains("treatment-select")) mergeDuplicateTreatments(selectElement);
+
+    calculateTotals();
+}
+
+function mergeDuplicateProducts(currentSelect) {
+    const currentRow = currentSelect.closest(".product-row");
+    const currentId = currentRow.querySelector(".id-input").value;
+    if (!currentId) return;
+    const currentQty = parseFloat(currentRow.querySelector(".product-qty").value || 0);
     document.querySelectorAll(".product-row").forEach(row => {
         if (row === currentRow) return;
-        const select = row.querySelector(".product-select");
-        if (select && select.value === id) {
-            row.querySelector(".product-qty").value = parseInt(row.querySelector(".product-qty").value || "0") + currentQty;
+        const idInput = row.querySelector(".id-input");
+        if (idInput && idInput.value === currentId) {
+            row.querySelector(".product-qty").value = parseFloat(row.querySelector(".product-qty").value || 0) + currentQty;
             currentRow.remove();
         }
     });
 }
 
-function mergeDuplicateTreatments(changedSelect) {
-    const id = changedSelect.value;
-    if (!id) return;
-    const currentRow = changedSelect.closest(".treatment-row");
-    const currentQty = parseInt(currentRow.querySelector(".treatment-qty").value || "0");
+function mergeDuplicateTreatments(currentSelect) {
+    const currentRow = currentSelect.closest(".treatment-row");
+    const currentId = currentRow.querySelector(".id-input").value;
+    if (!currentId) return;
+    const currentQty = parseFloat(currentRow.querySelector(".treatment-qty").value || 0);
     document.querySelectorAll(".treatment-row").forEach(row => {
         if (row === currentRow) return;
-        const select = row.querySelector(".treatment-select");
-        if (select && select.value === id) {
-            row.querySelector(".treatment-qty").value = parseInt(row.querySelector(".treatment-qty").value || "0") + currentQty;
+        const idInput = row.querySelector(".id-input");
+        if (idInput && idInput.value === currentId) {
+            row.querySelector(".treatment-qty").value = parseFloat(row.querySelector(".treatment-qty").value || 0) + currentQty;
             currentRow.remove();
         }
     });
 }
 
+// ================= CALCULATE TOTALS =================
 function calculateTotals() {
     let productTotal = 0;
     let treatmentTotal = 0;
 
     document.querySelectorAll(".product-row").forEach(row => {
-        const select = row.querySelector(".product-select");
-        const qtyInput = row.querySelector(".product-qty");
-        const subtotalBox = row.querySelector(".product-subtotal");
-        const qty = parseInt(qtyInput.value || "0");
-        if (!select.value) { subtotalBox.value = "0.00"; return; }
-        const price = parseFloat(select.options[select.selectedIndex].dataset.price || "0");
-        const subtotal = qty * price;
-        subtotalBox.value = subtotal.toFixed(2);
-        productTotal += subtotal;
+        const qty = parseFloat(row.querySelector(".product-qty").value || 0);
+        const price = parseFloat(row.querySelector(".price-input").value || 0);
+        row.querySelector(".product-subtotal").value = (qty * price).toFixed(2);
+        productTotal += qty * price;
     });
 
     document.querySelectorAll(".treatment-row").forEach(row => {
-        const select = row.querySelector(".treatment-select");
-        const qtyInput = row.querySelector(".treatment-qty");
-        const subtotalBox = row.querySelector(".treatment-subtotal");
-        const qty = parseInt(qtyInput.value || "0");
-        if (!select.value) { subtotalBox.value = "0.00"; return; }
-        const price = parseFloat(select.options[select.selectedIndex].dataset.price || "0");
-        const subtotal = qty * price;
-        subtotalBox.value = subtotal.toFixed(2);
-        treatmentTotal += subtotal;
+        const qty = parseFloat(row.querySelector(".treatment-qty").value || 0);
+        const price = parseFloat(row.querySelector(".price-input").value || 0);
+        row.querySelector(".treatment-subtotal").value = (qty * price).toFixed(2);
+        treatmentTotal += qty * price;
     });
 
     document.getElementById("productTotal").value = productTotal.toFixed(2);
@@ -332,30 +317,12 @@ function calculateTotals() {
     document.getElementById("grandTotal").value = (productTotal + treatmentTotal).toFixed(2);
 }
 
-// Select2 fires its own change event
-$(document).on('select2:select', '.product-select', function() {
-    if (!pageReady) return;
-    mergeDuplicateProducts(this);
-    calculateTotals();
-});
-
-$(document).on('select2:select', '.treatment-select', function() {
-    if (!pageReady) return;
-    mergeDuplicateTreatments(this);
-    calculateTotals();
-});
-
-document.addEventListener("input", function(e) {
-    if (e.target.classList.contains("product-qty") || e.target.classList.contains("treatment-qty")) {
-        calculateTotals();
-    }
-});
-
+// ================= INITIALIZE ON PAGE LOAD =================
 window.onload = function() {
     initSelect2();
+    document.querySelectorAll(".product-select").forEach(attachSelectListeners);
+    document.querySelectorAll(".treatment-select").forEach(attachSelectListeners);
     calculateTotals();
-    pageReady = true;
 };
 </script>
-
 {% endblock %}
