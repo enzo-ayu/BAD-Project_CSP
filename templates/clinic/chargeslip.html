@@ -1,8 +1,23 @@
 {% extends 'clinic/base.html' %}
 {% block content %}
+<style>
+#treatmentTotal,
+#productTotal,
+#grandTotal {
+    background-color: #f0f0f0;  
+    font-weight: normal;        
+    color: #E4E7EA;                
+}
+</style>
 
 <div class="container mt-4">
 
+    <!-- PAGE HEADER -->
+    <div class="mb-4">
+        <h1 class="fw-bolder" style="color: #CE548D;">Chargeslip</h2>
+    </div>
+
+    <!-- MESSAGES -->
     {% if messages %}
     <div class="mb-3">
         {% for message in messages %}
@@ -14,25 +29,25 @@
     </div>
     {% endif %}
 
-    <div class="card shadow-lg rounded-4">
+    <!-- CARD -->
+    <div class="card shadow-sm rounded-4">
         <div class="card-body p-4">
 
-            <h3 class="mb-4 fw-bold text-secondary">Charge Slip</h3>
             <form method="POST" id="chargeslipForm" onsubmit="return validateForm()">
                 {% csrf_token %}
                 <input type="hidden" name="is_new_patient" id="isNewPatientInput" value="false">
 
                 <!-- ================= PATIENT SECTION ================= -->
                 <div class="mb-3">
-
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" id="newPatient">
-                        <label class="form-check-label">New Patient</label>
+                        <label class="form-check-label fw-bold">New Patient</label>
                     </div>
 
+                    <!-- Existing Patient -->
                     <div class="row mb-2">
                         <div class="col-md-12">
-                            <select name="patient" class="form-select" id="existingPatient">
+                            <select name="patient" class="form-select patient-field" id="existingPatient">
                                 <option value="" selected disabled>Choose existing patient name...</option>
                                 {% for p in patients %}
                                 <option value="{{ p.patient_id }}"
@@ -50,94 +65,124 @@
                             </select>
                         </div>
                     </div>
+                <hr>
 
-                    <!-- NEW PATIENT FIELDS -->
+                    <!-- New Patient Fields (Aligned Columns) -->
                     <div class="row mb-2">
+                        <!-- Column 1: Last Name / Address -->
                         <div class="col-md-3">
-                            <input type="text" class="form-control patient-field"
-                                   name="last_name" placeholder="Last Name *" disabled>
+                            <label class="form-label small fw-semibold text-secondary">Last Name</label>
+                            <input type="text" class="form-control patient-field editable-field"
+                                name="last_name" placeholder="Last Name *" disabled>
+                            <br>
+                            <label class="form-label small fw-semibold text-secondary mt-2">Address</label>
+                            <input type="text" class="form-control patient-field editable-field"
+                                name="address" placeholder="Address *" disabled>
+                            <br>
                         </div>
-                        <div class="col-md-3">
-                            <input type="text" class="form-control patient-field"
-                                   name="first_name" placeholder="First Name *" disabled>
-                        </div>
-                        <div class="col-md-3">
-                            <input type="text" class="form-control patient-field"
-                                   name="middle_name" placeholder="Middle Name" disabled>
-                        </div>
-                        <div class="col-md-3">
-                            <input type="text" class="form-control patient-field"
-                                   name="suffix" placeholder="Suffix" disabled>
-                        </div>
-                    </div>
 
-                    <div class="row mb-2">
-                        <div class="col-md-4">
-                            <input type="text" class="form-control patient-field"
-                                   name="address" placeholder="Address *" disabled>
-                        </div>
+                        <!-- Column 2: First Name / Contact No. -->
                         <div class="col-md-3">
-                            <input type="text" class="form-control patient-field"
-                                   name="contact" placeholder="Contact No. *"
-                                   oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                                   disabled>
+                            <label class="form-label small fw-semibold text-secondary">First Name</label>
+                            <input type="text" class="form-control patient-field editable-field"
+                                name="first_name" placeholder="First Name *" disabled>
+                            <br>
+                            <label class="form-label small fw-semibold text-secondary mt-2">Contact No.</label>
+                            <input type="text" class="form-control patient-field editable-field"
+                                name="contact" placeholder="Contact No. *"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '')" disabled>
+                            <br>
                         </div>
+
+                        <!-- Column 3: Middle Name / Birthday -->
                         <div class="col-md-3">
-                            <input type="date" class="form-control patient-field"
-                                   name="birthday" disabled>
+                            <label class="form-label small fw-semibold text-secondary">Middle Name</label>
+                            <input type="text" class="form-control patient-field editable-field"
+                                name="middle_name" placeholder="Middle Name" disabled>
+                            <br>
+                            <label class="form-label small fw-semibold text-secondary mt-2">Birthday</label>
+                            <input type="date" class="form-control patient-field editable-field"
+                                name="birthday" disabled>
+                            <br>
                         </div>
-                        <div class="col-md-2">
-                            <select class="form-select patient-field" name="sex" disabled>
+
+                        <!-- Column 4: Suffix / Sex -->
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold text-secondary">Suffix</label>
+                            <input type="text" class="form-control patient-field editable-field"
+                                name="suffix" placeholder="Suffix" disabled>
+                            <br>
+                            <label class="form-label small fw-semibold text-secondary mt-2">Sex</label>
+                            <select class="form-select patient-field editable-field" name="sex" disabled>
                                 <option disabled selected>Sex *</option>
                                 <option>M</option>
                                 <option>F</option>
-                                <option>O</option>
+                                <option>Other</option>
                             </select>
+                            <br>
                         </div>
                     </div>
                 </div>
 
                 <hr>
 
-                <!-- ================= TREATMENT SECTION ================= -->
+                <!-- ================= TREATMENT & PRODUCT SECTIONS ================= -->
                 <div class="row">
+                    <!-- Treatments -->
                     <div class="col-md-6">
-                        <h6 class="fw-bold text-muted">
-                            Treatments
+                        <h6 class="fw-semibold">Treatments
                             <button type="button" class="btn btn-sm btn-outline-success ms-2"
                                     onclick="addTreatment()">+</button>
                         </h6>
                         <div id="treatmentContainer"></div>
-                        <div class="text-end mt-2">
-                            <input type="text" id="treatmentTotal"
-                                   class="form-control w-50 ms-auto"
-                                   placeholder="Treatment Total" readonly>
-                        </div>
                     </div>
 
-                    <!-- ================= PRODUCT SECTION ================= -->
+                    <!-- Products -->
                     <div class="col-md-6">
-                        <h6 class="fw-bold text-muted">
-                            Products
+                        <h6 class="fw-semibold">Products
                             <button type="button" class="btn btn-sm btn-outline-success ms-2"
                                     onclick="addProduct()">+</button>
                         </h6>
                         <div id="productContainer"></div>
-                        <div class="text-end mt-2">
-                            <input type="text" id="productTotal"
-                                   class="form-control w-50 ms-auto"
-                                   placeholder="Product Total" readonly>
-                        </div>
                     </div>
                 </div>
 
-                <hr>
+                <!-- ================= TOTALS ROW ================= -->
+                <div class="row mt-2">
+                    <!-- Treatment Total -->
+                    <div class="col-md-6">
+                        <div class="row">
+                            <div class="col-md-5"></div> <!-- empty for select -->
+                            <div class="col-md-3"></div> <!-- empty for Qty -->
+                            <div class="col-md-3">
+                                <input type="text" id="treatmentTotal"
+                                    class="form-control" placeholder="Treatment Total" readonly>
+                            </div>
+                            <div class="col-md-1"></div> <!-- empty for X button -->
+                        </div>
+                    </div>
+
+                    <!-- Product Total -->
+                    <div class="col-md-6">
+                        <div class="row">
+                            <div class="col-md-5"></div> <!-- empty for select -->
+                            <div class="col-md-3"></div> <!-- empty for Qty -->
+                            <div class="col-md-3">
+                                <input type="text" id="productTotal"
+                                    class="form-control" placeholder="Product Total" readonly>
+                            </div>
+                            <div class="col-md-1"></div> <!-- empty for X button -->
+                        </div>
+                    </div>
+                </div>
+                <hr>        
 
                 <!-- ================= PAYMENT ================= -->
-                <div class="row mb-3">
+                <div class="row mb-3 align-items-start">
+                    <!-- Mode of Payment -->
                     <div class="col-md-6">
-                        <label>Mode of Payment <span class="text-danger">*</span></label>
-                        <select name="mode_of_payment" class="form-select" id="modeOfPayment">
+                        <label class="fw-bold">Mode of Payment <span class="text-danger">*</span></label>
+                        <select name="mode_of_payment" class="form-select editable-field" id="modeOfPayment">
                             <option value="" disabled selected>Select Mode</option>
                             <option>Cash</option>
                             <option>GCash</option>
@@ -145,19 +190,24 @@
                             <option>Bank Transfer</option>
                         </select>
                     </div>
-                    <div class="col-md-6 text-end">
-                        <label>Total</label>
-                        <input type="text" id="grandTotal"
-                               class="form-control w-50 ms-auto" readonly>
+
+                    <div class="col-md-3"></div>
+
+                    <!-- Total -->
+                    <div class="col-md-3">
+                        <label class="fw-bold">Total</label>
+                        <input type="text" id="grandTotal" class="form-control" readonly>
                         <input type="hidden" name="grandTotal" id="grandTotalInput">
                     </div>
                 </div>
 
+                <!-- ================= PATIENT NOTES ================= -->
                 <div class="mb-3">
-                    <label>Patient Notes</label>
-                    <textarea name="notes" class="form-control" rows="2"></textarea>
+                    <label class="fw-bold">Patient Notes</label>
+                    <textarea name="notes" class="form-control editable-field" rows="2"></textarea>
                 </div>
 
+                <!-- ================= SUBMIT ================= -->
                 <div class="text-end">
                     <button type="submit" class="btn btn-primary px-4 rounded-3">
                         Confirm
@@ -174,7 +224,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Confirm Charge Slip</h5>
+                <h5 class="modal-title fw-bold">Confirm Charge Slip</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">

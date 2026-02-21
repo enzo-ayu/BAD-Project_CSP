@@ -9,7 +9,11 @@ urlpatterns = [
     path('chargeslip/', views.chargeslip, name='chargeslip'),
     path('chargeslip/view/<int:transaction_id>/', views.view_chargeslip, name='view_chargeslip'),
     path('patients/', views.patient_db, name='patient_db'),
+
+
     #path('patients/add/', views.patient_add, name='patient_add'),
+
+
     path('patients/<int:patient_id>/', views.patient_details, name='patient_details'),
     path('patients/<int:patient_id>/update/', views.patient_update, name='patient_update'),
     path('patients/<int:patient_id>/delete/', views.patient_delete, name='patient_delete'),
