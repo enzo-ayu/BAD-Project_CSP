@@ -56,6 +56,7 @@ class SalesTransaction(models.Model):
     total_price_of_treatments = models.DecimalField(max_digits=8, decimal_places=2, default=0.00, blank=True, null=True)
     total_amount = models.DecimalField(max_digits=8, decimal_places=2)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    notes = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"TXN-{self.transaction_id}"

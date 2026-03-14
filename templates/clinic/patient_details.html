@@ -1,16 +1,16 @@
 {% extends 'clinic/base.html' %}
 {% block content %}
 
-<h2>Patient Database</h2>
+<h2 class="mb-0 fw-bold" style="color: #CE548D;">Patient Details</h2>
+<br>
 
 <div class="card shadow-sm p-4">
-
 <div class="row">
 
     <!-- LEFT SIDE : PATIENT INFO -->
     <div class="col-md-4 border-end">
 
-        <a href="{% url 'patient_db' %}" class="btn btn-link mb-3">
+        <a href="{% url 'patient_db' %}" class="btn btn-link mb-3 text-muted text-decoration-none">
             ← Back
         </a>
 
@@ -46,7 +46,7 @@
 
                     <strong>Transaction #{{ txn.transaction_id }}</strong><br>
                     Date: {{ txn.transaction_date }} <br>
-                    Mode: {{ txn.mode_of_payment }} <br>
+                    Mode of Payment: {{ txn.mode_of_payment }} <br>
                     Total Amount:
                     <strong>₱{{ txn.total_amount }}</strong>
 

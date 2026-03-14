@@ -14,20 +14,23 @@
     </div>
     {% endif %}
 
-    <h4 class="mb-4">Add New Product</h4>
+    <div class="mb-3">
+        <a href="{% url 'inventory' %}" class="text-decoration-none text-muted small">← Back to Inventory</a>
+        <h4 class="fw-bold mt-2" style="color: #CE548D;">Add New Product</h4>
+    </div>
 
-    <form method="POST">
+    <form method="POST" id="addProductForm">
         {% csrf_token %}
 
         <div class="mb-3">
-            <label>Product Name <span class="text-danger">*</span></label>
+            <label class="small fw-bold text-secondary">Product Name <span class="text-danger">*</span></label>
             <input type="text" name="product_name"
                    value="{{ form_data.product_name }}"
                    class="form-control" required>
         </div>
 
         <div class="mb-3">
-            <label>Product Type <span class="text-danger">*</span></label>
+            <label class="small fw-bold text-secondary">Product Type <span class="text-danger">*</span></label>
             <input type="text" name="product_type"
                    value="{{ form_data.product_type }}"
                    class="form-control"
@@ -35,12 +38,12 @@
         </div>
 
         <div class="mb-3">
-            <label>Description</label>
+            <label class="small fw-bold text-secondary">Description</label>
             <textarea name="description" class="form-control" rows="2">{{ form_data.description }}</textarea>
         </div>
 
         <div class="mb-3">
-            <label>Unit Cost (₱) <span class="text-danger">*</span></label>
+            <label class="small fw-bold text-secondary">Unit Cost (₱) <span class="text-danger">*</span></label>
             <input type="number" name="unit_cost"
                    value="{{ form_data.unit_cost }}"
                    class="form-control"
@@ -48,7 +51,7 @@
         </div>
 
         <div class="mb-3">
-            <label>Supplier <span class="text-danger">*</span></label>
+            <label class="small fw-bold text-secondary">Supplier <span class="text-danger">*</span></label>
             <select name="supplier" class="form-select" required>
                 <option value="" disabled {% if not form_data.supplier %}selected{% endif %}>
                     Select Supplier
@@ -63,11 +66,22 @@
         </div>
 
         <div class="d-flex justify-content-between mt-4">
-            <a href="{% url 'product_add' %}" class="btn btn-outline-secondary">Clear</a>
-            <button type="submit" class="btn btn-success px-4">Add Product</button>
+            <a href="{% url 'product_add' %}" class="btn btn-outline-secondary px-4">Clear Form</a>
+            <button type="submit" class="btn global-confirm-btn px-4">Add Product</button>
         </div>
 
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the Global Helper from base.html
+    setupGlobalConfirmation(
+        'addProductForm', 
+        'Confirm New Product', 
+        'Are you sure you want to add this product to the inventory?'
+    );
+});
+</script>
 
 {% endblock %}

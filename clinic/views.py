@@ -14,6 +14,7 @@ def chargeslip(request):
         errors = []
 
         is_new_patient = request.POST.get('is_new_patient') == 'true'
+        notes = request.POST.get('notes', '').strip()
 
         # ── Validate patient ──
         if is_new_patient:
@@ -90,7 +91,7 @@ def chargeslip(request):
                         last_name=last,
                         first_name=first,
                         middle_name=request.POST.get('middle_name', '').strip(),
-                        suffix=request.POST.get('suffix', '').strip() or None,
+                        suffix=request.POST.get('suffix', '').strip() or "",
                         patient_contact_number=request.POST.get('contact', '').strip(),
                         patient_address=request.POST.get('address', '').strip(),
                         birthday=bday,
@@ -126,14 +127,8 @@ def chargeslip(request):
                     total_price_of_treatments=total_treatments,
                     total_amount=total_products + total_treatments,
                     mode_of_payment=request.POST.get('mode_of_payment'),
+                    notes=notes
                 )
-
-                branch = ClinicBranch.objects.first()
-                notes = request.POST.get('notes', '').strip()
-                if notes and branch:
-                    visit, _ = PatientVisit.objects.get_or_create(patient=patient, branch=branch)
-                    visit.patient_notes = notes
-                    visit.save()
 
                 for pid, qty in zip(product_ids_list, product_qtys):
                     if pid:
@@ -158,14 +153,14 @@ def chargeslip(request):
                         )
 
             messages.success(request, 'Charge slip saved successfully.')
-            return redirect('sales_db')
+            return redirect('patient_db')
 
         except Exception as e:
             messages.error(request, f'An error occurred while saving: {str(e)}')
 
     patients = Patient.objects.all().order_by('last_name')
-    products = Product.objects.all().order_by('product_name')
-    treatments = Treatment.objects.all().order_by('treatment_name')
+    products = Product.objects.all().order_by('product_type', 'product_name')
+    treatments = Treatment.objects.all().order_by('treatment_type', 'treatment_name')
     return render(request, 'clinic/chargeslip.html', {
         'patients': patients,
         'products': products,
@@ -246,7 +241,7 @@ def patient_add(request):
             last_name=last,
             first_name=first,
             middle_name=request.POST.get('middle_name', '').strip(),
-            suffix=request.POST.get('suffix', '').strip() or None,
+            suffix=request.POST.get('suffix', '').strip() or "",
             patient_address=address,
             patient_contact_number=contact,
             birthday=birthday,
@@ -295,7 +290,7 @@ def patient_update(request, patient_id):
         patient.last_name = last
         patient.first_name = first
         patient.middle_name = request.POST.get('middle_name', '').strip()
-        patient.suffix = request.POST.get('suffix', '').strip() or None
+        patient.suffix = request.POST.get('suffix', '').strip() or ""
         patient.patient_address = address
         patient.patient_contact_number = contact
         patient.birthday = birthday
@@ -364,20 +359,25 @@ def sales_db(request):
 # ─────────────────────────────────────────────
 # VIEW CHARGESLIP
 # ─────────────────────────────────────────────
-def view_chargeslip(request, transaction_id):
+def _get_chargeslip_context(transaction_id):
     sale = get_object_or_404(
         SalesTransaction.objects.select_related('patient'),
         transaction_id=transaction_id,
     )
-    items = TransactionItem.objects.filter(transaction=sale).select_related('product', 'treatment')
+
+    items = TransactionItem.objects.filter(
+        transaction=sale
+    ).select_related('product', 'treatment')
+
     products = [i for i in items if i.product]
     treatments = [i for i in items if i.treatment]
+
     product_total = sum(i.subtotal for i in products)
     treatment_total = sum(i.subtotal for i in treatments)
-    visit = PatientVisit.objects.filter(patient=sale.patient).first()
-    notes = visit.patient_notes if visit else None
 
-    return render(request, 'clinic/chargeslip_view.html', {
+    notes = sale.notes
+
+    return {
         'transaction': sale,
         'patient': sale.patient,
         'products': products,
@@ -385,8 +385,15 @@ def view_chargeslip(request, transaction_id):
         'product_total': product_total,
         'treatment_total': treatment_total,
         'notes': notes,
-    })
+    }
 
+def view_chargeslip_patient(request, transaction_id):
+    context = _get_chargeslip_context(transaction_id)
+    return render(request, 'clinic/chargeslip_view.html', context)
+
+def view_chargeslip_sales(request, transaction_id):
+    context = _get_chargeslip_context(transaction_id)
+    return render(request, 'clinic/chargeslip_view_sales.html', context)
 
 # ─────────────────────────────────────────────
 # SALES UPDATE

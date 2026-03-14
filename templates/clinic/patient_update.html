@@ -14,64 +14,70 @@
     </div>
     {% endif %}
 
-    <a href="{% url 'patient_db' %}" class="text-decoration-none text-muted">← Back</a>
+    <div class="mb-3">
+        <a href="{% url 'patient_db' %}" class="text-decoration-none text-muted small">← Back to Database</a>
+        <h2 class="fw-bold mt-2" style="color: #CE548D;">Update Patient Record</h2>
+    </div>
 
-    <form method="POST">
+    <form method="POST" id="updatePatientForm">
         {% csrf_token %}
 
         <div class="row mt-3">
             <div class="col-md-4">
-                <label>Patient ID</label>
-                <input type="text" class="form-control"
-                       value="{{ patient.patient_id }}" disabled>
+                <label class="small fw-bold text-secondary">Patient ID</label>
+                <input type="text" class="form-control bg-white"
+                        value="{{ patient.patient_id }}" disabled>
             </div>
         </div>
 
         <div class="row mt-3">
             <div class="col-md-4">
-                <label>Last Name <span class="text-danger">*</span></label>
+                <label class="small fw-bold text-secondary">Last Name <span class="text-danger">*</span></label>
                 <input type="text" name="last_name"
-                       value="{{ patient.last_name }}" class="form-control" required>
+                        value="{{ patient.last_name }}" class="form-control" required>
             </div>
             <div class="col-md-4">
-                <label>First Name <span class="text-danger">*</span></label>
+                <label class="small fw-bold text-secondary">First Name <span class="text-danger">*</span></label>
                 <input type="text" name="first_name"
-                       value="{{ patient.first_name }}" class="form-control" required>
+                        value="{{ patient.first_name }}" class="form-control" required>
             </div>
             <div class="col-md-3">
-                <label>Middle Name</label>
+                <label class="small fw-bold text-secondary">Middle Name</label>
                 <input type="text" name="middle_name"
-                       value="{{ patient.middle_name }}" class="form-control">
+                        value="{{ patient.middle_name }}" class="form-control">
             </div>
             <div class="col-md-1">
-                <label>Suffix</label>
+                <label class="small fw-bold text-secondary">Suffix</label>
                 <input type="text" name="suffix"
-                       value="{{ patient.suffix }}" class="form-control">
+                        value="{{ patient.suffix }}" class="form-control">
             </div>
         </div>
 
         <div class="row mt-3">
             <div class="col-md-6">
-                <label>Address <span class="text-danger">*</span></label>
+                <label class="small fw-bold text-secondary">Address <span class="text-danger">*</span></label>
                 <input type="text" name="patient_address"
-                       value="{{ patient.patient_address }}" class="form-control" required>
+                        value="{{ patient.patient_address }}" class="form-control" required>
             </div>
             <div class="col-md-3">
-                <label>Contact No. <span class="text-danger">*</span></label>
+                <label class="small fw-bold text-secondary">Contact No. <span class="text-danger">*</span></label>
                 <input type="text" name="patient_contact_number"
-                       value="{{ patient.patient_contact_number }}"
-                       class="form-control" required
-                       oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        value="{{ patient.patient_contact_number }}"
+                        class="form-control" required
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '')">
             </div>
             <div class="col-md-2">
-                <label>Birthday <span class="text-danger">*</span></label>
-                <input type="date" name="birthday"
-                       value="{{ patient.birthday|date:'Y-m-d' }}"
-                       class="form-control" required>
+                <label class="small fw-bold text-secondary">Birthday <span class="text-danger">*</span></label>
+                    <input type="date" name="birthday"
+                        value="{{ patient.birthday|date:'Y-m-d' }}"
+                        class="form-control"
+                        required
+                        min="1900-01-01"
+                        max="2026-12-31">
             </div>
             <div class="col-md-1">
-                <label>Sex <span class="text-danger">*</span></label>
-                <select name="sex" class="form-control" required>
+                <label class="small fw-bold text-secondary">Sex <span class="text-danger">*</span></label>
+                <select name="sex" class="form-select" required>
                     <option value="M" {% if patient.sex == "M" %}selected{% endif %}>M</option>
                     <option value="F" {% if patient.sex == "F" %}selected{% endif %}>F</option>
                     <option value="O" {% if patient.sex == "O" %}selected{% endif %}>O</option>
@@ -79,43 +85,57 @@
             </div>
         </div>
 
-        <!-- Buttons -->
-        <div class="d-flex justify-content-between mt-4">
-            <button type="button" class="btn btn-danger"
-                    data-bs-toggle="modal" data-bs-target="#deleteModal">
+        <div class="d-flex justify-content-between mt-5 border-top pt-4">
+            <button type="button" class="btn btn-outline-danger px-4" id="deletePatientBtn">
                 Delete Patient
             </button>
-            <button type="submit" class="btn btn-info text-white px-4">
+            <button type="submit" class="btn global-confirm-btn px-5">
                 Save Changes
             </button>
         </div>
-
     </form>
 </div>
 
-<!-- ====== DELETE CONFIRMATION MODAL ====== -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">Delete Patient</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                Are you sure you want to delete
-                <strong>{{ patient.first_name }} {{ patient.last_name }}</strong>?
-                <br>
-                <small class="text-muted">This will also remove all their transactions and records. This action cannot be undone.</small>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form method="POST" action="{% url 'patient_delete' patient.patient_id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<form id="deletePatientForm" method="POST" action="{% url 'patient_delete' patient.patient_id %}" style="display:none;">
+    {% csrf_token %}
+</form>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Setup Save Changes Confirmation
+    setupGlobalConfirmation(
+        'updatePatientForm', 
+        'Update Record', 
+        'Are you sure you want to save the changes to {{ patient.first_name }} {{ patient.last_name }}\'s record?'
+    );
+
+    // 2. Setup Delete Confirmation using the same Global Modal
+    const deleteTrigger = document.getElementById('deletePatientBtn');
+    if (deleteTrigger) {
+        deleteTrigger.addEventListener('click', function() {
+            // We manually trigger the setup for the delete form then show the modal
+            setupGlobalConfirmation(
+                'deletePatientForm', 
+                'Confirm Deletion', 
+                'Are you absolutely sure you want to delete {{ patient.first_name }} {{ patient.last_name }}? This will permanently remove all transactions and records. This action cannot be undone.'
+            );
+            
+            // Open the modal by clicking a hidden submit or using bootstrap API
+            const modalEl = document.getElementById('globalConfirmModal');
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+            
+            // Update modal text manually since we are bypassing the submit event trigger
+            document.getElementById('globalModalTitle').innerText = 'Confirm Deletion';
+            document.getElementById('globalModalMessage').innerText = 'Are you absolutely sure you want to delete {{ patient.first_name }} {{ patient.last_name }}? This will permanently remove all transactions and records.';
+            
+            // Point the "Yes" button to the delete form
+            document.getElementById('globalConfirmSubmitBtn').onclick = function() {
+                document.getElementById('deletePatientForm').submit();
+            };
+            
+            modalInstance.show();
+        });
+    }
+});
+</script>
 {% endblock %}

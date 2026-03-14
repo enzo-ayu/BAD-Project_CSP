@@ -198,7 +198,126 @@ table.table > thead > tr > th {
     vertical-align: middle;
 }
 
-/* Remove hover gray effect */
+
 .table tbody tr:hover {
     background-color: #ffffff !important;
+}
+
+
+/* =======================================
+   Patient DB - Header search row 
+   ======================================= */
+
+.patient-db-header-row {
+    gap: 12px;
+}
+
+.patient-db-search-tools {
+    flex: 1;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+/* Filter button */
+.patient-db-filter-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #bfb5bc;
+    border-radius: 5px;
+    background: #f7f3f6;
+    color: #8e8189;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.patient-db-filter-btn:hover {
+    background: #f2ebf0;
+    color: #CE548D;
+}
+
+/* Search box */
+.patient-db-search-form {
+    position: relative;
+    width: 1000px;     /* <- adjust na lang if ever */
+    max-width: 100%;
+    margin: 0;
+}
+
+.patient-db-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #aba3aa;
+    display: inline-flex;
+    align-items: center;
+    pointer-events: none;
+}
+
+.patient-db-search-input {
+    width: 100%;
+    height: 40px;
+    border: 1px solid #bfb5bc;
+    border-radius: 4px;
+    background: #f7f3f6;
+    padding: 0 10px 0 28px;
+    font-size: 16px;
+    color: #6f6a6e;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.patient-db-search-input::placeholder {
+    font-size: 16px;
+    color: #b0a7ae;
+}
+
+.patient-db-search-input:focus {
+    border-color: #CE548D;
+    box-shadow: 0 0 0 2px rgba(206, 84, 141, 0.12);
+    background: #fff;
+}
+
+/* =======================================
+   Patient DB - Tabke styling 
+   ======================================= */
+
+.patient-db-table > thead > tr > th,
+table.patient-db-table > thead > tr > th {
+    background-color: #ffffff !important;
+    color: #7f7f87 !important;          /* header text color */
+    font-weight: 600 !important;
+    border-bottom: 1px solid #dcd6dc !important;
+}
+
+.patient-db-table tbody td {
+    background-color: #ffffff !important;
+    color: #8f8b91 !important;          /* lighter than header */
+    border-bottom: 1px solid #ece7eb !important;
+}
+
+
+/* -------------*/
+/*   Sales DB   */
+/* -------------*/
+
+table.sales-db-table.table > thead > tr > th {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #7d7780 !important;
+    border-bottom: 1px solid #ddd6db !important;
+}
+
+.sales-db-table {
+    border-top: none !important;
+}
+
+.sales-db-table thead,
+.sales-db-table thead tr,
+.sales-db-table thead th {
+    border-top: none !important;
 }

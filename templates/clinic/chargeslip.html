@@ -1,24 +1,22 @@
 {% extends 'clinic/base.html' %}
+
 {% block content %}
 <style>
-#treatmentTotal,
-#productTotal,
-#grandTotal,
-.price-input[readonly] {
-    background-color: #f0f0f0;  
-    color: #000000 !important; 
-    font-weight: normal;       
-}
+    #treatmentTotal,
+    #productTotal,
+    #grandTotal,
+    .price-input[readonly] {
+        background-color: #f0f0f0;  
+        color: #000000 !important; 
+        font-weight: normal;       
+    }
 </style>
 
 <div class="container mt-4">
-
-    <!-- PAGE HEADER -->
     <div class="mb-4">
-        <h1 class="fw-bolder" style="color: #CE548D;">Chargeslip</h2>
+        <h1 class="fw-bolder" style="color: #CE548D;">Chargeslip</h1>
     </div>
 
-    <!-- MESSAGES -->
     {% if messages %}
     <div class="mb-3">
         {% for message in messages %}
@@ -30,22 +28,18 @@
     </div>
     {% endif %}
 
-    <!-- CARD -->
     <div class="card shadow-sm rounded-4">
         <div class="card-body p-4">
-
-            <form method="POST" id="chargeslipForm" onsubmit="return validateForm()">
+            <form method="POST" id="chargeslipForm">
                 {% csrf_token %}
                 <input type="hidden" name="is_new_patient" id="isNewPatientInput" value="false">
 
-                <!-- ================= PATIENT SECTION ================= -->
                 <div class="mb-3">
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" id="newPatient">
                         <label class="form-check-label fw-bold">New Patient</label>
                     </div>
 
-                    <!-- Existing Patient -->
                     <div class="row mb-2">
                         <div class="col-md-12">
                             <select name="patient" class="form-select" id="existingPatient">
@@ -60,130 +54,109 @@
                                         data-contact="{{ p.patient_contact_number }}"
                                         data-birthday="{{ p.birthday|date:'Y-m-d' }}"
                                         data-sex="{{ p.sex }}">
-                                    {{ p.last_name }}, {{ p.first_name }}
+                                    {{ p.last_name }}, {{ p.first_name }} {{p.middle_name}}
                                 </option>
                                 {% endfor %}
                             </select>
                         </div>
                     </div>
-                <hr>
+                    <hr>
 
-                    <!-- New Patient Fields (Aligned Columns) -->
                     <div class="row mb-2">
-                        <!-- Column 1: Last Name / Address -->
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold text-secondary">Last Name</label>
-                            <input type="text" class="form-control patient-field editable-field"
-                                name="last_name" placeholder="Last Name *" disabled>
+                            <input type="text" class="form-control patient-field" name="last_name" placeholder="Last Name *" disabled>
                             <br>
                             <label class="form-label small fw-semibold text-secondary mt-2">Address</label>
-                            <input type="text" class="form-control patient-field editable-field"
-                                name="address" placeholder="Address *" disabled>
-                            <br>
+                            <input type="text" class="form-control patient-field" name="address" placeholder="Address *" disabled>
                         </div>
-
-                        <!-- Column 2: First Name / Contact No. -->
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold text-secondary">First Name</label>
-                            <input type="text" class="form-control patient-field editable-field"
-                                name="first_name" placeholder="First Name *" disabled>
+                            <input type="text" class="form-control patient-field" name="first_name" placeholder="First Name *" disabled>
                             <br>
                             <label class="form-label small fw-semibold text-secondary mt-2">Contact No.</label>
-                            <input type="text" class="form-control patient-field editable-field"
-                                name="contact" placeholder="Contact No. *"
-                                oninput="this.value = this.value.replace(/[^0-9]/g, '')" disabled>
-                            <br>
+                            <input type="text" class="form-control patient-field" name="contact" placeholder="Contact No. *" 
+                                   oninput="this.value = this.value.replace(/[^0-9]/g, '')" disabled>
                         </div>
-
-                        <!-- Column 3: Middle Name / Birthday -->
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold text-secondary">Middle Name</label>
-                            <input type="text" class="form-control patient-field editable-field"
-                                name="middle_name" placeholder="Middle Name" disabled>
+                            <input type="text" class="form-control patient-field" name="middle_name" placeholder="Middle Name" disabled>
                             <br>
                             <label class="form-label small fw-semibold text-secondary mt-2">Birthday</label>
-                            <input type="date" class="form-control patient-field editable-field"
-                                name="birthday" disabled>
-                            <br>
+                                <input type="date" name="birthday"
+                                    value="{{ patient.birthday|date:'Y-m-d' }}"
+                                    class="form-control"
+                                    required
+                                    min="1900-01-01"
+                                    max="2026-12-31">
                         </div>
-
-                        <!-- Column 4: Suffix / Sex -->
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold text-secondary">Suffix</label>
-                            <input type="text" class="form-control patient-field editable-field"
-                                name="suffix" placeholder="Suffix" disabled>
+                            <input type="text" class="form-control patient-field" name="suffix" placeholder="Suffix" disabled>
                             <br>
                             <label class="form-label small fw-semibold text-secondary mt-2">Sex</label>
-                            <select class="form-select patient-field editable-field" name="sex" disabled>
+                            <select class="form-select patient-field" name="sex" disabled>
                                 <option disabled selected>Sex *</option>
                                 <option>M</option>
                                 <option>F</option>
-                                <option>Other</option>
+                                <option>O</option>
                             </select>
-                            <br>
                         </div>
                     </div>
                 </div>
 
                 <hr>
 
-                <!-- ================= TREATMENT & PRODUCT SECTIONS ================= -->
                 <div class="row">
-                    <!-- Treatments -->
                     <div class="col-md-6">
-                        <h6 class="fw-semibold">Treatments
-                            <button type="button" class="btn btn-sm btn-outline-success ms-2"
-                                    onclick="addTreatment()">+</button>
+
+                        <h6 class="fw-semibold">Treatments to avail
+                            <button type="button" class="btn btn-sm btn-outline-success ms-2" onclick="addTreatment()">+</button>
                         </h6>
+
+                        <!-- Labels for the inputs -->
+                        <div class="row fw-semibold text-muted mb-1">
+                            <div class="col-md-5">Treatments</div>
+                            <div class="col-md-3">Qty.</div>
+                            <div class="col-md-2">Cost</div>
+                            <div class="col-md-2"></div> <!-- For the remove button -->
+                        </div>
+
                         <div id="treatmentContainer"></div>
+
                     </div>
 
-                    <!-- Products -->
                     <div class="col-md-6">
-                        <h6 class="fw-semibold">Products
-                            <button type="button" class="btn btn-sm btn-outline-success ms-2"
-                                    onclick="addProduct()">+</button>
+                        <h6 class="fw-semibold">Products to avail
+                            <button type="button" class="btn btn-sm btn-outline-success ms-2" onclick="addProduct()">+</button>
                         </h6>
+
+                        <!-- Labels for the inputs -->
+                        <div class="row fw-semibold text-muted mb-1">
+                            <div class="col-md-5">Products</div>
+                            <div class="col-md-3">Qty.</div>
+                            <div class="col-md-2">Cost</div>
+                            <div class="col-md-2"></div> <!-- For the remove button -->
+                        </div>
+
                         <div id="productContainer"></div>
                     </div>
                 </div>
 
-                <!-- ================= TOTALS ROW ================= -->
                 <div class="row mt-2">
-                    <!-- Treatment Total -->
                     <div class="col-md-6">
-                        <div class="row">
-                            <div class="col-md-5"></div> <!-- empty for select -->
-                            <div class="col-md-3"></div> <!-- empty for Qty -->
-                            <div class="col-md-3">
-                                <input type="text" id="treatmentTotal"
-                                    class="form-control" placeholder="Treatment Total" readonly>
-                            </div>
-                            <div class="col-md-1"></div> <!-- empty for X button -->
-                        </div>
+                        <input type="text" id="treatmentTotal" class="form-control text-end" placeholder="Treatment Total" readonly>
                     </div>
-
-                    <!-- Product Total -->
                     <div class="col-md-6">
-                        <div class="row">
-                            <div class="col-md-5"></div> <!-- empty for select -->
-                            <div class="col-md-3"></div> <!-- empty for Qty -->
-                            <div class="col-md-3">
-                                <input type="text" id="productTotal"
-                                    class="form-control" placeholder="Product Total" readonly>
-                            </div>
-                            <div class="col-md-1"></div> <!-- empty for X button -->
-                        </div>
+                        <input type="text" id="productTotal" class="form-control text-end" placeholder="Product Total" readonly>
                     </div>
                 </div>
                 <hr>        
 
-                <!-- ================= PAYMENT ================= -->
-                <div class="row mb-3 align-items-start">
-                    <!-- Mode of Payment -->
+                <div class="row mb-3 align-items-end">
                     <div class="col-md-6">
                         <label class="fw-bold">Mode of Payment <span class="text-danger">*</span></label>
-                        <select name="mode_of_payment" class="form-select editable-field" id="modeOfPayment">
+                        <select name="mode_of_payment" class="form-select" id="modeOfPayment">
                             <option value="" disabled selected>Select Mode</option>
                             <option>Cash</option>
                             <option>GCash</option>
@@ -191,301 +164,202 @@
                             <option>Bank Transfer</option>
                         </select>
                     </div>
-
                     <div class="col-md-3"></div>
-
-                    <!-- Total -->
                     <div class="col-md-3">
                         <label class="fw-bold">Total</label>
-                        <input type="text" id="grandTotal" class="form-control" readonly>
+                        <input type="text" id="grandTotal" class="form-control fw-bold" readonly>
                         <input type="hidden" name="grandTotal" id="grandTotalInput">
                     </div>
                 </div>
 
-                <!-- ================= PATIENT NOTES ================= -->
                 <div class="mb-3">
                     <label class="fw-bold">Patient Notes</label>
-                    <textarea name="notes" class="form-control editable-field" rows="2"></textarea>
+                    <textarea name="notes" class="form-control" rows="2"></textarea>
                 </div>
 
-                <!-- ================= SUBMIT ================= -->
                 <div class="text-end">
-                    <button type="submit" class="btn btn-primary px-4 rounded-3">
-                        Confirm
-                    </button>
+                    <button type="submit" class="btn btn-primary px-5 rounded-3">Confirm</button>
                 </div>
-
             </form>
         </div>
     </div>
 </div>
 
-<!-- ================= CONFIRM MODAL ================= -->
-<div class="modal fade" id="confirmModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Confirm Charge Slip</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                Are you sure you want to save this charge slip?
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="confirmSubmitBtn">Save</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
-// ================= SELECT2 INIT =================
-function initSelect2() {
-    $('.treatment-select').select2({
-        placeholder: 'Search treatment...',
-        width: '100%',
-        dropdownParent: $('#treatmentContainer')
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('chargeslipForm');
+    
+    // 1. Hook into the submit event for validation
+    form.addEventListener('submit', function(e) {
+        if (!validateInputs()) {
+            e.preventDefault();
+            e.stopImmediatePropagation(); // This prevents setupGlobalConfirmation from triggering the modal
+            return;
+        }
     });
-    $('.product-select').select2({
-        placeholder: 'Search product...',
-        width: '100%',
-        dropdownParent: $('#productContainer')
-    });
-}
 
-// ================= FORM VALIDATION =================
-function validateForm() {
+    // 2. Initialize the Global Helper from base.html
+    setupGlobalConfirmation(
+        'chargeslipForm', 
+        'Confirm Charge Slip', 
+        'Are you sure you want to save this charge slip? This will record the transaction and update the patient records.'
+    );
+});
+
+function validateInputs() {
     const isNew = document.getElementById('newPatient').checked;
     const existingPatient = document.getElementById('existingPatient').value;
 
     if (isNew) {
         const last = document.querySelector("input[name='last_name']").value.trim();
         const first = document.querySelector("input[name='first_name']").value.trim();
-        const birthday = document.querySelector("input[name='birthday']").value.trim();
-        const sex = document.querySelector("select[name='sex']").value;
-        const address = document.querySelector("input[name='address']").value.trim();
-        const contact = document.querySelector("input[name='contact']").value.trim();
-
-        if (!last || !first || !birthday || !sex || sex === 'Sex *' || !address || !contact) {
-            alert('Please fill in all required fields for the new patient (marked with *).');
-            return false;
-        }
+        if (!last || !first) { alert('Please fill in required patient names.'); return false; }
     } else if (!existingPatient) {
-        alert('Please select a patient or check "New Patient" to register one.');
-        return false;
+        alert('Please select a patient.'); return false;
     }
 
-    const mode = document.getElementById('modeOfPayment').value;
-    if (!mode) {
-        alert('Please select a mode of payment.');
-        return false;
+    if (!document.getElementById('modeOfPayment').value) {
+        alert('Please select a mode of payment.'); return false;
     }
 
-    const products = document.querySelectorAll('.product-row');
-    const treatments = document.querySelectorAll('.treatment-row');
-    if (products.length === 0 && treatments.length === 0) {
-        alert('Please add at least one product or treatment.');
-        return false;
+    if (document.querySelectorAll('.product-row').length === 0 && document.querySelectorAll('.treatment-row').length === 0) {
+        alert('Please add at least one item.'); return false;
     }
-
-    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
-    modal.show();
-    return false;
+    return true;
 }
 
-document.getElementById('confirmSubmitBtn').addEventListener('click', function () {
-    document.getElementById('chargeslipForm').removeEventListener('submit', validateForm);
-    document.getElementById('chargeslipForm').submit();
-});
-
 // ================= PATIENT TOGGLE =================
-const newPatientCheckbox = document.getElementById("newPatient");
-const existingPatientSelect = document.getElementById("existingPatient");
-const patientFields = document.querySelectorAll(".patient-field");
-const isNewPatientInput = document.getElementById("isNewPatientInput");
-
-newPatientCheckbox.addEventListener("change", function () {
+document.getElementById("newPatient").addEventListener("change", function () {
+    const fields = document.querySelectorAll(".patient-field");
+    const existingSelect = document.getElementById("existingPatient");
     if (this.checked) {
-        patientFields.forEach(field => {
-            field.disabled = false;
-            if (field.tagName === "INPUT") field.value = "";
-            if (field.tagName === "SELECT") field.selectedIndex = 0;
-        });
-        existingPatientSelect.selectedIndex = 0;
-        existingPatientSelect.disabled = true;
-        isNewPatientInput.value = "true";
+        fields.forEach(f => { f.disabled = false; f.value = ""; });
+        existingSelect.disabled = true;
+        document.getElementById("isNewPatientInput").value = "true";
     } else {
-        patientFields.forEach(field => field.disabled = true);
-        existingPatientSelect.disabled = false;
-        isNewPatientInput.value = "false";
+        fields.forEach(f => f.disabled = true);
+        existingSelect.disabled = false;
+        document.getElementById("isNewPatientInput").value = "false";
     }
 });
 
-existingPatientSelect.addEventListener("change", function () {
-    if (!this.value) return;
-    newPatientCheckbox.checked = false;
-    isNewPatientInput.value = "false";
-
-    let selected = this.options[this.selectedIndex];
-    document.querySelector("input[name='last_name']").value = selected.dataset.last || "";
-    document.querySelector("input[name='first_name']").value = selected.dataset.first || "";
-    document.querySelector("input[name='middle_name']").value = selected.dataset.middle || "";
-    document.querySelector("input[name='suffix']").value = selected.dataset.suffix || "";
-    document.querySelector("input[name='address']").value = selected.dataset.address || "";
-    document.querySelector("input[name='contact']").value = selected.dataset.contact || "";
-    document.querySelector("input[name='birthday']").value = selected.dataset.birthday || "";
-    document.querySelector("select[name='sex']").value = selected.dataset.sex || "";
-
-    patientFields.forEach(field => field.disabled = true);
+document.getElementById("existingPatient").addEventListener("change", function () {
+    let s = this.options[this.selectedIndex];
+    document.querySelector("input[name='last_name']").value = s.dataset.last || "";
+    document.querySelector("input[name='first_name']").value = s.dataset.first || "";
+    document.querySelector("input[name='middle_name']").value = s.dataset.middle || "";
+    document.querySelector("input[name='address']").value = s.dataset.address || "";
+    document.querySelector("input[name='contact']").value = s.dataset.contact || "";
+    document.querySelector("input[name='birthday']").value = s.dataset.birthday || "";
+    document.querySelector("select[name='sex']").value = s.dataset.sex || "";
 });
 
-// ================= ADD TREATMENT =================
+// ================= DYNAMIC ITEMS =================
 function addTreatment() {
-    document.getElementById("treatmentContainer").insertAdjacentHTML("beforeend", `
+    const html = `
         <div class="row mb-2 treatment-row">
             <div class="col-md-5">
-                <select class="form-select treatment-select" onchange="setPrice(this)">
+                <select class="form-select" name="treatment_selects" onchange="setPrice(this)">
                     <option disabled selected value="">Select Treatment</option>
-                    {% for treatment in treatments %}
-                    <option value="{{ treatment.treatment_cost }}"
-                            data-id="{{ treatment.treatment_id }}">
-                        {{ treatment.treatment_name }} (₱{{ treatment.treatment_cost }})
+                    {% for t in treatments %}
+                    <option value="{{ t.treatment_cost }}" data-id="{{ t.treatment_id }}">
+                        [{{ t.treatment_type }}] {{ t.treatment_name }} (₱{{ t.treatment_cost }})
                     </option>
                     {% endfor %}
                 </select>
                 <input type="hidden" name="actual_treatment_ids" class="id-input">
             </div>
-            <div class="col-md-3">
-                <input type="number" name="treatment_qtys" min="1" step="1" value="1"
-                       class="form-control qty-input treatment-qty" placeholder="Qty"
-                       oninput="calculateTotals()">
-            </div>
-            <div class="col-md-3">
-                <input type="number" class="form-control price-input" placeholder="Cost" readonly>
-            </div>
-            <div class="col-md-1">
-                <button type="button" class="btn btn-sm btn-outline-danger"
-                        onclick="removeRow(this)">✕</button>
-            </div>
-        </div>
-    `);
-    initSelect2();
+            <div class="col-md-3"><input type="number" name="treatment_qtys" min="1" value="1" class="form-control qty-input" oninput="calculateTotals()"></div>
+            <div class="col-md-3"><input type="number" class="form-control price-input" readonly></div>
+            <div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.row').remove(); calculateTotals();">✕</button></div>
+        </div>`;
+    document.getElementById("treatmentContainer").insertAdjacentHTML("beforeend", html);
 }
 
-// ================= ADD PRODUCT =================
 function addProduct() {
-    document.getElementById("productContainer").insertAdjacentHTML("beforeend", `
+    const html = `
         <div class="row mb-2 product-row">
             <div class="col-md-5">
-                <select class="form-select product-select" onchange="setPrice(this)">
+                <select class="form-select" name="product_selects" onchange="setPrice(this)">
                     <option disabled selected value="">Select Product</option>
-                    {% for product in products %}
-                    <option value="{{ product.unit_cost }}"
-                            data-id="{{ product.product_id }}">
-                        {{ product.product_name }} (₱{{ product.unit_cost }})
+                    {% for p in products %}
+                    <option value="{{ p.unit_cost }}" data-id="{{ p.product_id }}">
+                        [{{ p.product_type }}] {{ p.product_name }} (₱{{ p.unit_cost }})
                     </option>
                     {% endfor %}
                 </select>
                 <input type="hidden" name="actual_product_ids" class="id-input">
             </div>
-            <div class="col-md-3">
-                <input type="number" name="product_qtys" min="1" step="1" value="1"
-                       class="form-control qty-input product-qty" placeholder="Qty"
-                       oninput="calculateTotals()">
-            </div>
-            <div class="col-md-3">
-                <input type="number" class="form-control price-input" placeholder="Cost" readonly>
-            </div>
-            <div class="col-md-1">
-                <button type="button" class="btn btn-sm btn-outline-danger"
-                        onclick="removeRow(this)">✕</button>
-            </div>
-        </div>
-    `);
-    initSelect2();
+            <div class="col-md-3"><input type="number" name="product_qtys" min="1" value="1" class="form-control qty-input" oninput="calculateTotals()"></div>
+            <div class="col-md-3"><input type="number" class="form-control price-input" readonly></div>
+            <div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.row').remove(); calculateTotals();">✕</button></div>
+        </div>`;
+    document.getElementById("productContainer").insertAdjacentHTML("beforeend", html);
 }
 
-function removeRow(button) {
-    button.closest(".row").remove();
-    calculateTotals();
-}
-
-function mergeDuplicateProducts(currentSelect) {
-    const currentRow = currentSelect.closest(".product-row");
-    const currentId = currentRow.querySelector(".id-input").value;
-    if (!currentId) return;
-    const currentQty = parseInt(currentRow.querySelector(".product-qty").value || "0");
-    document.querySelectorAll(".product-row").forEach(row => {
-        if (row === currentRow) return;
-        const idInput = row.querySelector(".id-input");
-        if (idInput && idInput.value === currentId) {
-            row.querySelector(".product-qty").value = parseInt(row.querySelector(".product-qty").value || "0") + currentQty;
-            currentRow.remove();
-        }
-    });
-}
-
-function mergeDuplicateTreatments(currentSelect) {
-    const currentRow = currentSelect.closest(".treatment-row");
-    const currentId = currentRow.querySelector(".id-input").value;
-    if (!currentId) return;
-    const currentQty = parseInt(currentRow.querySelector(".treatment-qty").value || "0");
-    document.querySelectorAll(".treatment-row").forEach(row => {
-        if (row === currentRow) return;
-        const idInput = row.querySelector(".id-input");
-        if (idInput && idInput.value === currentId) {
-            row.querySelector(".treatment-qty").value = parseInt(row.querySelector(".treatment-qty").value || "0") + currentQty;
-            currentRow.remove();
-        }
-    });
-}
-
-// Select2 fires its own change event, so we listen for it here
-$(document).on('select2:select', '.treatment-select', function() {
-    setPrice(this);
-});
-$(document).on('select2:select', '.product-select', function() {
-    setPrice(this);
-});
-
-function setPrice(selectElement) {
+// ================= CALCULATIONS =================
+window.setPrice = function(selectElement) {
     let row = selectElement.closest(".row");
-    let selectedOption = selectElement.options[selectElement.selectedIndex];
-    let actualId = selectedOption.getAttribute("data-id");
-    if (!actualId) {
-        row.querySelector(".price-input").value = "";
-        row.querySelector(".id-input").value = "";
-        calculateTotals();
-        return;
-    }
-    let price = parseFloat(selectElement.value) || 0;
-    row.querySelector(".price-input").value = price.toFixed(2);
-    row.querySelector(".id-input").value = actualId;
-    if (selectElement.classList.contains("product-select")) mergeDuplicateProducts(selectElement);
-    if (selectElement.classList.contains("treatment-select")) mergeDuplicateTreatments(selectElement);
+    let opt = selectElement.options[selectElement.selectedIndex];
+
+    if (!opt) return;
+
+    const selectedId = opt.getAttribute("data-id");
+    const container = row.closest("#treatmentContainer, #productContainer");
+
+    // ===== MERGE DUPLICATES =====
+    const rows = container.querySelectorAll(".row");
+
+    rows.forEach(r => {
+        if (r === row) return;
+
+        const otherSelect = r.querySelector("select");
+        const otherOpt = otherSelect?.options[otherSelect.selectedIndex];
+
+        if (!otherOpt) return;
+
+        const otherId = otherOpt.getAttribute("data-id");
+
+        if (otherId === selectedId) {
+            // merge quantities
+            const qty1 = parseInt(r.querySelector(".qty-input").value) || 0;
+            const qty2 = parseInt(row.querySelector(".qty-input").value) || 0;
+
+            r.querySelector(".qty-input").value = qty1 + qty2;
+
+            // remove duplicate row
+            row.remove();
+
+            calculateTotals();
+            return;
+        }
+    });
+
+    // ===== NORMAL PRICE SET =====
+    row.querySelector(".id-input").value = selectedId;
+    row.querySelector(".price-input").value =
+        parseFloat(selectElement.value || 0).toFixed(2);
+
     calculateTotals();
-}
+};
 
-function calculateTotals() {
-    let treatmentTotal = 0;
-    let productTotal = 0;
-    document.querySelectorAll(".treatment-row").forEach(row => {
-        let qty = parseFloat(row.querySelector(".qty-input").value) || 0;
-        let price = parseFloat(row.querySelector(".price-input").value) || 0;
-        treatmentTotal += qty * price;
+window.calculateTotals = function() {
+    let tTotal = 0, pTotal = 0;
+    document.querySelectorAll(".treatment-row").forEach(r => {
+        let q = parseFloat(r.querySelector(".qty-input").value) || 0;
+        let p = parseFloat(r.querySelector(".price-input").value) || 0;
+        tTotal += q * p;
     });
-    document.querySelectorAll(".product-row").forEach(row => {
-        let qty = parseFloat(row.querySelector(".qty-input").value) || 0;
-        let price = parseFloat(row.querySelector(".price-input").value) || 0;
-        productTotal += qty * price;
+    document.querySelectorAll(".product-row").forEach(r => {
+        let q = parseFloat(r.querySelector(".qty-input").value) || 0;
+        let p = parseFloat(r.querySelector(".price-input").value) || 0;
+        pTotal += q * p;
     });
-    document.getElementById("treatmentTotal").value = treatmentTotal.toFixed(2);
-    document.getElementById("productTotal").value = productTotal.toFixed(2);
-    let grandTotal = treatmentTotal + productTotal;
-    document.getElementById("grandTotal").value = grandTotal.toFixed(2);
-    document.getElementById("grandTotalInput").value = grandTotal.toFixed(2);
-}
+    document.getElementById("treatmentTotal").value = tTotal.toFixed(2);
+    document.getElementById("productTotal").value = pTotal.toFixed(2);
+    const grand = tTotal + pTotal;
+    document.getElementById("grandTotal").value = grand.toFixed(2);
+    document.getElementById("grandTotalInput").value = grand.toFixed(2);
+};
 </script>
-
 {% endblock %}

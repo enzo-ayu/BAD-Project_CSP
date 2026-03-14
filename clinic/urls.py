@@ -7,7 +7,8 @@ urlpatterns = [
     path('', RedirectView.as_view(url='/chargeslip/')),
     path('admin/', admin.site.urls),
     path('chargeslip/', views.chargeslip, name='chargeslip'),
-    path('chargeslip/view/<int:transaction_id>/', views.view_chargeslip, name='view_chargeslip'),
+    path('chargeslip/view/<int:transaction_id>/', views.view_chargeslip_patient, name='view_chargeslip'),
+    path('sales/chargeslip/<int:transaction_id>/', views.view_chargeslip_sales, name='view_chargeslip_sales'),
     path('patients/', views.patient_db, name='patient_db'),
 
 

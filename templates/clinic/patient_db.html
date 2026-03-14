@@ -12,19 +12,36 @@
 </div>
 {% endif %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Patient Database</h2>
+<div class="d-flex justify-content-between align-items-center mb-3 patient-db-header-row">
+    <h2 class="mb-0 fw-bold" style="color: #CE548D;">Patient Database</h2>
 
-    <div class="d-flex gap-2 align-items-center">
-        <form method="GET" class="d-flex" style="max-width: 320px; width: 100%;">
-            <input type="text" name="q" value="{{ query }}"
-                   class="form-control me-2" placeholder="Search">
-            <button type="submit" class="btn btn-primary">Search</button>
+    <div class="patient-db-search-tools d-flex align-items-center gap-2">
+        <!-- Filter button (left of search)
+        <button type="button" class="patient-db-filter-btn" title="Filter">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 6h16l-6 7v5l-4 2v-7L4 6z"
+                      stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            </svg>
+        </button> -->
+
+        <!-- Search form (longer) -->
+        <form method="GET" class="patient-db-search-form">
+            <span class="patient-db-search-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"></circle>
+                    <path d="M20 20L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                </svg>
+            </span>
+            <input type="text"
+                   name="q"
+                   value="{{ query }}"
+                   class="patient-db-search-input"
+                   placeholder="  Search">
         </form>
-            </div>
+    </div>
 </div>
 
-<table class="table table-striped table-hover bg-white border">
+<table class="table patient-db-table mb-0">
     <thead class="table-dark">
         <tr>
             <th>Surname</th>
