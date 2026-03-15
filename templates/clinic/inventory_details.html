@@ -1,0 +1,64 @@
+{% extends 'clinic/base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0 fw-bold" style="color: #CE548D;">Inventory Shipment Details</h2>
+    <a href="{% url 'inventory_db' %}" class="btn btn-secondary btn-sm">← Back</a>
+</div>
+
+<div class="card mb-4" style="max-width: 600px;">
+    <div class="card-body">
+        <table class="table table-borderless mb-0">
+            <tbody>
+                <tr>
+                    <th style="width: 45%;">Inventory Record ID</th>
+                    <td>{{ shipment.inventory_record_id }}</td>
+                </tr>
+                <tr>
+                    <th>Received Product Name</th>
+                    <td>{{ shipment.received_product_name }}</td>
+                </tr>
+                <tr>
+                    <th>Date Received</th>
+                    <td>{{ shipment.date_received }}</td>
+                </tr>
+                <tr>
+                    <th>Supplier ID</th>
+                    <td>{{ shipment.supplier.supplier_id }}</td>
+                </tr>
+                <tr>
+                    <th>Supplier Name</th>
+                    <td>{{ shipment.supplier.supplier_name }}</td>
+                </tr>
+                <tr>
+                    <th>Branch</th>
+                    <td>{{ shipment.branch.branch_location }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if received_products %}
+<h5 class="fw-bold mb-3" style="color: #CE548D;">Received Products</h5>
+<table class="table table-bordered bg-white" style="max-width: 700px;">
+    <thead class="table-dark">
+        <tr>
+            <th>Product</th>
+            <th>Quantity Received</th>
+            <th>Expiration Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rp in received_products %}
+        <tr>
+            <td>{{ rp.product.product_name }}</td>
+            <td>{{ rp.quantity_received }}</td>
+            <td>{{ rp.expiration_date }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% endblock %}

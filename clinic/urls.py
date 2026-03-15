@@ -22,4 +22,13 @@ urlpatterns = [
     path('sales/<int:transaction_id>/update/', views.sales_update, name='sales_update'),
     path('sales/<int:transaction_id>/delete/', views.sales_delete, name='sales_delete'),
     path('products/add/', views.product_add, name='product_add'),
+    #suppliers and inventory
+    path('suppliers/', views.supplier_db, name='supplier_db'),
+    path('suppliers/add/', views.supplier_add, name='supplier_add'),
+    path('suppliers/<int:supplier_id>/', views.supplier_details, name='supplier_details'),
+    path('suppliers/<int:supplier_id>/update/', views.supplier_update, name='supplier_update'),
+    path('inventory/', views.inventory_db, name='inventory_db'),
+    path('inventory/add/', views.inventory_add, name='inventory_add'),
+    path('inventory/<int:inventory_record_id>/', views.inventory_details, name='inventory_details'),
+    path('inventory/<int:inventory_record_id>/update/', views.inventory_update, name='inventory_update')
 ]
