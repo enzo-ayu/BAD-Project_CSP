@@ -24,3 +24,11 @@ Thumbs.db
 
 # Secret environment files
 .env
+
+vcore/
+venv/
+.venv/
+badcode/Lib/
+badcode/Scripts/
+__pycache__/
+*.pyc

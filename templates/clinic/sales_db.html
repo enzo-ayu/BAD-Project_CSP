@@ -94,7 +94,7 @@
             <td class="fw-bold">₱{{ sale.total_amount|floatformat:2 }}</td>
             <td>
                 <div class="d-flex gap-2">
-                    <a href="{% url 'view_chargeslip' sale.transaction_id %}"
+                    <a href="{% url 'view_chargeslip_sales' sale.transaction_id %}"
                        class="btn btn-info btn-sm text-white">Details</a>
                     <a href="{% url 'sales_update' sale.transaction_id %}"
                        class="btn btn-warning btn-sm text-white">Update</a>
