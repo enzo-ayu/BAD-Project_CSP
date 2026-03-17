@@ -280,7 +280,6 @@ def patient_delete(request, patient_id):
 # SALES & CHARGESLIP VIEWS
 # ─────────────────────────────────────────────
 @login_required(login_url='login')
-@user_passes_test(is_owner, login_url='login')
 def sales_db(request):
     query = request.GET.get("q", "").strip()
     date_filter = request.GET.get("date", "").strip()
