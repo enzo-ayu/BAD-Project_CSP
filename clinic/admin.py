@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.contrib import admin
 from .models import (
     Patient, Supplier, Product, ClinicBranch, SalesTransaction,
-    Account, InventoryShipment, ReceivedProduct, BranchProduct,
+    EmployeeProfile, InventoryShipment, ReceivedProduct, BranchProduct,
     Treatment, BranchTreatment, TreatmentProduct, TransactionItem, PatientVisit
 )
 
@@ -14,7 +14,7 @@ admin.site.register(Supplier)
 admin.site.register(Product)
 admin.site.register(ClinicBranch)
 admin.site.register(SalesTransaction)
-admin.site.register(Account)
+admin.site.register(EmployeeProfile)
 admin.site.register(InventoryShipment)
 admin.site.register(ReceivedProduct)
 admin.site.register(BranchProduct)

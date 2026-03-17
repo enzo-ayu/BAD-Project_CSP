@@ -3,86 +3,89 @@ from django.db import transaction
 from django.db.models import Q
 from django.contrib import messages
 from datetime import datetime
-from .models import Patient, Product, Treatment, SalesTransaction, TransactionItem, PatientVisit, ClinicBranch, Supplier
+
+# Auth and Access Built-ins
+from django.contrib.auth.models import User, Group
+from django.contrib.auth.decorators import login_required, user_passes_test
+
+# Local Models and Forms
+from .models import (
+    Patient, Product, Treatment, SalesTransaction, TransactionItem, 
+    ClinicBranch, Supplier, EmployeeProfile
+)
+from .forms import RoleBasedRegistrationForm
+
+
+# ─────────────────────────────────────────────
+# HELPER FUNCTIONS
+# ─────────────────────────────────────────────
+def is_owner(user):
+    """Check if the logged-in user belongs to the 'Owner' group."""
+    return user.groups.filter(name='Owner').exists()
 
 
 # ─────────────────────────────────────────────
 # CHARGESLIP (Create New Sale)
 # ─────────────────────────────────────────────
+@login_required(login_url='login')
 def chargeslip(request):
     if request.method == 'POST':
         errors = []
-
         is_new_patient = request.POST.get('is_new_patient') == 'true'
         notes = request.POST.get('notes', '').strip()
 
-        # ── Validate patient ──
+        # ── Validate Patient ──
         if is_new_patient:
             required_new = {
-                'last_name': 'Last Name',
-                'first_name': 'First Name',
-                'birthday': 'Birthday',
-                'sex': 'Sex',
-                'address': 'Address',
-                'contact': 'Contact Number',
+                'last_name': 'Last Name', 'first_name': 'First Name',
+                'birthday': 'Birthday', 'sex': 'Sex',
+                'address': 'Address', 'contact': 'Contact Number',
             }
             for field, label in required_new.items():
                 if not request.POST.get(field, '').strip():
                     errors.append(f'{label} is required for new patients.')
         else:
-            patient_id = request.POST.get('patient', '').strip()
-            if not patient_id:
+            if not request.POST.get('patient', '').strip():
                 errors.append('Please select an existing patient or register a new one.')
 
-        # ── Validate mode of payment ──
+        # ── Validate Payment & Items ──
         if not request.POST.get('mode_of_payment', '').strip():
             errors.append('Please select a mode of payment.')
 
-        # ── Validate at least one item ──
         product_ids = [p for p in request.POST.getlist('actual_product_ids') if p]
         treatment_ids = [t for t in request.POST.getlist('actual_treatment_ids') if t]
+        
         if not product_ids and not treatment_ids:
             errors.append('Please add at least one product or treatment.')
 
-        # ── Validate quantities ──
-        for qty in request.POST.getlist('product_qtys'):
+        # ── Validate Quantities ──
+        for qty in request.POST.getlist('product_qtys') + request.POST.getlist('treatment_qtys'):
             try:
                 if int(qty) < 1:
-                    errors.append('Product quantities must be at least 1.')
+                    errors.append('All quantities must be at least 1.')
                     break
             except (ValueError, TypeError):
-                errors.append('Invalid product quantity entered.')
+                errors.append('Invalid quantity entered.')
                 break
 
-        for qty in request.POST.getlist('treatment_qtys'):
-            try:
-                if int(qty) < 1:
-                    errors.append('Treatment quantities must be at least 1.')
-                    break
-            except (ValueError, TypeError):
-                errors.append('Invalid treatment quantity entered.')
-                break
-
+        # ── Handle Errors ──
         if errors:
             for error in errors:
                 messages.error(request, error)
-            patients = Patient.objects.all().order_by('last_name')
-            products = Product.objects.all().order_by('product_name')
-            treatments = Treatment.objects.all().order_by('treatment_name')
             return render(request, 'clinic/chargeslip.html', {
-                'patients': patients,
-                'products': products,
-                'treatments': treatments,
+                'patients': Patient.objects.all().order_by('last_name'),
+                'products': Product.objects.all().order_by('product_name'),
+                'treatments': Treatment.objects.all().order_by('treatment_name'),
             })
 
-        # ── Save data ──
+        # ── Save Data ──
         try:
             with transaction.atomic():
                 if is_new_patient:
-                    # Check duplicate patient
                     last = request.POST.get('last_name').strip()
                     first = request.POST.get('first_name').strip()
                     bday = request.POST.get('birthday').strip()
+                    
                     if Patient.objects.filter(last_name__iexact=last, first_name__iexact=first, birthday=bday).exists():
                         messages.error(request, f'A patient named {first} {last} with the same birthday already exists.')
                         return redirect('chargeslip')
@@ -100,57 +103,51 @@ def chargeslip(request):
                 else:
                     patient = Patient.objects.get(pk=request.POST.get('patient'))
 
-                grand_total = float(request.POST.get('grandTotal', 0) or 0)
-                total_products = 0
-                total_treatments = 0
+                total_products = 0.0
+                total_treatments = 0.0
 
-                product_ids_list = request.POST.getlist('actual_product_ids')
                 product_qtys = request.POST.getlist('product_qtys')
-                treatment_ids_list = request.POST.getlist('actual_treatment_ids')
                 treatment_qtys = request.POST.getlist('treatment_qtys')
 
-                for pid, qty in zip(product_ids_list, product_qtys):
-                    if pid:
-                        product = Product.objects.get(pk=pid)
-                        qty = int(qty)
-                        total_products += float(product.unit_cost) * qty
-
-                for tid, qty in zip(treatment_ids_list, treatment_qtys):
-                    if tid:
-                        treatment = Treatment.objects.get(pk=tid)
-                        qty = int(qty)
-                        total_treatments += float(treatment.treatment_cost) * qty
-
+                # Create the main transaction record
                 sale = SalesTransaction.objects.create(
                     patient=patient,
-                    total_price_of_products=total_products,
-                    total_price_of_treatments=total_treatments,
-                    total_amount=total_products + total_treatments,
+                    total_price_of_products=0, # Will update below
+                    total_price_of_treatments=0, # Will update below
+                    total_amount=0,
                     mode_of_payment=request.POST.get('mode_of_payment'),
                     notes=notes
                 )
 
-                for pid, qty in zip(product_ids_list, product_qtys):
+                # Process Products
+                for pid, qty in zip(product_ids, product_qtys):
                     if pid:
                         product = Product.objects.get(pk=pid)
-                        qty = int(qty)
+                        q = int(qty)
+                        subtotal = float(product.unit_cost) * q
+                        total_products += subtotal
                         TransactionItem.objects.create(
-                            transaction=sale,
-                            product=product,
-                            quantity_purchased=qty,
-                            subtotal=product.unit_cost * qty,
+                            transaction=sale, product=product,
+                            quantity_purchased=q, subtotal=subtotal
                         )
 
-                for tid, qty in zip(treatment_ids_list, treatment_qtys):
+                # Process Treatments
+                for tid, qty in zip(treatment_ids, treatment_qtys):
                     if tid:
                         treatment = Treatment.objects.get(pk=tid)
-                        qty = int(qty)
+                        q = int(qty)
+                        subtotal = float(treatment.treatment_cost) * q
+                        total_treatments += subtotal
                         TransactionItem.objects.create(
-                            transaction=sale,
-                            treatment=treatment,
-                            quantity_purchased=qty,
-                            subtotal=treatment.treatment_cost * qty,
+                            transaction=sale, treatment=treatment,
+                            quantity_purchased=q, subtotal=subtotal
                         )
+
+                # Update totals on main sale
+                sale.total_price_of_products = total_products
+                sale.total_price_of_treatments = total_treatments
+                sale.total_amount = total_products + total_treatments
+                sale.save()
 
             messages.success(request, 'Charge slip saved successfully.')
             return redirect('patient_db')
@@ -158,22 +155,22 @@ def chargeslip(request):
         except Exception as e:
             messages.error(request, f'An error occurred while saving: {str(e)}')
 
-    patients = Patient.objects.all().order_by('last_name')
-    products = Product.objects.all().order_by('product_type', 'product_name')
-    treatments = Treatment.objects.all().order_by('treatment_type', 'treatment_name')
+    # ── GET Request handling ──
     return render(request, 'clinic/chargeslip.html', {
-        'patients': patients,
-        'products': products,
-        'treatments': treatments,
+        'patients': Patient.objects.all().order_by('last_name'),
+        'products': Product.objects.all().order_by('product_type', 'product_name'),
+        'treatments': Treatment.objects.all().order_by('treatment_type', 'treatment_name'),
     })
 
 
 # ─────────────────────────────────────────────
-# PATIENT DATABASE
+# PATIENT VIEWS
 # ─────────────────────────────────────────────
+@login_required(login_url='login')
 def patient_db(request):
     query = request.GET.get("q", "").strip()
     patients = Patient.objects.all()
+    
     if query:
         patients = patients.filter(
             Q(last_name__icontains=query) |
@@ -181,16 +178,13 @@ def patient_db(request):
             Q(middle_name__icontains=query) |
             Q(suffix__icontains=query)
         )
-    patients = patients.order_by("last_name", "first_name")
+    
     return render(request, "clinic/patient_db.html", {
-        "patients": patients,
+        "patients": patients.order_by("last_name", "first_name"),
         "query": query,
     })
 
-
-# ─────────────────────────────────────────────
-# PATIENT DETAILS
-# ─────────────────────────────────────────────
+@login_required(login_url='login')
 def patient_details(request, patient_id):
     patient = get_object_or_404(Patient, patient_id=patient_id)
     transactions = SalesTransaction.objects.filter(patient=patient).order_by('-transaction_date')
@@ -199,38 +193,23 @@ def patient_details(request, patient_id):
         'transactions': transactions,
     })
 
-
-# ─────────────────────────────────────────────
-# PATIENT ADD (standalone form)
-# ─────────────────────────────────────────────
+@login_required(login_url='login')
 def patient_add(request):
     if request.method == 'POST':
-        errors = []
-
+        required_fields = {
+            'last_name': 'Last Name', 'first_name': 'First Name',
+            'patient_address': 'Address', 'patient_contact_number': 'Contact Number',
+            'birthday': 'Birthday', 'sex': 'Sex'
+        }
+        
+        errors = [f'{label} is required.' for field, label in required_fields.items() if not request.POST.get(field, '').strip()]
+        
         last = request.POST.get('last_name', '').strip()
         first = request.POST.get('first_name', '').strip()
-        address = request.POST.get('patient_address', '').strip()
-        contact = request.POST.get('patient_contact_number', '').strip()
         birthday = request.POST.get('birthday', '').strip()
-        sex = request.POST.get('sex', '').strip()
 
-        if not last:
-            errors.append('Last Name is required.')
-        if not first:
-            errors.append('First Name is required.')
-        if not address:
-            errors.append('Address is required.')
-        if not contact:
-            errors.append('Contact Number is required.')
-        if not birthday:
-            errors.append('Birthday is required.')
-        if not sex:
-            errors.append('Sex is required.')
-
-        if not errors:
-            # Check for duplicate
-            if Patient.objects.filter(last_name__iexact=last, first_name__iexact=first, birthday=birthday).exists():
-                errors.append(f'A patient named {first} {last} with the same birthday already exists.')
+        if not errors and Patient.objects.filter(last_name__iexact=last, first_name__iexact=first, birthday=birthday).exists():
+            errors.append(f'A patient named {first} {last} with the same birthday already exists.')
 
         if errors:
             for error in errors:
@@ -242,70 +221,50 @@ def patient_add(request):
             first_name=first,
             middle_name=request.POST.get('middle_name', '').strip(),
             suffix=request.POST.get('suffix', '').strip() or "",
-            patient_address=address,
-            patient_contact_number=contact,
+            patient_address=request.POST.get('patient_address', '').strip(),
+            patient_contact_number=request.POST.get('patient_contact_number', '').strip(),
             birthday=birthday,
-            sex=sex,
+            sex=request.POST.get('sex', '').strip(),
         )
         messages.success(request, f'Patient {first} {last} added successfully.')
         return redirect('patient_db')
 
     return render(request, 'clinic/patient_add.html', {'form_data': {}})
 
-
-# ─────────────────────────────────────────────
-# PATIENT UPDATE
-# ─────────────────────────────────────────────
+@login_required(login_url='login')
 def patient_update(request, patient_id):
     patient = get_object_or_404(Patient, patient_id=patient_id)
 
     if request.method == 'POST':
-        errors = []
-
-        last = request.POST.get('last_name', '').strip()
-        first = request.POST.get('first_name', '').strip()
-        address = request.POST.get('patient_address', '').strip()
-        contact = request.POST.get('patient_contact_number', '').strip()
-        birthday = request.POST.get('birthday', '').strip()
-        sex = request.POST.get('sex', '').strip()
-
-        if not last:
-            errors.append('Last Name is required.')
-        if not first:
-            errors.append('First Name is required.')
-        if not address:
-            errors.append('Address is required.')
-        if not contact:
-            errors.append('Contact Number is required.')
-        if not birthday:
-            errors.append('Birthday is required.')
-        if not sex:
-            errors.append('Sex is required.')
+        required_fields = {
+            'last_name': 'Last Name', 'first_name': 'First Name',
+            'patient_address': 'Address', 'patient_contact_number': 'Contact Number',
+            'birthday': 'Birthday', 'sex': 'Sex'
+        }
+        
+        errors = [f'{label} is required.' for field, label in required_fields.items() if not request.POST.get(field, '').strip()]
 
         if errors:
             for error in errors:
                 messages.error(request, error)
             return render(request, 'clinic/patient_update.html', {'patient': patient})
 
-        patient.last_name = last
-        patient.first_name = first
+        patient.last_name = request.POST.get('last_name', '').strip()
+        patient.first_name = request.POST.get('first_name', '').strip()
         patient.middle_name = request.POST.get('middle_name', '').strip()
         patient.suffix = request.POST.get('suffix', '').strip() or ""
-        patient.patient_address = address
-        patient.patient_contact_number = contact
-        patient.birthday = birthday
-        patient.sex = sex
+        patient.patient_address = request.POST.get('patient_address', '').strip()
+        patient.patient_contact_number = request.POST.get('patient_contact_number', '').strip()
+        patient.birthday = request.POST.get('birthday', '').strip()
+        patient.sex = request.POST.get('sex', '').strip()
         patient.save()
 
-        messages.success(request, f'Patient {first} {last} updated successfully.')
+        messages.success(request, f'Patient {patient.first_name} {patient.last_name} updated successfully.')
         return redirect('patient_db')
 
     return render(request, 'clinic/patient_update.html', {'patient': patient})
 
-
-# ─────────────────────────────────────────────
-# PATIENT DELETE
-# ─────────────────────────────────────────────
+@login_required(login_url='login')
 def patient_delete(request, patient_id):
     patient = get_object_or_404(Patient, patient_id=patient_id)
     if request.method == 'POST':
@@ -313,17 +272,17 @@ def patient_delete(request, patient_id):
         patient.delete()
         messages.success(request, f'Patient {name} has been deleted.')
         return redirect('patient_db')
-    # If someone tries GET, redirect back
     return redirect('patient_update', patient_id=patient_id)
 
 
 # ─────────────────────────────────────────────
-# SALES DATABASE
+# SALES & CHARGESLIP VIEWS
 # ─────────────────────────────────────────────
+@login_required(login_url='login')
+@user_passes_test(is_owner, login_url='login')
 def sales_db(request):
     query = request.GET.get("q", "").strip()
     date_filter = request.GET.get("date", "").strip()
-
     sales = SalesTransaction.objects.all().select_related("patient")
 
     if query:
@@ -347,136 +306,89 @@ def sales_db(request):
         except ValueError:
             pass
 
-    sales = sales.order_by("-transaction_date")
-
     return render(request, "clinic/sales_db.html", {
-        "sales": sales,
+        "sales": sales.order_by("-transaction_date"),
         "query": query,
         "date_filter": date_filter,
     })
 
-
-# ─────────────────────────────────────────────
-# VIEW CHARGESLIP
-# ─────────────────────────────────────────────
 def _get_chargeslip_context(transaction_id):
-    sale = get_object_or_404(
-        SalesTransaction.objects.select_related('patient'),
-        transaction_id=transaction_id,
-    )
-
-    items = TransactionItem.objects.filter(
-        transaction=sale
-    ).select_related('product', 'treatment')
-
+    sale = get_object_or_404(SalesTransaction.objects.select_related('patient'), transaction_id=transaction_id)
+    items = TransactionItem.objects.filter(transaction=sale).select_related('product', 'treatment')
     products = [i for i in items if i.product]
     treatments = [i for i in items if i.treatment]
-
-    product_total = sum(i.subtotal for i in products)
-    treatment_total = sum(i.subtotal for i in treatments)
-
-    notes = sale.notes
 
     return {
         'transaction': sale,
         'patient': sale.patient,
         'products': products,
         'treatments': treatments,
-        'product_total': product_total,
-        'treatment_total': treatment_total,
-        'notes': notes,
+        'product_total': sum(i.subtotal for i in products),
+        'treatment_total': sum(i.subtotal for i in treatments),
+        'notes': sale.notes,
     }
 
+@login_required(login_url='login')
 def view_chargeslip_patient(request, transaction_id):
-    context = _get_chargeslip_context(transaction_id)
-    return render(request, 'clinic/chargeslip_view.html', context)
+    return render(request, 'clinic/chargeslip_view.html', _get_chargeslip_context(transaction_id))
 
+@login_required(login_url='login')
 def view_chargeslip_sales(request, transaction_id):
-    context = _get_chargeslip_context(transaction_id)
-    return render(request, 'clinic/chargeslip_view_sales.html', context)
+    return render(request, 'clinic/chargeslip_view_sales.html', _get_chargeslip_context(transaction_id))
 
-# ─────────────────────────────────────────────
-# SALES UPDATE
-# ─────────────────────────────────────────────
+@login_required(login_url='login')
 def sales_update(request, transaction_id):
     sale = get_object_or_404(SalesTransaction, transaction_id=transaction_id)
 
     if request.method == 'POST':
         errors = []
-
         transaction_date = request.POST.get('transaction_date', '').strip()
         mode_of_payment = request.POST.get('mode_of_payment', '').strip()
         product_ids = [p for p in request.POST.getlist('product_ids') if p]
         treatment_ids = [t for t in request.POST.getlist('treatment_ids') if t]
 
-        if not transaction_date:
-            errors.append('Transaction date is required.')
-        if not mode_of_payment:
-            errors.append('Mode of payment is required.')
-        if not product_ids and not treatment_ids:
-            errors.append('Please add at least one product or treatment.')
+        if not transaction_date: errors.append('Transaction date is required.')
+        if not mode_of_payment: errors.append('Mode of payment is required.')
+        if not product_ids and not treatment_ids: errors.append('Please add at least one product or treatment.')
 
         if errors:
             for error in errors:
                 messages.error(request, error)
-            items = TransactionItem.objects.filter(transaction=sale)
-            return render(request, 'clinic/sales_update.html', {
-                'sale': sale,
-                'products': [i for i in items if i.product],
-                'treatments': [i for i in items if i.treatment],
-                'all_products': Product.objects.all(),
-                'all_treatments': Treatment.objects.all(),
-            })
+        else:
+            try:
+                with transaction.atomic():
+                    sale.transaction_date = transaction_date
+                    sale.mode_of_payment = mode_of_payment
+                    sale.save()
 
-        try:
-            with transaction.atomic():
-                sale.transaction_date = transaction_date
-                sale.mode_of_payment = mode_of_payment
-                sale.save()
+                    TransactionItem.objects.filter(transaction=sale).delete()
 
-                TransactionItem.objects.filter(transaction=sale).delete()
+                    total_products, total_treatments = 0.0, 0.0
 
-                total_products = 0
-                total_treatments = 0
+                    for pid, qty in zip(product_ids, request.POST.getlist('product_qtys')):
+                        if pid and qty:
+                            product = Product.objects.get(pk=pid)
+                            subtotal = float(product.unit_cost) * int(qty)
+                            TransactionItem.objects.create(transaction=sale, product=product, quantity_purchased=int(qty), subtotal=subtotal)
+                            total_products += subtotal
 
-                product_qtys = request.POST.getlist('product_qtys')
-                for pid, qty in zip(product_ids, product_qtys):
-                    if pid and qty:
-                        product = Product.objects.get(pk=pid)
-                        qty = int(qty)
-                        subtotal = product.unit_cost * qty
-                        TransactionItem.objects.create(
-                            transaction=sale,
-                            product=product,
-                            quantity_purchased=qty,
-                            subtotal=subtotal,
-                        )
-                        total_products += float(subtotal)
+                    for tid, qty in zip(treatment_ids, request.POST.getlist('treatment_qtys')):
+                        if tid and qty:
+                            treatment = Treatment.objects.get(pk=tid)
+                            subtotal = float(treatment.treatment_cost) * int(qty)
+                            TransactionItem.objects.create(transaction=sale, treatment=treatment, quantity_purchased=int(qty), subtotal=subtotal)
+                            total_treatments += subtotal
 
-                treatment_qtys = request.POST.getlist('treatment_qtys')
-                for tid, qty in zip(treatment_ids, treatment_qtys):
-                    if tid and qty:
-                        treatment = Treatment.objects.get(pk=tid)
-                        qty = int(qty)
-                        subtotal = treatment.treatment_cost * qty
-                        TransactionItem.objects.create(
-                            transaction=sale,
-                            treatment=treatment,
-                            quantity_purchased=qty,
-                            subtotal=subtotal,
-                        )
-                        total_treatments += float(subtotal)
+                    sale.total_price_of_products = total_products
+                    sale.total_price_of_treatments = total_treatments
+                    sale.total_amount = total_products + total_treatments
+                    sale.save()
 
-                sale.total_price_of_products = total_products
-                sale.total_price_of_treatments = total_treatments
-                sale.total_amount = total_products + total_treatments
-                sale.save()
+                messages.success(request, f'Sale #{sale.transaction_id} updated successfully.')
+                return redirect('sales_db')
 
-            messages.success(request, f'Sale #{sale.transaction_id} updated successfully.')
-            return redirect('sales_db')
-
-        except Exception as e:
-            messages.error(request, f'An error occurred while saving: {str(e)}')
+            except Exception as e:
+                messages.error(request, f'An error occurred while saving: {str(e)}')
 
     items = TransactionItem.objects.filter(transaction=sale)
     return render(request, 'clinic/sales_update.html', {
@@ -487,10 +399,7 @@ def sales_update(request, transaction_id):
         'all_treatments': Treatment.objects.all(),
     })
 
-
-# ─────────────────────────────────────────────
-# SALES DELETE
-# ─────────────────────────────────────────────
+@login_required(login_url='login')
 def sales_delete(request, transaction_id):
     sale = get_object_or_404(SalesTransaction, transaction_id=transaction_id)
     if request.method == 'POST':
@@ -501,46 +410,39 @@ def sales_delete(request, transaction_id):
 
 
 # ─────────────────────────────────────────────
-# PRODUCT ADD
+# PRODUCT VIEWS
 # ─────────────────────────────────────────────
+@login_required(login_url='login')
 def product_add(request):
     suppliers = Supplier.objects.all().order_by('supplier_name')
 
     if request.method == 'POST':
         errors = []
-
         name = request.POST.get('product_name', '').strip()
         ptype = request.POST.get('product_type', '').strip()
         cost = request.POST.get('unit_cost', '').strip()
         supplier_id = request.POST.get('supplier', '').strip()
 
-        if not name:
-            errors.append('Product name is required.')
-        if not ptype:
-            errors.append('Product type is required.')
+        if not name: errors.append('Product name is required.')
+        if not ptype: errors.append('Product type is required.')
+        if not supplier_id: errors.append('Please select a supplier.')
+        
         if not cost:
             errors.append('Unit cost is required.')
         else:
             try:
-                cost_val = float(cost)
-                if cost_val < 0:
+                if float(cost) < 0:
                     errors.append('Unit cost cannot be negative.')
             except ValueError:
                 errors.append('Unit cost must be a valid number.')
-        if not supplier_id:
-            errors.append('Please select a supplier.')
 
-        if not errors:
-            if Product.objects.filter(product_name__iexact=name).exists():
-                errors.append(f'A product named "{name}" already exists.')
+        if not errors and Product.objects.filter(product_name__iexact=name).exists():
+            errors.append(f'A product named "{name}" already exists.')
 
         if errors:
             for error in errors:
                 messages.error(request, error)
-            return render(request, 'clinic/product_add.html', {
-                'suppliers': suppliers,
-                'form_data': request.POST,
-            })
+            return render(request, 'clinic/product_add.html', {'suppliers': suppliers, 'form_data': request.POST})
 
         Product.objects.create(
             product_name=name,
@@ -552,7 +454,166 @@ def product_add(request):
         messages.success(request, f'Product "{name}" added successfully.')
         return redirect('product_add')
 
-    return render(request, 'clinic/product_add.html', {
-        'suppliers': suppliers,
-        'form_data': {},
+    return render(request, 'clinic/product_add.html', {'suppliers': suppliers, 'form_data': {}})
+
+
+# ─────────────────────────────────────────────
+# EMPLOYEE VIEWS (Owner Only)
+# ─────────────────────────────────────────────
+@login_required(login_url='login')
+@user_passes_test(is_owner, login_url='login')
+def employee_list(request):
+    last_user = User.objects.order_by('id').last()
+    next_account_id = (last_user.id + 1) if last_user else 1
+
+    return render(request, 'clinic/employee_list.html', {
+        'employees': User.objects.all().order_by('username'),
+        'groups': Group.objects.all(),
+        'branches': ClinicBranch.objects.all(),
+        'next_account_id': next_account_id
+    })
+
+@login_required(login_url='login')
+@user_passes_test(is_owner, login_url='login')
+def add_employee(request):
+    if request.method == 'POST':
+        role_name = request.POST.get('role')
+        branch_id = request.POST.get('branch_id')
+        username = request.POST.get('username', '').strip()
+        is_active = request.POST.get('is_active') == 'True'
+        password = request.POST.get('password')
+
+        try:
+            with transaction.atomic():
+                if User.objects.filter(username__iexact=username).exists():
+                    messages.error(request, f'The username "{username}" is already taken.')
+                    return redirect('employee_list')
+
+                user = User.objects.create_user(username=username, password=password, is_active=is_active)
+
+                if role_name:
+                    user.groups.add(Group.objects.get(name=role_name))
+
+                branch = ClinicBranch.objects.get(branch_id=branch_id)
+                EmployeeProfile.objects.create(user=user, branch=branch)
+
+            messages.success(request, f'Employee {username} was successfully added!')
+        except Exception as e:
+            messages.error(request, f'An error occurred: {str(e)}')
+
+    return redirect('employee_list')
+
+@login_required(login_url='login')
+@user_passes_test(is_owner, login_url='login')
+def update_employee(request, employee_id):
+    if request.method == 'POST':
+        user = get_object_or_404(User, id=employee_id)
+        role_name = request.POST.get('role')
+        branch_id = request.POST.get('branch_id')
+        username = request.POST.get('username', '').strip()
+        is_active = request.POST.get('is_active') == 'True'
+        password = request.POST.get('password', '').strip()
+        
+        try:
+            with transaction.atomic():
+                if User.objects.filter(username__iexact=username).exclude(id=employee_id).exists():
+                    messages.error(request, f'The username "{username}" is already taken.')
+                    return redirect('employee_list')
+                
+                user.username = username
+                user.is_active = is_active
+                if password:
+                    user.set_password(password)
+                user.save()
+                
+                if role_name:
+                    user.groups.clear()
+                    user.groups.add(Group.objects.get(name=role_name))
+                
+                if branch_id:
+                    branch = ClinicBranch.objects.get(branch_id=branch_id)
+                    profile, _ = EmployeeProfile.objects.get_or_create(user=user)
+                    profile.branch = branch
+                    profile.save()
+
+            messages.success(request, f'Employee {username} was successfully updated!')
+        except Exception as e:
+            messages.error(request, f'An error occurred while updating: {str(e)}')
+
+    return redirect('employee_list')
+
+@login_required(login_url='login')
+@user_passes_test(is_owner, login_url='login')
+def employee_details(request, id):
+    return render(request, 'clinic/employee_details.html', {
+        'employee': get_object_or_404(User, id=id)
+    })
+
+
+# ─────────────────────────────────────────────
+# BRANCH VIEWS (Owner Only)
+# ─────────────────────────────────────────────
+@login_required(login_url='login')
+@user_passes_test(is_owner, login_url='login')
+def branch_list(request):
+    query = request.GET.get('q', '').strip()
+    branches = ClinicBranch.objects.filter(branch_location__icontains=query) if query else ClinicBranch.objects.all()
+        
+    last_branch = ClinicBranch.objects.order_by('branch_id').last()
+    next_branch_id = (last_branch.branch_id + 1) if last_branch else 1
+        
+    return render(request, 'clinic/branch_list.html', {
+        'branches': branches,
+        'query': query,
+        'next_branch_id': next_branch_id,
+    })
+
+@login_required(login_url='login')
+@user_passes_test(is_owner, login_url='login')
+def add_branch(request):
+    if request.method == 'POST':
+        location = request.POST.get('branch_location', '').strip()
+        address = request.POST.get('branch_address', '').strip()
+        
+        if location:
+            ClinicBranch.objects.create(branch_location=location, branch_address=address)
+            messages.success(request, f'Branch "{location}" was successfully added!')
+        else:
+            messages.error(request, 'Branch location cannot be empty.')
+            
+    return redirect('branch_list')
+
+@login_required(login_url='login')
+@user_passes_test(is_owner, login_url='login')
+def update_branch(request, branch_id):
+    if request.method == 'POST':
+        branch = get_object_or_404(ClinicBranch, branch_id=branch_id)
+        new_location = request.POST.get('branch_location', '').strip()
+        new_address = request.POST.get('branch_address', '').strip()
+        
+        if new_location:
+            branch.branch_location = new_location
+            branch.branch_address = new_address
+            branch.save()
+            messages.success(request, 'Branch updated successfully!')
+        else:
+            messages.error(request, 'Branch location cannot be empty.')
+            
+    return redirect('branch_list')
+
+@login_required(login_url='login')
+@user_passes_test(is_owner, login_url='login')
+def delete_branch(request, branch_id):
+    if request.method == 'POST':
+        branch = get_object_or_404(ClinicBranch, branch_id=branch_id)
+        location_name = branch.branch_location
+        branch.delete()
+        messages.success(request, f'Branch "{location_name}" was permanently deleted.')
+    return redirect('branch_list')
+
+@login_required(login_url='login')
+@user_passes_test(is_owner, login_url='login')
+def branch_details(request, branch_id):
+    return render(request, 'clinic/branch_details.html', {
+        'branch': get_object_or_404(ClinicBranch, branch_id=branch_id)
     })

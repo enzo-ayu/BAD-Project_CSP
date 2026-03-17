@@ -34,8 +34,41 @@
 
 <body id="body">
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
-        <div class="container">
-            <a class="navbar-brand" href="#">Chona's Skincare Place</a>
+        <div class="container-fluid px-4">
+            
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <img src="{% static 'images/Chona_Logo.png' %}" alt="Logo" width="35" height="35" class="d-inline-block align-text-top me-2 rounded-circle">
+                <span class="fw-bold">Chona's Skincare Place</span>
+            </a>
+
+            <div class="d-flex align-items-center gap-3">
+                {% if request.user.is_authenticated %}
+                
+                    <span class="text-light">
+                        {{ request.user.username }}
+                    </span>
+
+                    <a href="{% url 'employee_details' request.user.id %}" title="Account Details">
+                        <img src="{% static 'images/LoggedIn_Details.png' %}" 
+                             alt="Profile" 
+                             width="32" height="32"
+                             class="hover-icon">
+                    </a>
+
+                    <form action="{% url 'logout' %}" method="post" class="m-0 p-0 d-flex align-items-center">
+                        {% csrf_token %}
+                        <button type="submit" class="btn p-0 border-0 bg-transparent" title="Logout">
+                            <img src="{% static 'images/Logout.png' %}" 
+                                 data-hover="{% static 'images/Logout_Icon_Hover.png' %}" 
+                                 alt="Logout" 
+                                 width="32" height="32"
+                                 class="hover-icon">
+                        </button>
+                    </form>
+
+                {% endif %}
+            </div>
+
         </div>
     </nav>
 
@@ -56,7 +89,7 @@
                         <img src="{% static 'images/Patient_Database_SB2.png' %}" 
                              data-hover="{% static 'images/Patient_Data_SB_Hover2.png' %}" 
                              alt="Patient Database">
-                        <span class="sidebar-text">Patient Database</span>
+                        <span class="sidebar-text">Patient List</span>
                     </a>
                 </li>
 
@@ -65,7 +98,7 @@
                         <img src="{% static 'images/Sales_Database_SB2.png' %}" 
                              data-hover="{% static 'images/Sales_SB_Hover2.png' %}" 
                              alt="Sales Database">
-                        <span class="sidebar-text">Sales Database</span>
+                        <span class="sidebar-text">Sales List</span>
                     </a>
                 </li>
 
@@ -73,7 +106,7 @@
                     <a href="{% url 'sales_db' %}"> <img src="{% static 'images/Inventory_Database_SB2.png' %}" 
                              data-hover="{% static 'images/Inventory_Database_SB_Hover2.png' %}" 
                              alt="Inventory Database">
-                        <span class="sidebar-text">Inventory Database</span>
+                        <span class="sidebar-text">Inventory List</span>
                     </a>
                 </li>
 
@@ -99,6 +132,22 @@
                              data-hover="{% static 'images/New_Chargeslip_SB_Hover2.png' %}" 
                              alt="Charge Slip">
                         <span class="sidebar-text">Charge Slip</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'employee_list' %}">
+                        <img src="{% static 'images/Accounts_Database3.png' %}" 
+                             data-hover="{% static 'images/Accounts_Database_Hover3.png' %}" 
+                             alt="Expand Sidebar">
+                        <span class="sidebar-text">Employees List</span>
+                    </a>
+                </li>                
+                <li>
+                    <a href="{% url 'branch_list' %}">
+                        <img src="{% static 'images/Branch_Database.png' %}" 
+                             data-hover="{% static 'images/Branch_Database_Hover2.png' %}" 
+                             alt="Expand Sidebar">
+                        <span class="sidebar-text">Branches List</span>
                     </a>
                 </li>
             </ul>

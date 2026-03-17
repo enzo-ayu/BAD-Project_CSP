@@ -114,3 +114,11 @@ BaseDatabaseWrapper.check_database_version_supported = lambda self: None
 from django.db.backends.mysql.features import DatabaseFeatures
 DatabaseFeatures.can_return_rows_from_bulk_insert = property(lambda self: False)
 DatabaseFeatures.can_return_columns_from_insert = property(lambda self: False)
+
+# badcode/settings.py
+
+# Redirect to the patient database after a successful login
+LOGIN_REDIRECT_URL = 'patient_db' 
+
+# Redirect back to the login page after logging out
+LOGOUT_REDIRECT_URL = 'login'

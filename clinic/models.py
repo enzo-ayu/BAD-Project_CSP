@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # 1. PATIENT 
 class Patient(models.Model):
@@ -38,14 +39,14 @@ class Product(models.Model):
     def __str__(self):
         return self.product_name
 
-# 5. CLINIC_BRANCH 
-class ClinicBranch(models.Model):
-    branch_id = models.AutoField(primary_key=True) # INT(1) 
-    branch_location = models.CharField(max_length=100)
-    branch_address = models.CharField(max_length=300)
+# # 5. CLINIC_BRANCH 
+# class ClinicBranch(models.Model):
+#     branch_id = models.AutoField(primary_key=True) # INT(1) 
+#     branch_location = models.CharField(max_length=100)
+#     branch_address = models.CharField(max_length=300)
 
-    def __str__(self):
-        return self.branch_location
+#     def __str__(self):
+#         return self.branch_location
 
 # 2. SALES_TRANSACTION 
 class SalesTransaction(models.Model):
@@ -60,18 +61,29 @@ class SalesTransaction(models.Model):
 
     def __str__(self):
         return f"TXN-{self.transaction_id}"
+    
+# 15. BRANCH
+class ClinicBranch(models.Model):
+    branch_id = models.AutoField(primary_key=True) 
+    branch_location = models.CharField(max_length=255, unique=True)
+    branch_address = models.CharField(max_length=500, null=True, blank=True)
+    
+    date_added = models.DateTimeField(auto_now_add=True)
 
-# 6. ACCOUNT 
-class Account(models.Model):
-    account_id = models.AutoField(primary_key=True) # INT(1) 
-    username = models.CharField(max_length=20, unique=True)
-    password = models.CharField(max_length=100)
-    account_name = models.CharField(max_length=150)
-    account_type = models.CharField(max_length=25) # Aesthetician, Owner, etc.
-    date_created = models.DateField(auto_now_add=True)
-    status = models.BooleanField(default=True) # TRUE = Active
-    all_branches = models.BooleanField(default=False)
+    def __str__(self):
+        return self.branch_location
+
+# 6. EMPLOYEE PROFILE (Replaces Account)
+class EmployeeProfile(models.Model):
+    # This links your clinic data to Django's secure login system
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    
+    # Clinic-specific staff data
     branch = models.ForeignKey(ClinicBranch, on_delete=models.CASCADE, blank=True, null=True)
+    all_branches = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Profile for {self.user.username}"
 
 # 7. INVENTORY_SHIPMENT 
 class InventoryShipment(models.Model):
@@ -149,5 +161,7 @@ class PatientVisit(models.Model):
     
     class Meta:
         unique_together = (('patient', 'branch'),)
+
+
 
     

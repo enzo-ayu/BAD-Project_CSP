@@ -1,0 +1,31 @@
+{% extends 'clinic/base.html' %}
+{% block content %}
+
+<div class="container mt-4">
+    <div class="card shadow-sm p-4">
+
+        <div class="d-flex justify-content-between mb-4">
+            <a href="{% url 'branch_list' %}" class="text-decoration-none text-muted">← Back</a>
+        </div>
+        <hr>
+        <div class="row mb-2">
+            <div class="col-md-4">
+                <small class="text-muted fw-bold">Branch ID</small>
+                <div class="mt-1">{{ branch.branch_id }}</div>
+            </div>
+
+            <div class="col-md-4">
+                <small class="text-muted fw-bold">Branch Location</small>
+                <div class="mt-1">{{ branch.branch_location }}</div>
+            </div>
+
+            <div class="col-md-4">
+                <small class="text-muted fw-bold">Branch Address</small>
+                <div class="mt-1">{{ branch.branch_address|default:"-" }}</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
