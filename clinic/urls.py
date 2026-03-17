@@ -18,6 +18,7 @@ urlpatterns = [
     path('employees/add/', views.add_employee, name='add_employee'),
     path('employees/<int:employee_id>/update/', views.update_employee, name='update_employee'),
     path('employees/<int:id>/', views.employee_details, name='employee_details'),
+    path('my-profile/', views.my_profile, name='my_profile'),
     
     # ── Chargeslip ──
     path('chargeslip/', views.chargeslip, name='chargeslip'),

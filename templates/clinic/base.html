@@ -48,7 +48,7 @@
                         {{ request.user.username }}
                     </span>
 
-                    <a href="{% url 'employee_details' request.user.id %}" title="Account Details">
+                    <a href="{% url 'my_profile' %}" title="Account Details">
                         <img src="{% static 'images/LoggedIn_Details.png' %}" 
                              alt="Profile" 
                              width="32" height="32"
@@ -134,22 +134,26 @@
                         <span class="sidebar-text">Charge Slip</span>
                     </a>
                 </li>
-                <li>
-                    <a href="{% url 'employee_list' %}">
-                        <img src="{% static 'images/Accounts_Database3.png' %}" 
-                             data-hover="{% static 'images/Accounts_Database_Hover3.png' %}" 
-                             alt="Expand Sidebar">
-                        <span class="sidebar-text">Employees List</span>
-                    </a>
-                </li>                
-                <li>
-                    <a href="{% url 'branch_list' %}">
-                        <img src="{% static 'images/Branch_Database.png' %}" 
-                             data-hover="{% static 'images/Branch_Database_Hover2.png' %}" 
-                             alt="Expand Sidebar">
-                        <span class="sidebar-text">Branches List</span>
-                    </a>
-                </li>
+                {% for group in request.user.groups.all %}
+                    {% if group.name == 'Owner' %}
+                        <li>
+                            <a href="{% url 'employee_list' %}">
+                                <img src="{% static 'images/Accounts_Database3.png' %}" 
+                                     data-hover="{% static 'images/Accounts_Database_Hover3.png' %}" 
+                                     alt="Expand Sidebar">
+                                <span class="sidebar-text">Employees List</span>
+                            </a>
+                        </li>                
+                        <li>
+                            <a href="{% url 'branch_list' %}">
+                                <img src="{% static 'images/Branch_Database.png' %}" 
+                                     data-hover="{% static 'images/Branch_Database_Hover2.png' %}" 
+                                     alt="Expand Sidebar">
+                                <span class="sidebar-text">Branches List</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
             </ul>
         </nav>
     </aside>

@@ -358,8 +358,7 @@
         }
 
         const updateForm = document.getElementById('updateEmployeeForm');
-        updateForm.action = `/employees/update/${empId}/`;
-
+        updateForm.action = `/employees/${empId}/update/`;
         document.getElementById('updateEmployeeModal').style.display = 'flex';
     }
 

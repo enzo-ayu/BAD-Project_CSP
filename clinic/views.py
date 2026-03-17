@@ -7,6 +7,7 @@ from datetime import datetime
 # Auth and Access Built-ins
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth import update_session_auth_hash
 
 # Local Models and Forms
 from .models import (
@@ -674,4 +675,45 @@ def delete_branch(request, branch_id):
 def branch_details(request, branch_id):
     return render(request, 'clinic/branch_details.html', {
         'branch': get_object_or_404(ClinicBranch, branch_id=branch_id)
+    })
+
+# ─────────────────────────────────────────────
+# MY PROFILE (For All Authenticated Users)
+# ─────────────────────────────────────────────
+@login_required(login_url='login')
+def my_profile(request):
+    user = request.user
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
+
+        try:
+            with transaction.atomic():
+                # Check if they are trying to change their username to one that exists
+                if username and username != user.username:
+                    if User.objects.filter(username__iexact=username).exclude(id=user.id).exists():
+                        messages.error(request, f'The username "{username}" is already taken.')
+                        return redirect('my_profile')
+                    user.username = username
+
+                # Update password only if they typed something in the field
+                if password:
+                    user.set_password(password)
+
+                user.save()
+
+                # Keep the user logged in after a password change!
+                if password:
+                    update_session_auth_hash(request, user)
+
+                messages.success(request, 'Your profile was successfully updated!')
+                return redirect('my_profile')
+
+        except Exception as e:
+            messages.error(request, f'An error occurred while updating: {str(e)}')
+
+    # GET request: render the page
+    return render(request, 'clinic/my_profile.html', {
+        'employee': user
     })
