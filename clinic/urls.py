@@ -12,6 +12,11 @@ urlpatterns = [
     # ── Authentication ──
     path('login/', auth_views.LoginView.as_view(template_name='clinic/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
+    
+    # ── Employees (Owner Only) ──
+    path('employees/', views.employee_list, name='employee_list'),
+    path('employees/add/', views.add_employee, name='add_employee'),
+    path('employees/update/<int:employee_id>/', views.update_employee, name='update_employee'),
 
     # ── Chargeslip ──
     path('chargeslip/', views.chargeslip, name='chargeslip'),
@@ -32,17 +37,4 @@ urlpatterns = [
     
     # ── Products ──
     path('products/add/', views.product_add, name='product_add'),
-
-    # ── Employees (Owner Only) ──
-    path('employees/', views.employee_list, name='employee_list'),
-    path('employees/add/', views.add_employee, name='add_employee'),
-    path('employees/update/<int:employee_id>/', views.update_employee, name='update_employee'),
-    path('employees/details/<int:id>/', views.employee_details, name='employee_details'),
-    
-    # ── Branches (Owner Only) ──
-    path('branches/', views.branch_list, name='branch_list'),
-    path('branches/add/', views.add_branch, name='add_branch'),
-    path('branches/update/<str:branch_id>/', views.update_branch, name='update_branch'),
-    path('branches/delete/<str:branch_id>/', views.delete_branch, name='delete_branch'),
-    path('branches/details/<str:branch_id>/', views.branch_details, name='branch_details'),
 ]

@@ -22,6 +22,7 @@ from .forms import RoleBasedRegistrationForm
 def is_owner(user):
     """Check if the logged-in user belongs to the 'Owner' group."""
     return user.groups.filter(name='Owner').exists()
+from .models import Patient, Product, Treatment, SalesTransaction, TransactionItem, PatientVisit, ClinicBranch, Supplier, InventoryShipment, ReceivedProduct, BranchProduct
 
 
 # ─────────────────────────────────────────────
@@ -130,6 +131,11 @@ def chargeslip(request):
                             transaction=sale, product=product,
                             quantity_purchased=q, subtotal=subtotal
                         )
+                        # ── Deduct stock from BranchProduct ──
+                        branch_product = BranchProduct.objects.filter(product=product).first()
+                        if branch_product:
+                            branch_product.stock_quantity = max(0, branch_product.stock_quantity - qty)
+                            branch_product.save()
 
                 # Process Treatments
                 for tid, qty in zip(treatment_ids, treatment_qtys):
@@ -193,7 +199,10 @@ def patient_details(request, patient_id):
         'transactions': transactions,
     })
 
-@login_required(login_url='login')
+
+# ─────────────────────────────────────────────
+# PATIENT ADD
+# ─────────────────────────────────────────────
 def patient_add(request):
     if request.method == 'POST':
         required_fields = {
@@ -208,8 +217,22 @@ def patient_add(request):
         first = request.POST.get('first_name', '').strip()
         birthday = request.POST.get('birthday', '').strip()
 
-        if not errors and Patient.objects.filter(last_name__iexact=last, first_name__iexact=first, birthday=birthday).exists():
-            errors.append(f'A patient named {first} {last} with the same birthday already exists.')
+        if not last:
+            errors.append('Last Name is required.')
+        if not first:
+            errors.append('First Name is required.')
+        if not address:
+            errors.append('Address is required.')
+        if not contact:
+            errors.append('Contact Number is required.')
+        if not birthday:
+            errors.append('Birthday is required.')
+        if not sex:
+            errors.append('Sex is required.')
+
+        if not errors:
+            if Patient.objects.filter(last_name__iexact=last, first_name__iexact=first, birthday=birthday).exists():
+                errors.append(f'A patient named {first} {last} with the same birthday already exists.')
 
         if errors:
             for error in errors:
@@ -337,6 +360,10 @@ def view_chargeslip_sales(request, transaction_id):
     return render(request, 'clinic/chargeslip_view_sales.html', _get_chargeslip_context(transaction_id))
 
 @login_required(login_url='login')
+
+# ─────────────────────────────────────────────
+# SALES UPDATE
+# ─────────────────────────────────────────────
 def sales_update(request, transaction_id):
     sale = get_object_or_404(SalesTransaction, transaction_id=transaction_id)
 
@@ -454,166 +481,414 @@ def product_add(request):
         messages.success(request, f'Product "{name}" added successfully.')
         return redirect('product_add')
 
-    return render(request, 'clinic/product_add.html', {'suppliers': suppliers, 'form_data': {}})
-
-
-# ─────────────────────────────────────────────
-# EMPLOYEE VIEWS (Owner Only)
-# ─────────────────────────────────────────────
-@login_required(login_url='login')
-@user_passes_test(is_owner, login_url='login')
-def employee_list(request):
-    last_user = User.objects.order_by('id').last()
-    next_account_id = (last_user.id + 1) if last_user else 1
-
-    return render(request, 'clinic/employee_list.html', {
-        'employees': User.objects.all().order_by('username'),
-        'groups': Group.objects.all(),
-        'branches': ClinicBranch.objects.all(),
-        'next_account_id': next_account_id
+    return render(request, 'clinic/product_add.html', {
+        'suppliers': suppliers,
+        'form_data': {},
     })
 
-@login_required(login_url='login')
-@user_passes_test(is_owner, login_url='login')
-def add_employee(request):
+
+# ─────────────────────────────────────────────
+# SUPPLIER DATABASE
+# ─────────────────────────────────────────────
+def supplier_db(request):
+    query = request.GET.get("q", "").strip()
+    suppliers = Supplier.objects.all()
+    if query:
+        suppliers = suppliers.filter(
+            Q(supplier_name__icontains=query) |
+            Q(contact_person__icontains=query) |
+            Q(supplier_address__icontains=query)
+        )
+    suppliers = suppliers.order_by("supplier_name")
+    return render(request, "clinic/supplier_db.html", {
+        "suppliers": suppliers,
+        "query": query,
+    })
+
+
+# ─────────────────────────────────────────────
+# SUPPLIER DETAILS
+# ─────────────────────────────────────────────
+def supplier_details(request, supplier_id):
+    supplier = get_object_or_404(Supplier, supplier_id=supplier_id)
+    products = Product.objects.filter(supplier=supplier).order_by('product_name')
+    return render(request, 'clinic/supplier_details.html', {
+        'supplier': supplier,
+        'products': products,
+    })
+
+
+# ─────────────────────────────────────────────
+# SUPPLIER ADD
+# ─────────────────────────────────────────────
+def supplier_add(request):
     if request.method == 'POST':
-        role_name = request.POST.get('role')
-        branch_id = request.POST.get('branch_id')
-        username = request.POST.get('username', '').strip()
-        is_active = request.POST.get('is_active') == 'True'
-        password = request.POST.get('password')
+        errors = []
+
+        name = request.POST.get('supplier_name', '').strip()
+        contact_person = request.POST.get('contact_person', '').strip()
+        contact_number = request.POST.get('supplier_contact_number', '').strip()
+        address = request.POST.get('supplier_address', '').strip()
+
+        if not name:
+            errors.append('Supplier Name is required.')
+        if not contact_person:
+            errors.append('Contact Person is required.')
+        if not contact_number:
+            errors.append('Supplier Contact Number is required.')
+        if not address:
+            errors.append('Supplier Address is required.')
+
+        if contact_number and (not contact_number.isdigit() or len(contact_number) != 11):
+            errors.append('Invalid Supplier Contact Number Length. Must be 11 digits.')
+
+        if name and len(name) > 150:
+            errors.append('Supplier Name exceeds maximum character length.')
+        if contact_person and len(contact_person) > 100:
+            errors.append('Contact Person name exceeds maximum character length.')
+        if address and len(address) > 300:
+            errors.append('Supplier Address exceeds maximum character length.')
+
+        if not errors and Supplier.objects.filter(supplier_name__iexact=name).exists():
+            errors.append(f'Supplier "{name}" already exists.')
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            return redirect('supplier_db')
+
+        Supplier.objects.create(
+            supplier_name=name,
+            contact_person=contact_person,
+            supplier_contact_number=contact_number,
+            supplier_address=address,
+        )
+        messages.success(request, f'Supplier "{name}" added successfully.')
+        return redirect('supplier_db')
+
+    return redirect('supplier_db')
+
+
+# ─────────────────────────────────────────────
+# SUPPLIER UPDATE
+# ─────────────────────────────────────────────
+def supplier_update(request, supplier_id):
+    supplier = get_object_or_404(Supplier, supplier_id=supplier_id)
+
+    if request.method == 'POST':
+        errors = []
+
+        name = request.POST.get('supplier_name', '').strip()
+        contact_person = request.POST.get('contact_person', '').strip()
+        contact_number = request.POST.get('supplier_contact_number', '').strip()
+        address = request.POST.get('supplier_address', '').strip()
+
+        if not name:
+            errors.append('Supplier Name is required.')
+        if not contact_person:
+            errors.append('Contact Person is required.')
+        if not contact_number:
+            errors.append('Supplier Contact Number is required.')
+        if not address:
+            errors.append('Supplier Address is required.')
+
+        if contact_number and (not contact_number.isdigit() or len(contact_number) != 11):
+            errors.append('Invalid Supplier Contact Number Length. Must be 11 digits.')
+
+        if name and len(name) > 150:
+            errors.append('Supplier Name exceeds maximum character length.')
+        if contact_person and len(contact_person) > 100:
+            errors.append('Contact Person name exceeds maximum character length.')
+        if address and len(address) > 300:
+            errors.append('Supplier Address exceeds maximum character length.')
+
+        if not errors:
+            duplicate = Supplier.objects.filter(supplier_name__iexact=name).exclude(supplier_id=supplier_id)
+            if duplicate.exists():
+                errors.append(f'Supplier "{name}" already exists.')
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            return redirect('supplier_db')
+
+        supplier.supplier_name = name
+        supplier.contact_person = contact_person
+        supplier.supplier_contact_number = contact_number
+        supplier.supplier_address = address
+        supplier.save()
+
+        messages.success(request, f'Supplier "{name}" updated successfully.')
+        return redirect('supplier_db')
+
+    return redirect('supplier_db')
+
+
+# ─────────────────────────────────────────────
+# INVENTORY DATABASE
+# ─────────────────────────────────────────────
+def inventory_db(request):
+    query = request.GET.get("q", "").strip()
+    date_filter = request.GET.get("date", "").strip()
+
+    shipments = InventoryShipment.objects.all().select_related("supplier", "branch").prefetch_related("receivedproduct_set__product")
+
+    if query:
+        shipments = shipments.filter(
+            Q(received_product_name__icontains=query) |
+            Q(supplier__supplier_name__icontains=query) |
+            Q(branch__branch_location__icontains=query)
+        )
+
+    if date_filter:
+        try:
+            if " to " in date_filter:
+                start_str, end_str = date_filter.split(" to ")
+                start_date = datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
+                end_date = datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+                shipments = shipments.filter(date_received__range=[start_date, end_date])
+            else:
+                single_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
+                shipments = shipments.filter(date_received=single_date)
+        except ValueError:
+            pass
+
+    shipments = shipments.order_by("-date_received")
+
+    for shipment in shipments:
+        shipment.received_products = shipment.receivedproduct_set.select_related('product').all()
+
+    return render(request, "clinic/inventory_db.html", {
+        "shipments": shipments,
+        "query": query,
+        "date_filter": date_filter,
+        "products": Product.objects.all().order_by('product_name'),
+        "suppliers": Supplier.objects.all().order_by('supplier_name'),
+        "branches": ClinicBranch.objects.all().order_by('branch_location'),
+    })
+
+
+# ─────────────────────────────────────────────
+# INVENTORY DETAILS
+# ─────────────────────────────────────────────
+def inventory_details(request, inventory_record_id):
+    shipment = get_object_or_404(
+        InventoryShipment.objects.select_related('supplier', 'branch'),
+        inventory_record_id=inventory_record_id
+    )
+    received_products = ReceivedProduct.objects.filter(
+        inventory_record=shipment
+    ).select_related('product')
+
+    return render(request, 'clinic/inventory_details.html', {
+        'shipment': shipment,
+        'received_products': received_products,
+    })
+
+
+# ─────────────────────────────────────────────
+# INVENTORY ADD
+# ─────────────────────────────────────────────
+def inventory_add(request):
+    if request.method == 'POST':
+        errors = []
+
+        product_id = request.POST.get('product', '').strip()
+        qty_received = request.POST.get('quantity_received', '').strip()
+        date_received = request.POST.get('date_received', '').strip()
+        expiration_date = request.POST.get('expiration_date', '').strip()
+        supplier_id = request.POST.get('supplier', '').strip()
+        branch_id = request.POST.get('branch', '').strip()
+
+        if not product_id:
+            errors.append('Product is required.')
+        if not qty_received:
+            errors.append('Quantity Received is required.')
+        if not date_received:
+            errors.append('Date Received is required.')
+        if not expiration_date:
+            errors.append('Expiration Date is required.')
+        if not supplier_id:
+            errors.append('Supplier is required.')
+        if not branch_id:
+            errors.append('Branch is required.')
+
+        qty_val = None
+        if qty_received:
+            try:
+                qty_val = int(qty_received)
+                if qty_val < 1:
+                    errors.append('Quantity Received must be at least 1.')
+                elif qty_val > 10000:
+                    errors.append('Quantity exceeds maximum allowable limit of 10,000.')
+            except ValueError:
+                errors.append('Quantity Received must be a valid number.')
+
+        if expiration_date:
+            try:
+                exp_date = datetime.strptime(expiration_date, "%Y-%m-%d").date()
+                from datetime import date
+                if exp_date < date(2000, 1, 1):
+                    errors.append('Expiration date must be from Jan 1, 2000 onwards.')
+            except ValueError:
+                errors.append('Invalid expiration date format.')
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            return redirect('inventory_db')
 
         try:
             with transaction.atomic():
-                if User.objects.filter(username__iexact=username).exists():
-                    messages.error(request, f'The username "{username}" is already taken.')
-                    return redirect('employee_list')
+                product = Product.objects.get(pk=product_id)
+                supplier = Supplier.objects.get(pk=supplier_id)
+                branch = ClinicBranch.objects.get(pk=branch_id)
 
-                user = User.objects.create_user(username=username, password=password, is_active=is_active)
+                shipment = InventoryShipment.objects.create(
+                    received_product_name=product.product_name,
+                    date_received=date_received,
+                    supplier=supplier,
+                    branch=branch,
+                )
 
-                if role_name:
-                    user.groups.add(Group.objects.get(name=role_name))
+                ReceivedProduct.objects.create(
+                    inventory_record=shipment,
+                    product=product,
+                    quantity_received=qty_val,
+                    expiration_date=expiration_date,
+                    branch=branch,
+                )
 
-                branch = ClinicBranch.objects.get(branch_id=branch_id)
-                EmployeeProfile.objects.create(user=user, branch=branch)
+                branch_product, created = BranchProduct.objects.get_or_create(
+                    branch=branch,
+                    product=product,
+                    defaults={'stock_quantity': 0, 'quantity_minimum': 0}
+                )
 
-            messages.success(request, f'Employee {username} was successfully added!')
+                if branch_product.stock_quantity + qty_val > 10000:
+                    raise ValueError('Receiving this shipment will exceed the maximum branch stock capacity of 10,000.')
+
+                branch_product.stock_quantity += qty_val
+                branch_product.save()
+
+            messages.success(request, 'Inventory shipment recorded successfully.')
+            return redirect('inventory_db')
+
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('inventory_db')
         except Exception as e:
             messages.error(request, f'An error occurred: {str(e)}')
+            return redirect('inventory_db')
 
-    return redirect('employee_list')
+    return redirect('inventory_db')
 
-@login_required(login_url='login')
-@user_passes_test(is_owner, login_url='login')
-def update_employee(request, employee_id):
+
+# ─────────────────────────────────────────────
+# INVENTORY UPDATE
+# ─────────────────────────────────────────────
+def inventory_update(request, inventory_record_id):
+    shipment = get_object_or_404(
+        InventoryShipment.objects.select_related('supplier', 'branch'),
+        inventory_record_id=inventory_record_id
+    )
+    received_product = ReceivedProduct.objects.filter(inventory_record=shipment).select_related('product').first()
+
     if request.method == 'POST':
-        user = get_object_or_404(User, id=employee_id)
-        role_name = request.POST.get('role')
-        branch_id = request.POST.get('branch_id')
-        username = request.POST.get('username', '').strip()
-        is_active = request.POST.get('is_active') == 'True'
-        password = request.POST.get('password', '').strip()
-        
+        errors = []
+
+        product_id = request.POST.get('product', '').strip()
+        qty_received = request.POST.get('quantity_received', '').strip()
+        date_received = request.POST.get('date_received', '').strip()
+        expiration_date = request.POST.get('expiration_date', '').strip()
+        supplier_id = request.POST.get('supplier', '').strip()
+        branch_id = request.POST.get('branch', '').strip()
+
+        if not product_id:
+            errors.append('Product is required.')
+        if not qty_received:
+            errors.append('Quantity Received is required.')
+        if not date_received:
+            errors.append('Date Received is required.')
+        if not expiration_date:
+            errors.append('Expiration Date is required.')
+        if not supplier_id:
+            errors.append('Supplier is required.')
+        if not branch_id:
+            errors.append('Branch is required.')
+
+        qty_val = None
+        if qty_received:
+            try:
+                qty_val = int(qty_received)
+                if qty_val < 1:
+                    errors.append('Quantity Received must be at least 1.')
+                elif qty_val > 10000:
+                    errors.append('Quantity exceeds maximum allowable limit of 10,000.')
+            except ValueError:
+                errors.append('Quantity Received must be a valid number.')
+
+        if expiration_date:
+            try:
+                exp_date = datetime.strptime(expiration_date, "%Y-%m-%d").date()
+                from datetime import date
+                if exp_date < date(2000, 1, 1):
+                    errors.append('Expiration date must be from Jan 1, 2000 onwards.')
+            except ValueError:
+                errors.append('Invalid expiration date format.')
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            return redirect('inventory_db')
+
         try:
             with transaction.atomic():
-                if User.objects.filter(username__iexact=username).exclude(id=employee_id).exists():
-                    messages.error(request, f'The username "{username}" is already taken.')
-                    return redirect('employee_list')
-                
-                user.username = username
-                user.is_active = is_active
-                if password:
-                    user.set_password(password)
-                user.save()
-                
-                if role_name:
-                    user.groups.clear()
-                    user.groups.add(Group.objects.get(name=role_name))
-                
-                if branch_id:
-                    branch = ClinicBranch.objects.get(branch_id=branch_id)
-                    profile, _ = EmployeeProfile.objects.get_or_create(user=user)
-                    profile.branch = branch
-                    profile.save()
+                product = Product.objects.get(pk=product_id)
+                supplier = Supplier.objects.get(pk=supplier_id)
+                branch = ClinicBranch.objects.get(pk=branch_id)
 
-            messages.success(request, f'Employee {username} was successfully updated!')
+                old_qty = received_product.quantity_received if received_product else 0
+                old_branch = shipment.branch
+                old_product = received_product.product if received_product else None
+
+                shipment.received_product_name = product.product_name
+                shipment.date_received = date_received
+                shipment.supplier = supplier
+                shipment.branch = branch
+                shipment.save()
+
+                if received_product:
+                    if old_product and old_branch:
+                        old_bp = BranchProduct.objects.filter(branch=old_branch, product=old_product).first()
+                        if old_bp:
+                            old_bp.stock_quantity = max(0, old_bp.stock_quantity - old_qty)
+                            old_bp.save()
+
+                    received_product.product = product
+                    received_product.quantity_received = qty_val
+                    received_product.expiration_date = expiration_date
+                    received_product.branch = branch
+                    received_product.save()
+
+                    new_bp, created = BranchProduct.objects.get_or_create(
+                        branch=branch,
+                        product=product,
+                        defaults={'stock_quantity': 0, 'quantity_minimum': 0}
+                    )
+                    if new_bp.stock_quantity + qty_val > 10000:
+                        raise ValueError('Receiving this shipment will exceed the maximum branch stock capacity of 10,000.')
+                    new_bp.stock_quantity += qty_val
+                    new_bp.save()
+
+            messages.success(request, f'Inventory record #{inventory_record_id} updated successfully.')
+            return redirect('inventory_db')
+
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('inventory_db')
         except Exception as e:
-            messages.error(request, f'An error occurred while updating: {str(e)}')
+            messages.error(request, f'An error occurred: {str(e)}')
+            return redirect('inventory_db')
 
-    return redirect('employee_list')
-
-@login_required(login_url='login')
-@user_passes_test(is_owner, login_url='login')
-def employee_details(request, id):
-    return render(request, 'clinic/employee_details.html', {
-        'employee': get_object_or_404(User, id=id)
-    })
-
-
-# ─────────────────────────────────────────────
-# BRANCH VIEWS (Owner Only)
-# ─────────────────────────────────────────────
-@login_required(login_url='login')
-@user_passes_test(is_owner, login_url='login')
-def branch_list(request):
-    query = request.GET.get('q', '').strip()
-    branches = ClinicBranch.objects.filter(branch_location__icontains=query) if query else ClinicBranch.objects.all()
-        
-    last_branch = ClinicBranch.objects.order_by('branch_id').last()
-    next_branch_id = (last_branch.branch_id + 1) if last_branch else 1
-        
-    return render(request, 'clinic/branch_list.html', {
-        'branches': branches,
-        'query': query,
-        'next_branch_id': next_branch_id,
-    })
-
-@login_required(login_url='login')
-@user_passes_test(is_owner, login_url='login')
-def add_branch(request):
-    if request.method == 'POST':
-        location = request.POST.get('branch_location', '').strip()
-        address = request.POST.get('branch_address', '').strip()
-        
-        if location:
-            ClinicBranch.objects.create(branch_location=location, branch_address=address)
-            messages.success(request, f'Branch "{location}" was successfully added!')
-        else:
-            messages.error(request, 'Branch location cannot be empty.')
-            
-    return redirect('branch_list')
-
-@login_required(login_url='login')
-@user_passes_test(is_owner, login_url='login')
-def update_branch(request, branch_id):
-    if request.method == 'POST':
-        branch = get_object_or_404(ClinicBranch, branch_id=branch_id)
-        new_location = request.POST.get('branch_location', '').strip()
-        new_address = request.POST.get('branch_address', '').strip()
-        
-        if new_location:
-            branch.branch_location = new_location
-            branch.branch_address = new_address
-            branch.save()
-            messages.success(request, 'Branch updated successfully!')
-        else:
-            messages.error(request, 'Branch location cannot be empty.')
-            
-    return redirect('branch_list')
-
-@login_required(login_url='login')
-@user_passes_test(is_owner, login_url='login')
-def delete_branch(request, branch_id):
-    if request.method == 'POST':
-        branch = get_object_or_404(ClinicBranch, branch_id=branch_id)
-        location_name = branch.branch_location
-        branch.delete()
-        messages.success(request, f'Branch "{location_name}" was permanently deleted.')
-    return redirect('branch_list')
-
-@login_required(login_url='login')
-@user_passes_test(is_owner, login_url='login')
-def branch_details(request, branch_id):
-    return render(request, 'clinic/branch_details.html', {
-        'branch': get_object_or_404(ClinicBranch, branch_id=branch_id)
-    })
+    return redirect('inventory_db')
