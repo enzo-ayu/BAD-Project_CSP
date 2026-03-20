@@ -3,6 +3,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.contrib import messages
 from datetime import datetime
+from django.urls import reverse
 
 # Auth and Access Built-ins
 from django.contrib.auth.models import User, Group
@@ -123,13 +124,22 @@ def chargeslip(request):
                 # Process Products
                 for pid, qty in zip(product_ids, product_qtys):
                     if pid:
-                        product = Product.objects.get(pk=pid)
+                        product = Product.objects.get(pk=pid, branch=branch)  
+
                         q = int(qty)
+                        if product.stock_quantity < q:
+                            raise Exception(f"Not enough stock for {product.product_name}. Available: {product.stock_quantity}")
+                        product.stock_quantity -= q
+                        product.save()
+
                         subtotal = float(product.unit_cost) * q
                         total_products += subtotal
+
                         TransactionItem.objects.create(
-                            transaction=sale, product=product,
-                            quantity_purchased=q, subtotal=subtotal
+                            transaction=sale,
+                            product=product,
+                            quantity_purchased=q,
+                            subtotal=subtotal
                         )
 
                 # Process Treatments
@@ -427,63 +437,329 @@ def inventory_db(request):
         'products': products.order_by('product_name'),
         'query': query
     })
-
 @login_required(login_url='login')
 def inventory_details(request, product_id):
-    product = get_object_or_404(Product, product_id=product_id)
+    # Fetch the specific product using the ID passed from the URL
+    product = get_object_or_404(Product, pk=product_id)
+    
+    # You can also fetch related data here if needed (like transaction history for this product)
+    
     return render(request, 'clinic/inventory_details.html', {
         'product': product
     })
+# ─────────────────────────────────────────────
+# PRODUCT TREATMENT
+# ─────────────────────────────────────────────
+@login_required(login_url='login')
+def producttreatment_db(request):
 
+    # ================= GET PARAMETERS =================
+    product_query = request.GET.get("product_q", "").strip()
+    treatment_query = request.GET.get("treatment_q", "").strip()
 
+    product_sort = request.GET.get("product_sort", "")
+    treatment_sort = request.GET.get("treatment_sort", "")
+
+    product_type = request.GET.get("product_type", "")
+    treatment_type = request.GET.get("treatment_type", "")
+
+    # ================= BASE QUERYSETS =================
+    products = Product.objects.all()
+    treatments = Treatment.objects.all()
+
+    # ================= SEARCH =================
+    if product_query:
+        products = products.filter(
+            Q(product_name__icontains=product_query) |
+            Q(product_type__icontains=product_query)
+        )
+
+    if treatment_query:
+        treatments = treatments.filter(
+            Q(treatment_name__icontains=treatment_query) |
+            Q(treatment_type__icontains=treatment_query)
+        )
+
+    # ================= TYPE FILTER =================
+    if product_type:
+        products = products.filter(product_type=product_type)
+
+    if treatment_type:
+        treatments = treatments.filter(treatment_type=treatment_type)
+
+    # ================= SORTING =================
+    # PRODUCTS
+    if product_sort == "price_desc":
+        products = products.order_by('-unit_cost')
+    elif product_sort == "price_asc":
+        products = products.order_by('unit_cost')
+    elif product_sort == "name_desc":
+        products = products.order_by('-product_name')
+    else:
+        products = products.order_by('product_name')  # default
+
+    # TREATMENTS
+    if treatment_sort == "price_desc":
+        treatments = treatments.order_by('-treatment_cost')
+    elif treatment_sort == "price_asc":
+        treatments = treatments.order_by('treatment_cost')
+    elif treatment_sort == "name_desc":
+        treatments = treatments.order_by('-treatment_name')
+    else:
+        treatments = treatments.order_by('treatment_name')  # default
+
+    # ================= DROPDOWN VALUES =================
+    product_types = Product.objects.values_list('product_type', flat=True).distinct()
+    treatment_types = Treatment.objects.values_list('treatment_type', flat=True).distinct()
+
+    return render(request, 'clinic/producttreatment_db.html', {
+        'products': products,
+        'treatments': treatments,
+
+        # keep values after filtering
+        'product_query': product_query,
+        'treatment_query': treatment_query,
+        'product_sort': product_sort,
+        'treatment_sort': treatment_sort,
+        'product_type': product_type,
+        'treatment_type': treatment_type,
+
+        # dropdowns
+        'product_types': product_types,
+        'treatment_types': treatment_types,
+    })
 # ─────────────────────────────────────────────
 # PRODUCT VIEWS
 # ─────────────────────────────────────────────
 @login_required(login_url='login')
 def product_add(request):
-    suppliers = Supplier.objects.all().order_by('supplier_name')
+    suppliers = Supplier.objects.all()
+    branches = ClinicBranch.objects.all()
+    query_string = request.GET.urlencode()
 
+    if request.method == 'POST':
+        name = request.POST.get('product_name', '').strip()
+        ptype = request.POST.get('product_type', '').strip()
+        desc = request.POST.get('description', '').strip()
+        cost = request.POST.get('unit_cost', '').strip()
+        stock = request.POST.get('stock_quantity', '').strip()
+        min_qty = request.POST.get('quantity_minimum', '').strip()
+        supplier_id = request.POST.get('supplier')
+        branch_id = request.POST.get('branch')
+
+        if not all([name, ptype, desc, cost, stock, min_qty, supplier_id, branch_id]):
+            messages.error(request, "All fields required.")
+            return render(request, 'clinic/product_add.html', {
+                'suppliers': suppliers,
+                'branches': branches
+            })
+
+        try:
+            Product.objects.create(
+                product_name=name,
+                product_type=ptype,
+                description=desc,
+                unit_cost=float(cost),
+                stock_quantity=int(stock),
+                quantity_minimum=int(min_qty),
+                supplier_id=supplier_id,
+                branch_id=branch_id
+            )
+
+            messages.success(request, "Product Added Successfully")
+            return redirect('producttreatment_db')
+
+        except Exception as e:
+            messages.error(request, f"Error: {str(e)}")
+
+    return render(request, 'clinic/product_add.html', {
+        'suppliers': suppliers,
+        'branches': branches,
+        'query_string': query_string
+    })
+
+@login_required(login_url='login')
+def product_details(request, product_id):
+    product = get_object_or_404(Product, product_id=product_id)
+    supplier = Supplier.objects.filter(supplier_id=product.supplier_id).first()
+    branch = None
+    query_string = request.GET.urlencode()
+
+    return render(request, 'clinic/product_details.html', {
+        'product': product,
+        'supplier': supplier,
+        'branch': branch,
+        'query_string': query_string
+    })
+
+@login_required(login_url='login')
+def product_update(request, product_id):
+    product = get_object_or_404(Product, product_id=product_id)
+    suppliers = Supplier.objects.all()
+    branches = ClinicBranch.objects.all()
+
+    product_types = Product.objects.values_list('product_type', flat=True).distinct()
+    query_string = request.GET.urlencode()
     if request.method == 'POST':
         errors = []
         name = request.POST.get('product_name', '').strip()
         ptype = request.POST.get('product_type', '').strip()
+        desc = request.POST.get('description', '').strip()
         cost = request.POST.get('unit_cost', '').strip()
-        supplier_id = request.POST.get('supplier', '').strip()
+        stock = request.POST.get('stock_quantity', '').strip()
+        min_qty = request.POST.get('quantity_minimum', '').strip()
+        supplier_id = request.POST.get('supplier')
+        branch_id = request.POST.get('branch')
 
-        if not name: errors.append('Product name is required.')
-        if not ptype: errors.append('Product type is required.')
-        if not supplier_id: errors.append('Please select a supplier.')
-        
-        if not cost:
-            errors.append('Unit cost is required.')
-        else:
-            try:
-                if float(cost) < 0:
-                    errors.append('Unit cost cannot be negative.')
-            except ValueError:
-                errors.append('Unit cost must be a valid number.')
+        # VALIDATION
+        if not all([name, ptype, desc, cost, stock, min_qty, supplier_id, branch_id]):
+            messages.error(request, "All fields required.")
+            return render(request, 'clinic/product_update.html', {
+                'product': product,
+                'suppliers': suppliers,
+                'branches': branches,
+                'product_types': product_types 
+            })
 
-        if not errors and Product.objects.filter(product_name__iexact=name).exists():
-            errors.append(f'A product named "{name}" already exists.')
+        try:
+            product.product_name = name
+            product.product_type = ptype
+            product.description = desc
+            product.unit_cost = float(cost)
+            product.stock_quantity = int(stock)
+            product.quantity_minimum = int(min_qty)
+            product.supplier_id = supplier_id
+            product.branch_id = branch_id
+            product.save()
 
-        if errors:
-            for error in errors:
-                messages.error(request, error)
-            return render(request, 'clinic/product_add.html', {'suppliers': suppliers, 'form_data': request.POST})
+            messages.success(request, "Update Successful")
+            return redirect('producttreatment_db')
 
-        Product.objects.create(
-            product_name=name,
-            product_type=ptype,
-            description=request.POST.get('description', '').strip(),
-            unit_cost=cost,
-            supplier_id=supplier_id,
-        )
-        messages.success(request, f'Product "{name}" added successfully.')
-        return redirect('product_add')
+        except Exception as e:
+            messages.error(request, f"Error: {str(e)}")
 
-    return render(request, 'clinic/product_add.html', {'suppliers': suppliers, 'form_data': {}})
+    return render(request, 'clinic/product_update.html', {
+        'product': product,
+        'suppliers': suppliers,
+        'branches': branches,
+        'product_types': product_types,
+        'query_string': query_string  
+    })
 
+@login_required(login_url='login')
+def product_delete(request, product_id):
+    product = get_object_or_404(Product, product_id=product_id)
+    product.delete()
+    messages.success(request, "Product deleted successfully")
+    return redirect('producttreatment_db')
+# ─────────────────────────────────────────────
+# TREATMENT VIEWS
+# ─────────────────────────────────────────────
+@login_required(login_url='login')
+def treatment_add(request):
+    branches = ClinicBranch.objects.all()
+    query_string = request.GET.urlencode()
 
+    if request.method == 'POST':
+        name = request.POST.get('treatment_name', '').strip()
+        ttype = request.POST.get('treatment_type', '').strip()
+        cost = request.POST.get('treatment_cost', '').strip()
+        desc = request.POST.get('description', '').strip()
+        status = request.POST.get('availability_status')
+        branch_id = request.POST.get('branch')
+
+        if not all([name, ttype, cost, desc, branch_id]):
+            messages.error(request, "All fields required.")
+            return render(request, 'clinic/treatment_add.html', {
+                'branches': branches
+            })
+
+        try:
+            Treatment.objects.create(
+                treatment_name=name,
+                treatment_type=ttype,
+                treatment_cost=float(cost),
+                description=desc,
+                availability_status=bool(status),
+                branch_id=branch_id
+            )
+
+            messages.success(request, "Treatment Added Successfully")
+            return redirect('producttreatment_db')
+
+        except Exception as e:
+            messages.error(request, f"Error: {str(e)}")
+
+    return render(request, 'clinic/treatment_add.html', {
+        'branches': branches,
+        'query_string': query_string
+    })
+
+@login_required(login_url='login')
+def treatment_details(request, treatment_id):
+    treatment = get_object_or_404(Treatment, treatment_id=treatment_id)
+    branch = None
+    query_string = request.GET.urlencode()
+
+    return render(request, 'clinic/treatment_details.html', {
+        'treatment': treatment,
+        'branch': branch,
+        'query_string': query_string
+    })
+
+@login_required(login_url='login')
+def treatment_update(request, treatment_id):
+    treatment = get_object_or_404(Treatment, treatment_id=treatment_id)
+    branches = ClinicBranch.objects.all()
+    query_string = request.GET.urlencode() 
+
+    treatment_types = Treatment.objects.values_list('treatment_type', flat=True).distinct()
+    if request.method == 'POST':
+        errors = []
+
+        name = request.POST.get('treatment_name', '').strip()
+        ttype = request.POST.get('treatment_type', '').strip()
+        cost = request.POST.get('treatment_cost', '').strip()
+        desc = request.POST.get('description', '').strip()
+        status = request.POST.get('availability_status')
+        branch_id = request.POST.get('branch')
+
+        if not all([name, ttype, cost, desc, status, branch_id]):
+            messages.error(request, "All fields required.")
+            return render(request, 'clinic/treatment_update.html', {
+                'treatment': treatment,
+                'branches': branches,
+                'treatment_types': treatment_types   
+            })
+
+        try:
+            treatment.treatment_name = name
+            treatment.treatment_type = ttype
+            treatment.treatment_cost = float(cost)
+            treatment.description = desc
+            treatment.availability_status = status
+            treatment.branch_id = branch_id
+            treatment.save()
+
+            messages.success(request, "Update Successful")
+            return redirect('producttreatment_db')
+
+        except Exception as e:
+            messages.error(request, f"Error: {str(e)}")
+
+    return render(request, 'clinic/treatment_update.html', {
+        'treatment': treatment,
+        'branches': branches,
+        'treatment_types': treatment_types,
+        'query_string': query_string
+    })
+
+@login_required(login_url='login')
+def treatment_delete(request, treatment_id):
+    treatment = get_object_or_404(Treatment, treatment_id=treatment_id)
+    treatment.delete()
+    messages.success(request, "Treatment deleted successfully")
+    return redirect('producttreatment_db')
 # ─────────────────────────────────────────────
 # SUPPLIER VIEWS
 # ─────────────────────────────────────────────

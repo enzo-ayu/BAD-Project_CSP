@@ -1,0 +1,136 @@
+{% extends 'clinic/base.html' %}
+{% block content %}
+
+<div class="card shadow-sm p-4">
+
+    <a href="{% url 'producttreatment_db' %}?{{ query_string }}" class="text-decoration-none text-muted">← Back</a>
+
+    <h4 class="fw-bold mt-3 mb-4">Product Details</h4>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <small class="text-muted fw-semibold">Product ID</small>
+            <div>{{ product.product_id }}</div>
+        </div>
+
+        <div class="col-md-6">
+            <small class="text-muted fw-semibold">Product Type</small>
+            <div>{{ product.product_type }}</div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <small class="text-muted fw-semibold">Product Name</small>
+            <div>{{ product.product_name }}</div>
+        </div>
+
+        <div class="col-md-6">
+            <small class="text-muted fw-semibold">Unit Cost</small>
+            <div>Php {{ product.unit_cost }}</div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <small class="text-muted fw-semibold">Stock Quantity</small>
+            <div>{{ product.stock_quantity }}</div>
+        </div>
+
+        <div class="col-md-4">
+            <small class="text-muted fw-semibold">Quantity Minimum</small>
+            <div>{{ product.quantity_minimum }}</div>
+        </div>
+
+        <div class="col-md-4">
+            <small class="text-muted fw-semibold">Supplier</small>
+            <div>{{ supplier.supplier_name }}</div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <small class="text-muted fw-semibold">Branch</small>
+        <div>{{ branch.branch_location }}</div>
+    </div>
+
+    <div class="mb-4">
+        <small class="text-muted fw-semibold">Description</small>
+        <div class="text-muted">{{ product.description|default:"-" }}</div>
+    </div>
+
+    <div class="text-end">
+        <a href="{% url 'producttreatment_db' %}" class="btn btn-outline-danger">Back</a>
+        <a href="{% url 'product_update' product.product_id %}" class="btn btn-primary">Update</a>
+    </div>
+
+</div>
+<style>
+.page-container {
+    background: #f3e6ec;
+    min-height: 100vh;
+    padding: 30px 40px;
+}
+
+.card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 30px;
+    width: 100%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.page-title {
+    color: #c94f7c;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.back-btn {
+    margin-bottom: 15px;
+    display: inline-block;
+    color: #777;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group.full {
+    grid-column: span 2;
+}
+
+input, textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    background: #eeeeee;
+    border: 1px solid #ddd;
+}
+
+textarea {
+    min-height: 120px;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn.save {
+    background: #c94f7c;
+    color: white;
+}
+
+.btn.cancel {
+    border: 1px solid #e57373;
+    color: #e57373;
+    background: transparent;
+}
+</style>
+
+{% endblock %}
