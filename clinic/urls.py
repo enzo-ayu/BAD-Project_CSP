@@ -39,9 +39,21 @@ urlpatterns = [
     
 # ── Products & Inventory ──
     path('products/add/', views.product_add, name='product_add'),
-    path('inventory/add/', views.product_add, name='inventory_add'), 
+    # ── Inventory ──
     path('inventory/', views.inventory_db, name='inventory_db'),
+    path('inventory/add/', views.product_add, name='inventory_add'), 
     path('inventory/<int:product_id>/', views.inventory_details, name='inventory_details'),
+    
+    # ── Products & Treatments ──    
+    path('products-treatments/', views.producttreatment_db, name='producttreatment_db'),
+    path('products/add/', views.product_add, name='product_add'),
+    path('treatment/add/', views.treatment_add, name='treatment_add'),
+    path('product/<int:product_id>/', views.product_details, name='product_details'),
+    path('treatment/<int:treatment_id>/', views.treatment_details, name='treatment_details'),
+    path('products/<int:product_id>/update/', views.product_update, name='product_update'),
+    path('treatments/<int:treatment_id>/update/', views.treatment_update, name='treatment_update'),
+    path('product/delete/<int:product_id>/', views.product_delete, name='product_delete'),
+    path('treatment/delete/<int:treatment_id>/', views.treatment_delete, name='treatment_delete'),
 
     # ── Suppliers ──
     path('suppliers/', views.supplier_db, name='supplier_db'),

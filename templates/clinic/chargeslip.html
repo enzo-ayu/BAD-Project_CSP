@@ -85,7 +85,8 @@
                             <label class="form-label small fw-semibold text-secondary mt-2">Birthday</label>
                                 <input type="date" name="birthday"
                                     value="{{ patient.birthday|date:'Y-m-d' }}"
-                                    class="form-control"
+                                    class="form-control patient-field"
+                                    disabled
                                     required
                                     min="1900-01-01"
                                     max="2026-12-31">

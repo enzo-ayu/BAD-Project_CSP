@@ -1,0 +1,190 @@
+{% extends 'clinic/base.html' %}
+{% block content %}
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="row">
+
+    <!-- ================= PRODUCTS ================= -->
+    <div class="col-md-6">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+
+            <h3 class="fw-bold mb-0" style="color:#CE548D;">Product</h3>
+
+            <form method="GET" class="d-flex align-items-center gap-2 flex-nowrap">
+
+                <!-- Search -->
+                <input type="text" name="product_q" value="{{ product_query }}"
+                    placeholder="Search"
+                    class="form-control form-control-sm"
+                    style="width:140px;">
+
+                <!-- Sort -->
+                <select name="product_sort"
+                        class="form-select form-select-sm"
+                        style="width:140px;">
+                    <option value="">Sort</option>
+                    <option value="price_desc" {% if product_sort == "price_desc" %}selected{% endif %}>Most Expensive</option>
+                    <option value="price_asc" {% if product_sort == "price_asc" %}selected{% endif %}>Least Expensive</option>
+                    <option value="name_asc" {% if product_sort == "name_asc" %}selected{% endif %}>A-Z</option>
+                    <option value="name_desc" {% if product_sort == "name_desc" %}selected{% endif %}>Z-A</option>
+                </select>
+
+                <!-- Type -->
+                <select name="product_type"
+                        class="form-select form-select-sm"
+                        style="width:140px;">
+                    <option value="">All Types</option>
+                    {% for type in product_types %}
+                    <option value="{{ type }}" {% if product_type == type %}selected{% endif %}>
+                        {{ type }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Filter</button>
+
+            </form>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+
+                <div class="d-flex justify-content-end mb-2">
+                    <a href="{% url 'product_add' %}?{{ request.GET.urlencode }}" class="btn btn-primary">Add Product</a>
+                </div>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Type</th>
+                            <th>Stock</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td>{{ product.product_name }}</td>
+                            <td>{{ product.product_type }}</td>
+                            <td>{{ product.stock|default:"1" }}</td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'product_details' product.product_id %}?{{ request.GET.urlencode }}"
+                                        class="btn btn-info btn-sm text-white">
+                                        Details
+                                        </a>
+                                    <a href="{% url 'product_update' product.product_id %}?{{ request.GET.urlencode }}"
+                                        class="btn btn-warning btn-sm text-white">
+                                        Update
+                                        </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">No products found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= TREATMENTS ================= -->
+    <div class="col-md-6">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+
+            <h3 class="fw-bold mb-0" style="color:#CE548D;">Treatment</h3>
+
+            <form method="GET" class="d-flex align-items-center gap-2 flex-nowrap">
+
+                <input type="text" name="treatment_q" value="{{ treatment_query }}"
+                    placeholder="Search"
+                    class="form-control form-control-sm"
+                    style="width:140px;">
+
+                <select name="treatment_sort"
+                        class="form-select form-select-sm"
+                        style="width:140px;">
+                    <option value="">Sort</option>
+                    <option value="price_desc" {% if treatment_sort == "price_desc" %}selected{% endif %}>Most Expensive</option>
+                    <option value="price_asc" {% if treatment_sort == "price_asc" %}selected{% endif %}>Least Expensive</option>
+                    <option value="name_asc" {% if treatment_sort == "name_asc" %}selected{% endif %}>A-Z</option>
+                    <option value="name_desc" {% if treatment_sort == "name_desc" %}selected{% endif %}>Z-A</option>
+                </select>
+
+                <select name="treatment_type"
+                        class="form-select form-select-sm"
+                        style="width:140px;">
+                    <option value="">All Types</option>
+                    {% for type in treatment_types %}
+                    <option value="{{ type }}" {% if treatment_type == type %}selected{% endif %}>
+                        {{ type }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Filter</button>
+
+            </form>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+
+                <div class="d-flex justify-content-end mb-2">
+                    <a href="{% url 'treatment_add' %}?{{ request.GET.urlencode }}" class="btn btn-primary">Add Treatment</a>
+                </div>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Treatment Name</th>
+                            <th>Type</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for treatment in treatments %}
+                        <tr>
+                            <td>{{ treatment.treatment_name }}</td>
+                            <td>{{ treatment.treatment_type }}</td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'treatment_details' treatment.treatment_id %}?{{ request.GET.urlencode }}"
+                                        class="btn btn-info btn-sm text-white">
+                                        Details
+                                        </a>
+                                    <a href="{% url 'treatment_update' treatment.treatment_id %}?{{ request.GET.urlencode }}"
+                                        class="btn btn-warning btn-sm text-white">Update</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">No treatments found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
