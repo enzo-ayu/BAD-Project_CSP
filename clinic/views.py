@@ -280,7 +280,6 @@ def patient_delete(request, patient_id):
 # SALES & CHARGESLIP VIEWS
 # ─────────────────────────────────────────────
 @login_required(login_url='login')
-@user_passes_test(is_owner, login_url='login')
 def sales_db(request):
     query = request.GET.get("q", "").strip()
     date_filter = request.GET.get("date", "").strip()
@@ -490,13 +489,36 @@ def product_add(request):
 # ─────────────────────────────────────────────
 @login_required(login_url='login')
 def supplier_db(request):
+    # ── 1. CATCH THE FORM DATA (POST REQUEST) ──
+    if request.method == 'POST':
+        name = request.POST.get('supplier_name', '').strip()
+        person = request.POST.get('contact_person', '').strip()
+        number = request.POST.get('supplier_contact_number', '').strip()
+        address = request.POST.get('supplier_address', '').strip()
+
+        # Basic validation to ensure required fields aren't empty
+        if name and person:
+            Supplier.objects.create(
+                supplier_name=name,
+                contact_person=person,
+                supplier_contact_number=number,
+                supplier_address=address
+            )
+            messages.success(request, f'Supplier "{name}" added successfully.')
+        else:
+            messages.error(request, 'Supplier Name and Contact Person are required.')
+            
+        # Refresh the page to show the new supplier
+        return redirect('supplier_db')
+
+    # ── 2. DISPLAY THE PAGE & SEARCH (GET REQUEST) ──
     query = request.GET.get("q", "").strip()
     suppliers = Supplier.objects.all()
 
     if query:
         suppliers = suppliers.filter(
             Q(supplier_name__icontains=query) |
-            Q(supplier_email__icontains=query)
+            Q(contact_person__icontains=query) # Swapped email for contact_person to match your model better!
         )
         
     return render(request, 'clinic/supplier_db.html', {
@@ -515,6 +537,31 @@ def supplier_details(request, supplier_id):
         'products': products
     })
 
+@login_required(login_url='login')
+def supplier_update(request, supplier_id):
+    # Find the specific supplier in the database
+    supplier = get_object_or_404(Supplier, supplier_id=supplier_id)
+    
+    if request.method == 'POST':
+        # Grab the updated data from the modal
+        new_name = request.POST.get('supplier_name', '').strip()
+        new_person = request.POST.get('contact_person', '').strip()
+        new_number = request.POST.get('supplier_contact_number', '').strip()
+        new_address = request.POST.get('supplier_address', '').strip()
+        
+        # Simple validation just to be safe
+        if new_name and new_person:
+            supplier.supplier_name = new_name
+            supplier.contact_person = new_person
+            supplier.supplier_contact_number = new_number
+            supplier.supplier_address = new_address
+            supplier.save()
+            
+            messages.success(request, f'Supplier "{supplier.supplier_name}" updated successfully.')
+        else:
+            messages.error(request, 'Supplier Name and Contact Person cannot be empty.')
+            
+    return redirect('supplier_db')
 
 # ─────────────────────────────────────────────
 # EMPLOYEE VIEWS (Owner Only)
@@ -525,12 +572,31 @@ def employee_list(request):
     last_user = User.objects.order_by('id').last()
     next_account_id = (last_user.id + 1) if last_user else 1
 
-    return render(request, 'clinic/employee_list.html', {
-        'employees': User.objects.all().order_by('username'),
+    employees = User.objects.all().order_by('username')
+    
+    query = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', '')
+    
+    if query:
+        employees = employees.filter(
+            Q(first_name__icontains=query) | 
+            Q(username__icontains=query)
+        )
+        
+    if status_filter == 'active':
+        employees = employees.filter(is_active=True)
+    elif status_filter == 'inactive':
+        employees = employees.filter(is_active=False)
+
+    context = {
+        'employees': employees,
         'groups': Group.objects.all(),
         'branches': ClinicBranch.objects.all(),
-        'next_account_id': next_account_id
-    })
+        'next_account_id': next_account_id,
+        'query': query,
+    }
+    
+    return render(request, 'clinic/employee_list.html', context)
 
 @login_required(login_url='login')
 @user_passes_test(is_owner, login_url='login')
@@ -542,13 +608,23 @@ def add_employee(request):
         is_active = request.POST.get('is_active') == 'True'
         password = request.POST.get('password')
 
+        # --- MODIFIED: Just grab the string, no splitting ---
+        full_name = request.POST.get('full_name', '').strip()
+
         try:
             with transaction.atomic():
                 if User.objects.filter(username__iexact=username).exists():
                     messages.error(request, f'The username "{username}" is already taken.')
                     return redirect('employee_list')
 
-                user = User.objects.create_user(username=username, password=password, is_active=is_active)
+                # --- MODIFIED: Save the whole name into first_name ---
+                user = User.objects.create_user(
+                    username=username, 
+                    password=password, 
+                    is_active=is_active,
+                    first_name=full_name,
+                    last_name=''
+                )
 
                 if role_name:
                     user.groups.add(Group.objects.get(name=role_name))
@@ -573,6 +649,9 @@ def update_employee(request, employee_id):
         is_active = request.POST.get('is_active') == 'True'
         password = request.POST.get('password', '').strip()
         
+        # --- MODIFIED: Just grab the string ---
+        full_name = request.POST.get('full_name', '').strip()
+        
         try:
             with transaction.atomic():
                 if User.objects.filter(username__iexact=username).exclude(id=employee_id).exists():
@@ -581,6 +660,11 @@ def update_employee(request, employee_id):
                 
                 user.username = username
                 user.is_active = is_active
+                
+                # --- MODIFIED: Save the whole name into first_name, clear last_name ---
+                user.first_name = full_name
+                user.last_name = ''
+
                 if password:
                     user.set_password(password)
                 user.save()

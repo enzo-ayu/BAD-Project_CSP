@@ -39,14 +39,14 @@ urlpatterns = [
     
 # ── Products & Inventory ──
     path('products/add/', views.product_add, name='product_add'),
-    path('inventory/add/', views.product_add, name='inventory_add'), # <-- Add this line
+    path('inventory/add/', views.product_add, name='inventory_add'), 
     path('inventory/', views.inventory_db, name='inventory_db'),
     path('inventory/<int:product_id>/', views.inventory_details, name='inventory_details'),
 
     # ── Suppliers ──
     path('suppliers/', views.supplier_db, name='supplier_db'),
     path('suppliers/<int:supplier_id>/', views.supplier_details, name='supplier_details'),
-
+    path('suppliers/<int:supplier_id>/update/', views.supplier_update, name='supplier_update'), 
     # ── Branches ──
     path('branches/', views.branch_list, name='branch_list'),
     path('branches/add/', views.add_branch, name='add_branch'),
