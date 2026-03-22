@@ -80,14 +80,22 @@ def chargeslip(request):
                 'treatments': Treatment.objects.all().order_by('treatment_name'),
             })
 
-        # ── Save Data ──
+# ── Save Data ──
         try:
+            from .models import BranchProduct
+            try:
+                employee_branch = request.user.employeeprofile.branch
+                if not employee_branch:
+                    employee_branch = ClinicBranch.objects.first()
+            except:
+                raise Exception("Your account has no assigned branch. Please contact the owner.")
+
             with transaction.atomic():
                 if is_new_patient:
                     last = request.POST.get('last_name').strip()
                     first = request.POST.get('first_name').strip()
                     bday = request.POST.get('birthday').strip()
-                    
+
                     if Patient.objects.filter(last_name__iexact=last, first_name__iexact=first, birthday=bday).exists():
                         messages.error(request, f'A patient named {first} {last} with the same birthday already exists.')
                         return redirect('chargeslip')
@@ -111,11 +119,10 @@ def chargeslip(request):
                 product_qtys = request.POST.getlist('product_qtys')
                 treatment_qtys = request.POST.getlist('treatment_qtys')
 
-                # Create the main transaction record
                 sale = SalesTransaction.objects.create(
                     patient=patient,
-                    total_price_of_products=0, # Will update below
-                    total_price_of_treatments=0, # Will update below
+                    total_price_of_products=0,
+                    total_price_of_treatments=0,
                     total_amount=0,
                     mode_of_payment=request.POST.get('mode_of_payment'),
                     notes=notes
@@ -124,13 +131,19 @@ def chargeslip(request):
                 # Process Products
                 for pid, qty in zip(product_ids, product_qtys):
                     if pid:
-                        product = Product.objects.get(pk=pid, branch=branch)  
-
+                        product = Product.objects.get(pk=pid)
                         q = int(qty)
-                        if product.stock_quantity < q:
-                            raise Exception(f"Not enough stock for {product.product_name}. Available: {product.stock_quantity}")
-                        product.stock_quantity -= q
-                        product.save()
+
+                        branch_product = BranchProduct.objects.filter(
+                            product=product, branch=employee_branch
+                        ).first()
+
+                        if not branch_product or branch_product.stock_quantity < q:
+                            available = branch_product.stock_quantity if branch_product else 0
+                            raise Exception(f"Not enough stock for {product.product_name}. Available: {available}")
+
+                        branch_product.stock_quantity -= q
+                        branch_product.save()
 
                         subtotal = float(product.unit_cost) * q
                         total_products += subtotal
@@ -154,7 +167,6 @@ def chargeslip(request):
                             quantity_purchased=q, subtotal=subtotal
                         )
 
-                # Update totals on main sale
                 sale.total_price_of_products = total_products
                 sale.total_price_of_treatments = total_treatments
                 sale.total_amount = total_products + total_treatments
@@ -468,20 +480,34 @@ def inventory_add(request):
             product_id = request.POST.get('product')
             product = Product.objects.get(pk=product_id)
 
+            from .models import BranchProduct
+            branch_id = request.POST.get('branch')
+            quantity_received = int(request.POST.get('quantity_received'))
+
             with transaction.atomic():
                 shipment = InventoryShipment.objects.create(
                     received_product_name=product.product_name,
                     date_received=request.POST.get('date_received'),
                     supplier_id=request.POST.get('supplier'),
-                    branch_id=request.POST.get('branch'),
+                    branch_id=branch_id,
                 )
                 ReceivedProduct.objects.create(
                     inventory_record=shipment,
                     product=product,
-                    quantity_received=request.POST.get('quantity_received'),
+                    quantity_received=quantity_received,
                     expiration_date=request.POST.get('expiration_date'),
-                    branch_id=request.POST.get('branch'),
+                    branch_id=branch_id,
                 )
+
+                # Increase BranchProduct stock
+                branch_product, created = BranchProduct.objects.get_or_create(
+                    product=product,
+                    branch_id=branch_id,
+                    defaults={'stock_quantity': 0, 'quantity_minimum': 0}
+                )
+                branch_product.stock_quantity += quantity_received
+                branch_product.save()
+
             messages.success(request, 'Shipment added successfully.')
         except Exception as e:
             messages.error(request, f'Error: {str(e)}')
@@ -604,14 +630,32 @@ def producttreatment_db(request):
     else:
         treatments = treatments.order_by('treatment_name')  # default
 
-    # ================= DROPDOWN VALUES =================
+# ================= DROPDOWN VALUES =================
     product_types = Product.objects.values_list('product_type', flat=True).distinct()
     treatment_types = Treatment.objects.values_list('treatment_type', flat=True).distinct()
+
+# ================= BRANCH STOCK =================
+    from .models import BranchProduct
+    try:
+        employee_branch = request.user.employeeprofile.branch
+        if not employee_branch:
+            employee_branch = ClinicBranch.objects.first()
+        branch_stock = BranchProduct.objects.filter(
+            branch=employee_branch
+        ).values('product_id', 'stock_quantity', 'quantity_minimum')
+        stock_map = {bp['product_id']: bp for bp in branch_stock}
+    except:
+        stock_map = {}
+
+    for product in products:
+        bp = stock_map.get(product.product_id)
+        product.branch_stock = bp['stock_quantity'] if bp else 0
+        product.branch_minimum = bp['quantity_minimum'] if bp else 0
+        product.is_low_stock = product.branch_stock <= product.branch_minimum
 
     return render(request, 'clinic/producttreatment_db.html', {
         'products': products,
         'treatments': treatments,
-
         # keep values after filtering
         'product_query': product_query,
         'treatment_query': treatment_query,
@@ -643,7 +687,7 @@ def product_add(request):
         supplier_id = request.POST.get('supplier')
         branch_id = request.POST.get('branch')
 
-        if not all([name, ptype, desc, cost, stock, min_qty, supplier_id, branch_id]):
+        if not all([name, ptype, desc, cost, min_qty, supplier_id, branch_id]):
             messages.error(request, "All fields required.")
             return render(request, 'clinic/product_add.html', {
                 'suppliers': suppliers,
@@ -651,15 +695,19 @@ def product_add(request):
             })
 
         try:
-            Product.objects.create(
+            from .models import BranchProduct
+            product = Product.objects.create(
                 product_name=name,
                 product_type=ptype,
                 description=desc,
                 unit_cost=float(cost),
+                supplier_id=supplier_id,
+            )
+            BranchProduct.objects.create(
+                product=product,
+                branch_id=branch_id,
                 stock_quantity=int(stock),
                 quantity_minimum=int(min_qty),
-                supplier_id=supplier_id,
-                branch_id=branch_id
             )
 
             messages.success(request, "Product Added Successfully")
@@ -676,15 +724,27 @@ def product_add(request):
 
 @login_required(login_url='login')
 def product_details(request, product_id):
+    from .models import BranchProduct
     product = get_object_or_404(Product, product_id=product_id)
     supplier = Supplier.objects.filter(supplier_id=product.supplier_id).first()
-    branch = None
     query_string = request.GET.urlencode()
+
+    try:
+        employee_branch = request.user.employeeprofile.branch
+        if not employee_branch:
+            employee_branch = ClinicBranch.objects.first()
+    except:
+        employee_branch = ClinicBranch.objects.first()
+
+    branch_product = BranchProduct.objects.filter(
+        product=product, branch=employee_branch
+    ).first()
 
     return render(request, 'clinic/product_details.html', {
         'product': product,
         'supplier': supplier,
-        'branch': branch,
+        'branch': employee_branch,
+        'branch_product': branch_product,
         'query_string': query_string
     })
 
@@ -702,13 +762,12 @@ def product_update(request, product_id):
         ptype = request.POST.get('product_type', '').strip()
         desc = request.POST.get('description', '').strip()
         cost = request.POST.get('unit_cost', '').strip()
-        stock = request.POST.get('stock_quantity', '').strip()
         min_qty = request.POST.get('quantity_minimum', '').strip()
         supplier_id = request.POST.get('supplier')
         branch_id = request.POST.get('branch')
 
         # VALIDATION
-        if not all([name, ptype, desc, cost, stock, min_qty, supplier_id, branch_id]):
+        if not all([name, ptype, desc, cost, min_qty, supplier_id, branch_id]):
             messages.error(request, "All fields required.")
             return render(request, 'clinic/product_update.html', {
                 'product': product,
@@ -718,15 +777,22 @@ def product_update(request, product_id):
             })
 
         try:
+            from .models import BranchProduct
             product.product_name = name
             product.product_type = ptype
             product.description = desc
             product.unit_cost = float(cost)
-            product.stock_quantity = int(stock)
-            product.quantity_minimum = int(min_qty)
             product.supplier_id = supplier_id
-            product.branch_id = branch_id
             product.save()
+
+            branch_product, created = BranchProduct.objects.get_or_create(
+                product=product,
+                branch_id=branch_id,
+                defaults={'stock_quantity': 0, 'quantity_minimum': int(min_qty)}
+            )
+            if not created:
+                branch_product.quantity_minimum = int(min_qty)
+                branch_product.save()
 
             messages.success(request, "Update Successful")
             return redirect('producttreatment_db')
@@ -734,12 +800,24 @@ def product_update(request, product_id):
         except Exception as e:
             messages.error(request, f"Error: {str(e)}")
 
+    from .models import BranchProduct
+    try:
+        employee_branch = request.user.employeeprofile.branch
+        if not employee_branch:
+            employee_branch = ClinicBranch.objects.first()
+        branch_product = BranchProduct.objects.filter(
+            product=product, branch=employee_branch
+        ).first()
+    except:
+        branch_product = None
+
     return render(request, 'clinic/product_update.html', {
         'product': product,
         'suppliers': suppliers,
         'branches': branches,
         'product_types': product_types,
-        'query_string': query_string  
+        'query_string': query_string,
+        'branch_product': branch_product,
     })
 
 @login_required(login_url='login')

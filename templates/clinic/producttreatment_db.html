@@ -12,6 +12,19 @@
 </div>
 {% endif %}
 
+{% if low_stock_alerts %}
+<div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 16px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+        ⚠️ <strong>Low Stock Alert:</strong>
+        {% for bp in low_stock_alerts %}
+        <span class="badge" style="background:#ffc107; color:#333; margin:2px;">
+            {{ bp.product.product_name }} ({{ bp.branch.branch_location }}): {{ bp.stock_quantity }} left
+        </span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <div class="row">
 
     <!-- ================= PRODUCTS ================= -->
@@ -74,10 +87,13 @@
                     </thead>
                     <tbody>
                         {% for product in products %}
-                        <tr>
+                        <tr {% if product.is_low_stock %}style="background-color:#fff3cd;"{% endif %}>
                             <td>{{ product.product_name }}</td>
                             <td>{{ product.product_type }}</td>
-                            <td>{{ product.stock|default:"1" }}</td>
+                            <td {% if product.is_low_stock %}style="color:#dc3545; font-weight:bold;"{% endif %}>
+                                {{ product.branch_stock }}
+                                {% if product.is_low_stock %}⚠️{% endif %}
+                            </td>
                             <td>
                                 <div class="d-flex gap-2">
                                     <a href="{% url 'product_details' product.product_id %}?{{ request.GET.urlencode }}"

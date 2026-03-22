@@ -32,14 +32,14 @@
     </div>
 
     <div class="row mb-3">
-        <div class="col-md-4">
+<div class="col-md-4">
             <small class="text-muted fw-semibold">Stock Quantity</small>
-            <div>{{ product.stock_quantity }}</div>
+            <div>{{ branch_product.stock_quantity|default:0 }}</div>
         </div>
 
         <div class="col-md-4">
             <small class="text-muted fw-semibold">Quantity Minimum</small>
-            <div>{{ product.quantity_minimum }}</div>
+            <div>{{ branch_product.quantity_minimum|default:0 }}</div>
         </div>
 
         <div class="col-md-4">
@@ -48,9 +48,9 @@
         </div>
     </div>
 
-    <div class="mb-3">
+<div class="mb-3">
         <small class="text-muted fw-semibold">Branch</small>
-        <div>{{ branch.branch_location }}</div>
+        <div>{{ branch.branch_location|default:"-" }}</div>
     </div>
 
     <div class="mb-4">
