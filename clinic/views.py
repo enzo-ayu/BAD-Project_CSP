@@ -553,9 +553,24 @@ def inventory_update(request, record_id):
 @login_required(login_url='login')
 def inventory_delete(request, record_id):
     if request.method == 'POST':
+        from .models import BranchProduct
         shipment = get_object_or_404(InventoryShipment, pk=record_id)
-        shipment.delete()
-        messages.success(request, 'Inventory record deleted successfully.')
+        try:
+            with transaction.atomic():
+                for received in shipment.received_products.all():
+                    branch_product = BranchProduct.objects.filter(
+                        product=received.product,
+                        branch=shipment.branch
+                    ).first()
+                    if branch_product:
+                        branch_product.stock_quantity -= received.quantity_received
+                        if branch_product.stock_quantity < 0:
+                            branch_product.stock_quantity = 0
+                        branch_product.save()
+                shipment.delete()
+            messages.success(request, 'Inventory record deleted and stock reversed.')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
     return redirect('inventory_db')
 
 
