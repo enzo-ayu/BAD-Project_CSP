@@ -13,7 +13,7 @@ from django.contrib.auth import update_session_auth_hash
 # Local Models and Forms
 from .models import (
     Patient, Product, Treatment, SalesTransaction, TransactionItem, 
-    ClinicBranch, Supplier, EmployeeProfile
+    ClinicBranch, Supplier, EmployeeProfile, InventoryShipment, ReceivedProduct
 )
 from .forms import RoleBasedRegistrationForm
 
@@ -425,27 +425,123 @@ def sales_delete(request, transaction_id):
 @login_required(login_url='login')
 def inventory_db(request):
     query = request.GET.get("q", "").strip()
-    products = Product.objects.all()
+    date_filter = request.GET.get("date", "").strip()
+
+    shipments = InventoryShipment.objects.select_related(
+        'supplier', 'branch'
+    ).prefetch_related('received_products__product').all()
 
     if query:
-        products = products.filter(
-            Q(product_name__icontains=query) |
-            Q(product_type__icontains=query)
+        shipments = shipments.filter(
+            Q(received_product_name__icontains=query) |
+            Q(supplier__supplier_name__icontains=query) |
+            Q(branch__branch_location__icontains=query)
         )
-        
+
+    if date_filter:
+        try:
+            if " to " in date_filter:
+                start_str, end_str = date_filter.split(" to ")
+                start_date = datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
+                end_date = datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+                shipments = shipments.filter(date_received__range=[start_date, end_date])
+            else:
+                single_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
+                shipments = shipments.filter(date_received=single_date)
+        except ValueError:
+            pass
+
     return render(request, 'clinic/inventory_db.html', {
-        'products': products.order_by('product_name'),
-        'query': query
+        'shipments': shipments.order_by('-date_received'),
+        'products': Product.objects.all().order_by('product_name'),
+        'suppliers': Supplier.objects.all().order_by('supplier_name'),
+        'branches': ClinicBranch.objects.all().order_by('branch_location'),
+        'query': query,
+        'date_filter': date_filter,
     })
+
+
 @login_required(login_url='login')
-def inventory_details(request, product_id):
-    # Fetch the specific product using the ID passed from the URL
-    product = get_object_or_404(Product, pk=product_id)
-    
-    # You can also fetch related data here if needed (like transaction history for this product)
-    
+def inventory_add(request):
+    if request.method == 'POST':
+        try:
+            product_id = request.POST.get('product')
+            product = Product.objects.get(pk=product_id)
+
+            with transaction.atomic():
+                shipment = InventoryShipment.objects.create(
+                    received_product_name=product.product_name,
+                    date_received=request.POST.get('date_received'),
+                    supplier_id=request.POST.get('supplier'),
+                    branch_id=request.POST.get('branch'),
+                )
+                ReceivedProduct.objects.create(
+                    inventory_record=shipment,
+                    product=product,
+                    quantity_received=request.POST.get('quantity_received'),
+                    expiration_date=request.POST.get('expiration_date'),
+                    branch_id=request.POST.get('branch'),
+                )
+            messages.success(request, 'Shipment added successfully.')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+    return redirect('inventory_db')
+
+
+@login_required(login_url='login')
+def inventory_update(request, record_id):
+    if request.method == 'POST':
+        shipment = get_object_or_404(InventoryShipment, pk=record_id)
+        try:
+            product_id = request.POST.get('product')
+            product = Product.objects.get(pk=product_id)
+
+            with transaction.atomic():
+                shipment.received_product_name = product.product_name
+                shipment.date_received = request.POST.get('date_received')
+                shipment.supplier_id = request.POST.get('supplier')
+                shipment.branch_id = request.POST.get('branch')
+                shipment.save()
+
+                received = ReceivedProduct.objects.filter(inventory_record=shipment).first()
+                if received:
+                    received.product = product
+                    received.quantity_received = request.POST.get('quantity_received')
+                    received.expiration_date = request.POST.get('expiration_date')
+                    received.branch_id = request.POST.get('branch')
+                    received.save()
+                else:
+                    ReceivedProduct.objects.create(
+                        inventory_record=shipment,
+                        product=product,
+                        quantity_received=request.POST.get('quantity_received'),
+                        expiration_date=request.POST.get('expiration_date'),
+                        branch_id=request.POST.get('branch'),
+                    )
+            messages.success(request, 'Shipment updated successfully.')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+    return redirect('inventory_db')
+
+
+@login_required(login_url='login')
+def inventory_delete(request, record_id):
+    if request.method == 'POST':
+        shipment = get_object_or_404(InventoryShipment, pk=record_id)
+        shipment.delete()
+        messages.success(request, 'Inventory record deleted successfully.')
+    return redirect('inventory_db')
+
+
+@login_required(login_url='login')
+def inventory_details(request, record_id):
+    shipment = get_object_or_404(
+        InventoryShipment.objects.select_related('supplier', 'branch')
+        .prefetch_related('received_products__product'),
+        pk=record_id
+    )
     return render(request, 'clinic/inventory_details.html', {
-        'product': product
+        'shipment': shipment,
     })
 # ─────────────────────────────────────────────
 # PRODUCT TREATMENT

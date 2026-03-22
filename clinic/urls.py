@@ -41,8 +41,10 @@ urlpatterns = [
     path('products/add/', views.product_add, name='product_add'),
     # ── Inventory ──
     path('inventory/', views.inventory_db, name='inventory_db'),
-    path('inventory/add/', views.product_add, name='inventory_add'), 
-    path('inventory/<int:product_id>/', views.inventory_details, name='inventory_details'),
+    path('inventory/add/', views.inventory_add, name='inventory_add'),
+    path('inventory/<int:record_id>/update/', views.inventory_update, name='inventory_update'),
+    path('inventory/<int:record_id>/delete/', views.inventory_delete, name='inventory_delete'),
+    path('inventory/<int:record_id>/', views.inventory_details, name='inventory_details'),
     
     # ── Products & Treatments ──    
     path('products-treatments/', views.producttreatment_db, name='producttreatment_db'),
