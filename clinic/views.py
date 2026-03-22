@@ -378,10 +378,29 @@ def sales_update(request, transaction_id):
                 messages.error(request, error)
         else:
             try:
+                from .models import BranchProduct
+                try:
+                    employee_branch = request.user.employeeprofile.branch
+                    if not employee_branch:
+                        employee_branch = ClinicBranch.objects.first()
+                except:
+                    employee_branch = ClinicBranch.objects.first()
+
                 with transaction.atomic():
                     sale.transaction_date = transaction_date
                     sale.mode_of_payment = mode_of_payment
                     sale.save()
+
+                    # Reverse old stock deductions
+                    old_items = TransactionItem.objects.filter(transaction=sale).select_related('product')
+                    for item in old_items:
+                        if item.product:
+                            bp = BranchProduct.objects.filter(
+                                product=item.product, branch=employee_branch
+                            ).first()
+                            if bp:
+                                bp.stock_quantity += item.quantity_purchased
+                                bp.save()
 
                     TransactionItem.objects.filter(transaction=sale).delete()
 
@@ -390,8 +409,20 @@ def sales_update(request, transaction_id):
                     for pid, qty in zip(product_ids, request.POST.getlist('product_qtys')):
                         if pid and qty:
                             product = Product.objects.get(pk=pid)
-                            subtotal = float(product.unit_cost) * int(qty)
-                            TransactionItem.objects.create(transaction=sale, product=product, quantity_purchased=int(qty), subtotal=subtotal)
+                            q = int(qty)
+
+                            bp = BranchProduct.objects.filter(
+                                product=product, branch=employee_branch
+                            ).first()
+                            if not bp or bp.stock_quantity < q:
+                                available = bp.stock_quantity if bp else 0
+                                raise Exception(f"Not enough stock for {product.product_name}. Available: {available}")
+
+                            bp.stock_quantity -= q
+                            bp.save()
+
+                            subtotal = float(product.unit_cost) * q
+                            TransactionItem.objects.create(transaction=sale, product=product, quantity_purchased=q, subtotal=subtotal)
                             total_products += subtotal
 
                     for tid, qty in zip(treatment_ids, request.POST.getlist('treatment_qtys')):
@@ -425,7 +456,26 @@ def sales_update(request, transaction_id):
 def sales_delete(request, transaction_id):
     sale = get_object_or_404(SalesTransaction, transaction_id=transaction_id)
     if request.method == 'POST':
-        sale.delete()
+        from .models import BranchProduct
+        try:
+            employee_branch = request.user.employeeprofile.branch
+            if not employee_branch:
+                employee_branch = ClinicBranch.objects.first()
+        except:
+            employee_branch = ClinicBranch.objects.first()
+
+        with transaction.atomic():
+            items = TransactionItem.objects.filter(transaction=sale).select_related('product')
+            for item in items:
+                if item.product:
+                    bp = BranchProduct.objects.filter(
+                        product=item.product, branch=employee_branch
+                    ).first()
+                    if bp:
+                        bp.stock_quantity += item.quantity_purchased
+                        bp.save()
+            sale.delete()
+
         messages.success(request, f'Sale #{transaction_id} has been deleted.')
         return redirect('sales_db')
     return redirect('sales_update', transaction_id=transaction_id)
@@ -517,33 +567,60 @@ def inventory_add(request):
 @login_required(login_url='login')
 def inventory_update(request, record_id):
     if request.method == 'POST':
+        from .models import BranchProduct
         shipment = get_object_or_404(InventoryShipment, pk=record_id)
         try:
             product_id = request.POST.get('product')
             product = Product.objects.get(pk=product_id)
+            new_qty = int(request.POST.get('quantity_received'))
+            new_branch_id = request.POST.get('branch')
 
             with transaction.atomic():
+                # Reverse old stock
+                old_received = ReceivedProduct.objects.filter(inventory_record=shipment).first()
+                if old_received:
+                    old_bp = BranchProduct.objects.filter(
+                        product=old_received.product,
+                        branch=shipment.branch
+                    ).first()
+                    if old_bp:
+                        old_bp.stock_quantity -= old_received.quantity_received
+                        if old_bp.stock_quantity < 0:
+                            old_bp.stock_quantity = 0
+                        old_bp.save()
+
+                # Update shipment
                 shipment.received_product_name = product.product_name
                 shipment.date_received = request.POST.get('date_received')
                 shipment.supplier_id = request.POST.get('supplier')
-                shipment.branch_id = request.POST.get('branch')
+                shipment.branch_id = new_branch_id
                 shipment.save()
 
-                received = ReceivedProduct.objects.filter(inventory_record=shipment).first()
-                if received:
-                    received.product = product
-                    received.quantity_received = request.POST.get('quantity_received')
-                    received.expiration_date = request.POST.get('expiration_date')
-                    received.branch_id = request.POST.get('branch')
-                    received.save()
+                # Update received product record
+                if old_received:
+                    old_received.product = product
+                    old_received.quantity_received = new_qty
+                    old_received.expiration_date = request.POST.get('expiration_date')
+                    old_received.branch_id = new_branch_id
+                    old_received.save()
                 else:
                     ReceivedProduct.objects.create(
                         inventory_record=shipment,
                         product=product,
-                        quantity_received=request.POST.get('quantity_received'),
+                        quantity_received=new_qty,
                         expiration_date=request.POST.get('expiration_date'),
-                        branch_id=request.POST.get('branch'),
+                        branch_id=new_branch_id,
                     )
+
+                # Apply new stock
+                new_bp, created = BranchProduct.objects.get_or_create(
+                    product=product,
+                    branch_id=new_branch_id,
+                    defaults={'stock_quantity': 0, 'quantity_minimum': 0}
+                )
+                new_bp.stock_quantity += new_qty
+                new_bp.save()
+
             messages.success(request, 'Shipment updated successfully.')
         except Exception as e:
             messages.error(request, f'Error: {str(e)}')
