@@ -222,3 +222,8 @@ INSERT IGNORE INTO `clinic_branchproduct` (`branch_id`, `product_id`, `stock_qua
 (1, 33, 100, 10),
 (1, 34, 100, 10),
 (1, 35, 100, 10);
+
+-- ─────────────────────────────────────────────
+-- UPDATE BRANCH NAME
+-- ─────────────────────────────────────────────
+UPDATE `clinic_clinicbranch` SET `branch_location` = 'Meycauayan, Bulacan' WHERE `branch_id` = 1;
