@@ -660,6 +660,7 @@ def inventory_details(request, record_id):
     )
     return render(request, 'clinic/inventory_details.html', {
         'shipment': shipment,
+        'received_products': shipment.received_products.all(),
     })
 # ─────────────────────────────────────────────
 # PRODUCT TREATMENT
