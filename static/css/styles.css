@@ -185,7 +185,7 @@ body.sb-expanded .sidebar-text {
 
 /* Header styling */
 table.table > thead > tr > th {
-    background-color: #CE548D !important;
+    background-color: #ffffff !important;
     color: #ffffff !important;
     font-weight: 600;
     padding: 14px;
@@ -210,6 +210,7 @@ table.table > thead > tr > th {
 
 .patient-db-header-row {
     gap: 12px;
+
 }
 
 .patient-db-search-tools {
@@ -319,5 +320,48 @@ table.sales-db-table.table > thead > tr > th {
 .sales-db-table thead,
 .sales-db-table thead tr,
 .sales-db-table thead th {
+    border-top: none !important;
+}
+
+/* =======================================
+   Inventory DB - Table styling 
+   ======================================= */
+
+table.inventory-db-table.table > thead > tr > th {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #7d7780 !important; 
+    border-bottom: 1px solid #ddd6db !important; 
+}
+
+.inventory-db-table {
+    border-top: none !important;
+}
+
+.inventory-db-table thead,
+.inventory-db-table thead tr,
+.inventory-db-table thead th {
+    border-top: none !important;
+}
+
+
+/* =======================================
+   Product & Treatment DB - Table styling 
+   ======================================= */
+
+table.product-db-table > thead > tr > th,
+table.treatment-db-table > thead > tr > th {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #495057 !important; 
+    border-bottom: 1px solid #ddd6db !important;
+}
+
+.product-db-table, .treatment-db-table {
+    border-top: none !important;
+}
+
+.product-db-table thead, .product-db-table thead tr, .product-db-table thead th,
+.treatment-db-table thead, .treatment-db-table thead tr, .treatment-db-table thead th {
     border-top: none !important;
 }
