@@ -86,7 +86,7 @@
                 <button type="button" class="btn-close" onclick="closeAddModal()"></button> <!--  works but turns red idk why smthg to do with django daw  -->
             </div>
             <div class="modal-body px-4 pb-4">
-                <form method="POST" action="{% url 'supplier_add' %}" id="addSupplierForm">
+                <form method="POST" action="{% url 'supplier_db' %}" id="addSupplierForm">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Supplier Name <span class="text-danger">*</span></label>
