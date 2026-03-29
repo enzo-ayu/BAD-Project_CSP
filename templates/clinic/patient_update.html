@@ -34,22 +34,22 @@
             <div class="col-md-4">
                 <label class="small fw-bold text-secondary">Last Name <span class="text-danger">*</span></label>
                 <input type="text" name="last_name"
-                        value="{{ patient.last_name }}" class="form-control" required>
+                        value="{{ patient.last_name }}" class="form-control" maxlength="50" required>
             </div>
             <div class="col-md-4">
                 <label class="small fw-bold text-secondary">First Name <span class="text-danger">*</span></label>
                 <input type="text" name="first_name"
-                        value="{{ patient.first_name }}" class="form-control" required>
+                        value="{{ patient.first_name }}" class="form-control" maxlength="50" required>
             </div>
             <div class="col-md-3">
                 <label class="small fw-bold text-secondary">Middle Name</label>
                 <input type="text" name="middle_name"
-                        value="{{ patient.middle_name }}" class="form-control">
+                        value="{{ patient.middle_name }}" class="form-control" maxlength="50">
             </div>
             <div class="col-md-1">
                 <label class="small fw-bold text-secondary">Suffix</label>
                 <input type="text" name="suffix"
-                        value="{{ patient.suffix }}" class="form-control">
+                        value="{{ patient.suffix }}" class="form-control" maxlength="10">
             </div>
         </div>
 
@@ -57,13 +57,14 @@
             <div class="col-md-6">
                 <label class="small fw-bold text-secondary">Address <span class="text-danger">*</span></label>
                 <input type="text" name="patient_address"
-                        value="{{ patient.patient_address }}" class="form-control" required>
+                        value="{{ patient.patient_address }}" class="form-control" maxlength="300" required>
             </div>
             <div class="col-md-3">
                 <label class="small fw-bold text-secondary">Contact No. <span class="text-danger">*</span></label>
                 <input type="text" name="patient_contact_number"
                         value="{{ patient.patient_contact_number }}"
                         class="form-control" required
+                        maxlength="11"
                         oninput="this.value = this.value.replace(/[^0-9]/g, '')">
             </div>
             <div class="col-md-2">

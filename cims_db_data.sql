@@ -140,3 +140,90 @@ INSERT INTO `clinic_treatment` (`treatment_name`, `treatment_type`, `treatment_c
 ('Sweatox', 'Botox', 10000.00, NULL),
 ('Regular Natural Look', 'Eyelash Extension', 400.00, NULL),
 ('Volume', 'Eyelash Extension', 500.00, NULL);
+
+-- RUN THIS TO REFLECT DATA
+-- demo 2 inventory table populating run this on your own device to reflect these thru command prompt
+-- ─────────────────────────────────────────────
+-- SUPPLIER (INSERT IGNORE protects against duplicate)
+-- ─────────────────────────────────────────────
+INSERT IGNORE INTO `clinic_supplier` (`supplier_id`, `supplier_name`, `contact_person`, `supplier_contact_number`, `supplier_address`) VALUES
+(1, 'Mr. Supplier', 'Mang Tani', '09060585960', 'Over There');
+
+INSERT INTO `clinic_supplier` (`supplier_name`, `contact_person`, `supplier_contact_number`, `supplier_address`) VALUES
+('SkinCare Distributors Inc.', 'Ate Maria', '09171234567', 'Tomas Morato, Quezon City');
+
+-- ─────────────────────────────────────────────
+-- INVENTORY SHIPMENTS
+-- ─────────────────────────────────────────────
+INSERT INTO `clinic_inventoryshipment` (`received_product_name`, `date_received`, `supplier_id`, `branch_id`) VALUES
+('Esthetmax Jelly Mask', '2025-10-05', 1, 1),
+('Special Mask',         '2025-10-18', 1, 1),
+('Jelly Mask',           '2025-11-03', 1, 1),
+('Gold Mask',            '2025-11-20', 1, 1),
+('Extraction',           '2025-12-02', 1, 1),
+('Ear Gun Piercing',     '2025-12-15', 1, 1),
+('Keloid Injection',     '2026-01-08', 1, 1),
+('Acne Shot',            '2026-01-22', 1, 1),
+('Topical Anesthesia',   '2026-03-01', 1, 1);
+
+-- ─────────────────────────────────────────────
+-- RECEIVED PRODUCTS
+-- ─────────────────────────────────────────────
+INSERT INTO `clinic_receivedproduct` (`inventory_record_id`, `product_id`, `quantity_received`, `expiration_date`, `branch_id`) VALUES
+(8,  1,  100, '2027-10-05', 1),
+(9,  2,   50, '2027-10-18', 1),
+(10, 3,  100, '2027-11-03', 1),
+(11, 4,   50, '2027-11-20', 1),
+(12, 5,  100, '2027-12-02', 1),
+(13, 6,   50, '2027-12-15', 1),
+(14, 7,  100, '2028-01-08', 1),
+(15, 8,   50, '2028-01-22', 1),
+(16, 10,  50, '2028-03-01', 1);
+
+-- ─────────────────────────────────────────────
+-- BRANCH PRODUCT STOCK
+-- ─────────────────────────────────────────────
+INSERT IGNORE INTO `clinic_branchproduct` (`branch_id`, `product_id`, `stock_quantity`, `quantity_minimum`) VALUES
+(1,  1, 100, 10),
+(1,  2,  50, 10),
+(1,  3, 100, 10),
+(1,  4,  50, 10),
+(1,  5, 100, 10),
+(1,  6,  50, 10),
+(1,  7, 100, 10),
+(1, 10,  50, 10);
+
+-- ─────────────────────────────────────────────
+-- INVENTORY SHIPMENTS (IDs 17-21)
+-- ─────────────────────────────────────────────
+INSERT INTO `clinic_inventoryshipment` (`received_product_name`, `date_received`, `supplier_id`, `branch_id`) VALUES
+('Cleansing Solution (150ml)',  '2026-01-10', 1, 1),
+('Clarifying Solution (60ml)',  '2026-01-15', 1, 1),
+('Body Astringent (150ml)',     '2026-02-01', 1, 1),
+('Brightening Soap (90g)',      '2026-02-15', 1, 1),
+('Bleaching Soap (90g)',        '2026-03-01', 1, 1);
+
+-- ─────────────────────────────────────────────
+-- RECEIVED PRODUCTS
+-- ─────────────────────────────────────────────
+INSERT INTO `clinic_receivedproduct` (`inventory_record_id`, `product_id`, `quantity_received`, `expiration_date`, `branch_id`) VALUES
+(17, 29, 100, '2027-01-10', 1),
+(18, 30, 100, '2027-01-15', 1),
+(19, 33, 100, '2027-02-01', 1),
+(20, 34, 100, '2027-02-15', 1),
+(21, 35, 100, '2027-03-01', 1);
+
+-- ─────────────────────────────────────────────
+-- BRANCH PRODUCT STOCK
+-- ─────────────────────────────────────────────
+INSERT IGNORE INTO `clinic_branchproduct` (`branch_id`, `product_id`, `stock_quantity`, `quantity_minimum`) VALUES
+(1, 29, 100, 10),
+(1, 30, 100, 10),
+(1, 33, 100, 10),
+(1, 34, 100, 10),
+(1, 35, 100, 10);
+
+-- ─────────────────────────────────────────────
+-- UPDATE BRANCH NAME
+-- ─────────────────────────────────────────────
+UPDATE `clinic_clinicbranch` SET `branch_location` = 'Meycauayan, Bulacan' WHERE `branch_id` = 1;

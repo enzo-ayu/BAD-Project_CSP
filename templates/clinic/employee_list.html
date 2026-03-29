@@ -22,17 +22,48 @@
     </div>
 
     <div class="patient-db-search-tools d-flex align-items-center gap-2 flex-grow-1">
-        <button type="button" class="patient-db-filter-btn flex-shrink-0" title="Filter">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 6h16l-6 7v5l-4 2v-7L4 6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-            </svg>
-        </button>
+        
+        <form method="GET" action="" class="patient-db-search-form d-flex align-items-center w-100 gap-2 mb-0">
+            
+            <div class="dropdown flex-shrink-0">
+                <button type="button" class="patient-db-filter-btn btn btn-light border" data-bs-toggle="dropdown" aria-expanded="false" title="Filter Status">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4 6h16l-6 7v5l-4 2v-7L4 6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                
+                <ul class="dropdown-menu p-3 shadow-sm">
+                    <li><h6 class="dropdown-header px-0">Filter by Status</h6></li>
+                    <li>
+                        <label class="dropdown-item px-0">
+                            <input type="radio" name="status" value="active" {% if request.GET.status == 'active' %}checked{% endif %}> Active Employees
+                        </label>
+                    </li>
+                    <li>
+                        <label class="dropdown-item px-0">
+                            <input type="radio" name="status" value="inactive" {% if request.GET.status == 'inactive' %}checked{% endif %}> Inactive Employees
+                        </label>
+                    </li>
+                    <li>
+                        <label class="dropdown-item px-0">
+                            <input type="radio" name="status" value="" {% if not request.GET.status %}checked{% endif %}> All Employees
+                        </label>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><button type="submit" class="btn btn-primary btn-sm w-100">Apply Filter</button></li>
+                </ul>
+            </div>
 
-        <form method="GET" class="patient-db-search-form mb-0 w-100">
-            <span class="patient-db-search-icon" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20L17 17"/></svg>
-            </span>
-            <input type="text" name="q" value="{{ query }}" class="patient-db-search-input w-100" placeholder=" Search"> 
+            <div class="position-relative w-100 d-flex align-items-center">
+                <span class="patient-db-search-icon position-absolute ms-3" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20L17 17"/></svg>
+                </span>
+                
+                <input type="text" name="q" value="{{ query }}" class="patient-db-search-input w-100 ps-5 form-control" placeholder="Search employees..."> 
+                
+                <button type="submit" class="btn btn-dark ms-2 d-none d-md-block">Search</button>
+            </div>
+            
         </form>
     </div>
 </div>
@@ -83,6 +114,7 @@
                         data-active="{{ employee.is_active }}"
                         data-branch="{% if employee.employeeprofile.branch %}{{ employee.employeeprofile.branch.branch_id }}{% endif %}"
                         data-role="{% for group in employee.groups.all %}{{ group.name }}{% endfor %}"
+                        data-fullname="{{ employee.first_name }}"
                         onclick="openUpdateModal(this)">
                         Update
                     </button>
@@ -183,9 +215,7 @@
             </div>
 
             <div class="d-flex justify-content-end mt-4 pt-3">
-                <button type="submit" class="btn text-white px-5 py-2 fw-bold" style="background-color: #2CB3E5; border-radius: 8px;">
-                    Confirm
-                </button>
+                <button type="button" class="btn text-white px-5 py-2 fw-bold" style="background-color: #2CB3E5; border-radius: 8px;" onclick="document.getElementById('addConfirmModal').style.display='flex'">Confirm</button>                            
             </div>
         </form>
     </div>
@@ -266,9 +296,7 @@
                 </div>
                 
                 <div class="col-md-6 d-flex justify-content-md-end mt-3 mt-md-0">
-                    <button type="submit" class="btn text-white px-5 py-2 fw-bold" style="background-color: #2CB3E5; border-radius: 8px;">
-                        Confirm
-                    </button>
+                    <button type="button" class="btn text-white px-5 py-2 fw-bold" style="background-color: #2CB3E5; border-radius: 8px;" onclick="document.getElementById('updateConfirmModal').style.display='flex'">Confirm</button>         
                 </div>
             </div>
         </form>
@@ -307,6 +335,34 @@
     }
 </style>
 
+<div id="addConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card border-0 p-4 shadow-lg" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm Action</h5>
+        <p class="mb-4 text-muted">Are you sure you want to add this new employee?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-light border"
+                    onclick="document.getElementById('addConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn text-white px-4" style="background-color:#CE548D;"
+                    onclick="document.getElementById('addEmployeeForm').submit()">Yes, Add Employee</button>
+        </div>
+    </div>
+</div>
+
+<div id="updateConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card border-0 p-4 shadow-lg" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm Update</h5>
+        <p class="mb-4 text-muted">Are you sure you want to save these changes to this employee's account?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-light border"
+                    onclick="document.getElementById('updateConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn text-white px-4" style="background-color:#CE548D;"
+                    onclick="document.getElementById('updateEmployeeForm').submit()">Yes, Update</button>
+        </div>
+    </div>
+</div>
+
 <script>
     function openModal() {
         document.getElementById('employeeModal').style.display = 'flex';
@@ -332,8 +388,14 @@
         const branchId = buttonElement.getAttribute('data-branch');
         const role = buttonElement.getAttribute('data-role');
         
+        // --> NEW: Grab the full name from the button
+        const fullName = buttonElement.getAttribute('data-fullname') || ''; 
+        
         document.getElementById('update_acct_id').value = empId;
         document.getElementById('update_username').value = username;
+        
+        // --> NEW: Populate the full name field in the modal
+        document.getElementById('update_full_name').value = fullName.trim();
         
         // Always reset the password field and type when opening the modal
         const pwField = document.getElementById('update_password');

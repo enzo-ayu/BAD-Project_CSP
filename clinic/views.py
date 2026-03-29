@@ -13,7 +13,7 @@ from django.contrib.auth import update_session_auth_hash
 # Local Models and Forms
 from .models import (
     Patient, Product, Treatment, SalesTransaction, TransactionItem, 
-    ClinicBranch, Supplier, EmployeeProfile
+    ClinicBranch, Supplier, EmployeeProfile, InventoryShipment, ReceivedProduct
 )
 from .forms import RoleBasedRegistrationForm
 
@@ -80,14 +80,22 @@ def chargeslip(request):
                 'treatments': Treatment.objects.all().order_by('treatment_name'),
             })
 
-        # ── Save Data ──
+# ── Save Data ──
         try:
+            from .models import BranchProduct
+            try:
+                employee_branch = request.user.employeeprofile.branch
+                if not employee_branch:
+                    employee_branch = ClinicBranch.objects.first()
+            except:
+                raise Exception("Your account has no assigned branch. Please contact the owner.")
+
             with transaction.atomic():
                 if is_new_patient:
                     last = request.POST.get('last_name').strip()
                     first = request.POST.get('first_name').strip()
                     bday = request.POST.get('birthday').strip()
-                    
+
                     if Patient.objects.filter(last_name__iexact=last, first_name__iexact=first, birthday=bday).exists():
                         messages.error(request, f'A patient named {first} {last} with the same birthday already exists.')
                         return redirect('chargeslip')
@@ -111,11 +119,10 @@ def chargeslip(request):
                 product_qtys = request.POST.getlist('product_qtys')
                 treatment_qtys = request.POST.getlist('treatment_qtys')
 
-                # Create the main transaction record
                 sale = SalesTransaction.objects.create(
                     patient=patient,
-                    total_price_of_products=0, # Will update below
-                    total_price_of_treatments=0, # Will update below
+                    total_price_of_products=0,
+                    total_price_of_treatments=0,
                     total_amount=0,
                     mode_of_payment=request.POST.get('mode_of_payment'),
                     notes=notes
@@ -124,13 +131,19 @@ def chargeslip(request):
                 # Process Products
                 for pid, qty in zip(product_ids, product_qtys):
                     if pid:
-                        product = Product.objects.get(pk=pid, branch=branch)  
-
+                        product = Product.objects.get(pk=pid)
                         q = int(qty)
-                        if product.stock_quantity < q:
-                            raise Exception(f"Not enough stock for {product.product_name}. Available: {product.stock_quantity}")
-                        product.stock_quantity -= q
-                        product.save()
+
+                        branch_product = BranchProduct.objects.filter(
+                            product=product, branch=employee_branch
+                        ).first()
+
+                        if not branch_product or branch_product.stock_quantity < q:
+                            available = branch_product.stock_quantity if branch_product else 0
+                            raise Exception(f"Not enough stock for {product.product_name}. Available: {available}")
+
+                        branch_product.stock_quantity -= q
+                        branch_product.save()
 
                         subtotal = float(product.unit_cost) * q
                         total_products += subtotal
@@ -154,7 +167,6 @@ def chargeslip(request):
                             quantity_purchased=q, subtotal=subtotal
                         )
 
-                # Update totals on main sale
                 sale.total_price_of_products = total_products
                 sale.total_price_of_treatments = total_treatments
                 sale.total_amount = total_products + total_treatments
@@ -366,10 +378,29 @@ def sales_update(request, transaction_id):
                 messages.error(request, error)
         else:
             try:
+                from .models import BranchProduct
+                try:
+                    employee_branch = request.user.employeeprofile.branch
+                    if not employee_branch:
+                        employee_branch = ClinicBranch.objects.first()
+                except:
+                    employee_branch = ClinicBranch.objects.first()
+
                 with transaction.atomic():
                     sale.transaction_date = transaction_date
                     sale.mode_of_payment = mode_of_payment
                     sale.save()
+
+                    # Reverse old stock deductions
+                    old_items = TransactionItem.objects.filter(transaction=sale).select_related('product')
+                    for item in old_items:
+                        if item.product:
+                            bp = BranchProduct.objects.filter(
+                                product=item.product, branch=employee_branch
+                            ).first()
+                            if bp:
+                                bp.stock_quantity += item.quantity_purchased
+                                bp.save()
 
                     TransactionItem.objects.filter(transaction=sale).delete()
 
@@ -378,8 +409,20 @@ def sales_update(request, transaction_id):
                     for pid, qty in zip(product_ids, request.POST.getlist('product_qtys')):
                         if pid and qty:
                             product = Product.objects.get(pk=pid)
-                            subtotal = float(product.unit_cost) * int(qty)
-                            TransactionItem.objects.create(transaction=sale, product=product, quantity_purchased=int(qty), subtotal=subtotal)
+                            q = int(qty)
+
+                            bp = BranchProduct.objects.filter(
+                                product=product, branch=employee_branch
+                            ).first()
+                            if not bp or bp.stock_quantity < q:
+                                available = bp.stock_quantity if bp else 0
+                                raise Exception(f"Not enough stock for {product.product_name}. Available: {available}")
+
+                            bp.stock_quantity -= q
+                            bp.save()
+
+                            subtotal = float(product.unit_cost) * q
+                            TransactionItem.objects.create(transaction=sale, product=product, quantity_purchased=q, subtotal=subtotal)
                             total_products += subtotal
 
                     for tid, qty in zip(treatment_ids, request.POST.getlist('treatment_qtys')):
@@ -413,7 +456,26 @@ def sales_update(request, transaction_id):
 def sales_delete(request, transaction_id):
     sale = get_object_or_404(SalesTransaction, transaction_id=transaction_id)
     if request.method == 'POST':
-        sale.delete()
+        from .models import BranchProduct
+        try:
+            employee_branch = request.user.employeeprofile.branch
+            if not employee_branch:
+                employee_branch = ClinicBranch.objects.first()
+        except:
+            employee_branch = ClinicBranch.objects.first()
+
+        with transaction.atomic():
+            items = TransactionItem.objects.filter(transaction=sale).select_related('product')
+            for item in items:
+                if item.product:
+                    bp = BranchProduct.objects.filter(
+                        product=item.product, branch=employee_branch
+                    ).first()
+                    if bp:
+                        bp.stock_quantity += item.quantity_purchased
+                        bp.save()
+            sale.delete()
+
         messages.success(request, f'Sale #{transaction_id} has been deleted.')
         return redirect('sales_db')
     return redirect('sales_update', transaction_id=transaction_id)
@@ -425,27 +487,180 @@ def sales_delete(request, transaction_id):
 @login_required(login_url='login')
 def inventory_db(request):
     query = request.GET.get("q", "").strip()
-    products = Product.objects.all()
+    date_filter = request.GET.get("date", "").strip()
+
+    shipments = InventoryShipment.objects.select_related(
+        'supplier', 'branch'
+    ).prefetch_related('received_products__product').all()
 
     if query:
-        products = products.filter(
-            Q(product_name__icontains=query) |
-            Q(product_type__icontains=query)
+        shipments = shipments.filter(
+            Q(received_product_name__icontains=query) |
+            Q(supplier__supplier_name__icontains=query) |
+            Q(branch__branch_location__icontains=query)
         )
-        
+
+    if date_filter:
+        try:
+            if " to " in date_filter:
+                start_str, end_str = date_filter.split(" to ")
+                start_date = datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
+                end_date = datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+                shipments = shipments.filter(date_received__range=[start_date, end_date])
+            else:
+                single_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
+                shipments = shipments.filter(date_received=single_date)
+        except ValueError:
+            pass
+
     return render(request, 'clinic/inventory_db.html', {
-        'products': products.order_by('product_name'),
-        'query': query
+        'shipments': shipments.order_by('-date_received'),
+        'products': Product.objects.all().order_by('product_name'),
+        'suppliers': Supplier.objects.all().order_by('supplier_name'),
+        'branches': ClinicBranch.objects.all().order_by('branch_location'),
+        'query': query,
+        'date_filter': date_filter,
     })
+
+
 @login_required(login_url='login')
-def inventory_details(request, product_id):
-    # Fetch the specific product using the ID passed from the URL
-    product = get_object_or_404(Product, pk=product_id)
-    
-    # You can also fetch related data here if needed (like transaction history for this product)
-    
+def inventory_add(request):
+    if request.method == 'POST':
+        try:
+            product_id = request.POST.get('product')
+            product = Product.objects.get(pk=product_id)
+
+            from .models import BranchProduct
+            branch_id = request.POST.get('branch')
+            quantity_received = int(request.POST.get('quantity_received'))
+
+            with transaction.atomic():
+                shipment = InventoryShipment.objects.create(
+                    received_product_name=product.product_name,
+                    date_received=request.POST.get('date_received'),
+                    supplier_id=request.POST.get('supplier'),
+                    branch_id=branch_id,
+                )
+                ReceivedProduct.objects.create(
+                    inventory_record=shipment,
+                    product=product,
+                    quantity_received=quantity_received,
+                    expiration_date=request.POST.get('expiration_date'),
+                    branch_id=branch_id,
+                )
+
+                # Increase BranchProduct stock
+                branch_product, created = BranchProduct.objects.get_or_create(
+                    product=product,
+                    branch_id=branch_id,
+                    defaults={'stock_quantity': 0, 'quantity_minimum': 0}
+                )
+                branch_product.stock_quantity += quantity_received
+                branch_product.save()
+
+            messages.success(request, 'Shipment added successfully.')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+    return redirect('inventory_db')
+
+
+@login_required(login_url='login')
+def inventory_update(request, record_id):
+    if request.method == 'POST':
+        from .models import BranchProduct
+        shipment = get_object_or_404(InventoryShipment, pk=record_id)
+        try:
+            product_id = request.POST.get('product')
+            product = Product.objects.get(pk=product_id)
+            new_qty = int(request.POST.get('quantity_received'))
+            new_branch_id = request.POST.get('branch')
+
+            with transaction.atomic():
+                # Reverse old stock
+                old_received = ReceivedProduct.objects.filter(inventory_record=shipment).first()
+                if old_received:
+                    old_bp = BranchProduct.objects.filter(
+                        product=old_received.product,
+                        branch=shipment.branch
+                    ).first()
+                    if old_bp:
+                        old_bp.stock_quantity -= old_received.quantity_received
+                        if old_bp.stock_quantity < 0:
+                            old_bp.stock_quantity = 0
+                        old_bp.save()
+
+                # Update shipment
+                shipment.received_product_name = product.product_name
+                shipment.date_received = request.POST.get('date_received')
+                shipment.supplier_id = request.POST.get('supplier')
+                shipment.branch_id = new_branch_id
+                shipment.save()
+
+                # Update received product record
+                if old_received:
+                    old_received.product = product
+                    old_received.quantity_received = new_qty
+                    old_received.expiration_date = request.POST.get('expiration_date')
+                    old_received.branch_id = new_branch_id
+                    old_received.save()
+                else:
+                    ReceivedProduct.objects.create(
+                        inventory_record=shipment,
+                        product=product,
+                        quantity_received=new_qty,
+                        expiration_date=request.POST.get('expiration_date'),
+                        branch_id=new_branch_id,
+                    )
+
+                # Apply new stock
+                new_bp, created = BranchProduct.objects.get_or_create(
+                    product=product,
+                    branch_id=new_branch_id,
+                    defaults={'stock_quantity': 0, 'quantity_minimum': 0}
+                )
+                new_bp.stock_quantity += new_qty
+                new_bp.save()
+
+            messages.success(request, 'Shipment updated successfully.')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+    return redirect('inventory_db')
+
+
+@login_required(login_url='login')
+def inventory_delete(request, record_id):
+    if request.method == 'POST':
+        from .models import BranchProduct
+        shipment = get_object_or_404(InventoryShipment, pk=record_id)
+        try:
+            with transaction.atomic():
+                for received in shipment.received_products.all():
+                    branch_product = BranchProduct.objects.filter(
+                        product=received.product,
+                        branch=shipment.branch
+                    ).first()
+                    if branch_product:
+                        branch_product.stock_quantity -= received.quantity_received
+                        if branch_product.stock_quantity < 0:
+                            branch_product.stock_quantity = 0
+                        branch_product.save()
+                shipment.delete()
+            messages.success(request, 'Inventory record deleted and stock reversed.')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+    return redirect('inventory_db')
+
+
+@login_required(login_url='login')
+def inventory_details(request, record_id):
+    shipment = get_object_or_404(
+        InventoryShipment.objects.select_related('supplier', 'branch')
+        .prefetch_related('received_products__product'),
+        pk=record_id
+    )
     return render(request, 'clinic/inventory_details.html', {
-        'product': product
+        'shipment': shipment,
+        'received_products': shipment.received_products.all(),
     })
 # ─────────────────────────────────────────────
 # PRODUCT TREATMENT
@@ -508,14 +723,32 @@ def producttreatment_db(request):
     else:
         treatments = treatments.order_by('treatment_name')  # default
 
-    # ================= DROPDOWN VALUES =================
+# ================= DROPDOWN VALUES =================
     product_types = Product.objects.values_list('product_type', flat=True).distinct()
     treatment_types = Treatment.objects.values_list('treatment_type', flat=True).distinct()
+
+# ================= BRANCH STOCK =================
+    from .models import BranchProduct
+    try:
+        employee_branch = request.user.employeeprofile.branch
+        if not employee_branch:
+            employee_branch = ClinicBranch.objects.first()
+        branch_stock = BranchProduct.objects.filter(
+            branch=employee_branch
+        ).values('product_id', 'stock_quantity', 'quantity_minimum')
+        stock_map = {bp['product_id']: bp for bp in branch_stock}
+    except:
+        stock_map = {}
+
+    for product in products:
+        bp = stock_map.get(product.product_id)
+        product.branch_stock = bp['stock_quantity'] if bp else 0
+        product.branch_minimum = bp['quantity_minimum'] if bp else 0
+        product.is_low_stock = product.branch_stock <= product.branch_minimum
 
     return render(request, 'clinic/producttreatment_db.html', {
         'products': products,
         'treatments': treatments,
-
         # keep values after filtering
         'product_query': product_query,
         'treatment_query': treatment_query,
@@ -547,7 +780,7 @@ def product_add(request):
         supplier_id = request.POST.get('supplier')
         branch_id = request.POST.get('branch')
 
-        if not all([name, ptype, desc, cost, stock, min_qty, supplier_id, branch_id]):
+        if not all([name, ptype, desc, cost, min_qty, supplier_id, branch_id]):
             messages.error(request, "All fields required.")
             return render(request, 'clinic/product_add.html', {
                 'suppliers': suppliers,
@@ -555,15 +788,19 @@ def product_add(request):
             })
 
         try:
-            Product.objects.create(
+            from .models import BranchProduct
+            product = Product.objects.create(
                 product_name=name,
                 product_type=ptype,
                 description=desc,
                 unit_cost=float(cost),
+                supplier_id=supplier_id,
+            )
+            BranchProduct.objects.create(
+                product=product,
+                branch_id=branch_id,
                 stock_quantity=int(stock),
                 quantity_minimum=int(min_qty),
-                supplier_id=supplier_id,
-                branch_id=branch_id
             )
 
             messages.success(request, "Product Added Successfully")
@@ -580,15 +817,27 @@ def product_add(request):
 
 @login_required(login_url='login')
 def product_details(request, product_id):
+    from .models import BranchProduct
     product = get_object_or_404(Product, product_id=product_id)
     supplier = Supplier.objects.filter(supplier_id=product.supplier_id).first()
-    branch = None
     query_string = request.GET.urlencode()
+
+    try:
+        employee_branch = request.user.employeeprofile.branch
+        if not employee_branch:
+            employee_branch = ClinicBranch.objects.first()
+    except:
+        employee_branch = ClinicBranch.objects.first()
+
+    branch_product = BranchProduct.objects.filter(
+        product=product, branch=employee_branch
+    ).first()
 
     return render(request, 'clinic/product_details.html', {
         'product': product,
         'supplier': supplier,
-        'branch': branch,
+        'branch': employee_branch,
+        'branch_product': branch_product,
         'query_string': query_string
     })
 
@@ -606,13 +855,12 @@ def product_update(request, product_id):
         ptype = request.POST.get('product_type', '').strip()
         desc = request.POST.get('description', '').strip()
         cost = request.POST.get('unit_cost', '').strip()
-        stock = request.POST.get('stock_quantity', '').strip()
         min_qty = request.POST.get('quantity_minimum', '').strip()
         supplier_id = request.POST.get('supplier')
         branch_id = request.POST.get('branch')
 
         # VALIDATION
-        if not all([name, ptype, desc, cost, stock, min_qty, supplier_id, branch_id]):
+        if not all([name, ptype, desc, cost, min_qty, supplier_id, branch_id]):
             messages.error(request, "All fields required.")
             return render(request, 'clinic/product_update.html', {
                 'product': product,
@@ -622,15 +870,22 @@ def product_update(request, product_id):
             })
 
         try:
+            from .models import BranchProduct
             product.product_name = name
             product.product_type = ptype
             product.description = desc
             product.unit_cost = float(cost)
-            product.stock_quantity = int(stock)
-            product.quantity_minimum = int(min_qty)
             product.supplier_id = supplier_id
-            product.branch_id = branch_id
             product.save()
+
+            branch_product, created = BranchProduct.objects.get_or_create(
+                product=product,
+                branch_id=branch_id,
+                defaults={'stock_quantity': 0, 'quantity_minimum': int(min_qty)}
+            )
+            if not created:
+                branch_product.quantity_minimum = int(min_qty)
+                branch_product.save()
 
             messages.success(request, "Update Successful")
             return redirect('producttreatment_db')
@@ -638,12 +893,24 @@ def product_update(request, product_id):
         except Exception as e:
             messages.error(request, f"Error: {str(e)}")
 
+    from .models import BranchProduct
+    try:
+        employee_branch = request.user.employeeprofile.branch
+        if not employee_branch:
+            employee_branch = ClinicBranch.objects.first()
+        branch_product = BranchProduct.objects.filter(
+            product=product, branch=employee_branch
+        ).first()
+    except:
+        branch_product = None
+
     return render(request, 'clinic/product_update.html', {
         'product': product,
         'suppliers': suppliers,
         'branches': branches,
         'product_types': product_types,
-        'query_string': query_string  
+        'query_string': query_string,
+        'branch_product': branch_product,
     })
 
 @login_required(login_url='login')
@@ -765,13 +1032,36 @@ def treatment_delete(request, treatment_id):
 # ─────────────────────────────────────────────
 @login_required(login_url='login')
 def supplier_db(request):
+    # ── 1. CATCH THE FORM DATA (POST REQUEST) ──
+    if request.method == 'POST':
+        name = request.POST.get('supplier_name', '').strip()
+        person = request.POST.get('contact_person', '').strip()
+        number = request.POST.get('supplier_contact_number', '').strip()
+        address = request.POST.get('supplier_address', '').strip()
+
+        # Basic validation to ensure required fields aren't empty
+        if name and person:
+            Supplier.objects.create(
+                supplier_name=name,
+                contact_person=person,
+                supplier_contact_number=number,
+                supplier_address=address
+            )
+            messages.success(request, f'Supplier "{name}" added successfully.')
+        else:
+            messages.error(request, 'Supplier Name and Contact Person are required.')
+            
+        # Refresh the page to show the new supplier
+        return redirect('supplier_db')
+
+    # ── 2. DISPLAY THE PAGE & SEARCH (GET REQUEST) ──
     query = request.GET.get("q", "").strip()
     suppliers = Supplier.objects.all()
 
     if query:
         suppliers = suppliers.filter(
             Q(supplier_name__icontains=query) |
-            Q(supplier_email__icontains=query)
+            Q(contact_person__icontains=query) # Swapped email for contact_person to match your model better!
         )
         
     return render(request, 'clinic/supplier_db.html', {
@@ -790,6 +1080,31 @@ def supplier_details(request, supplier_id):
         'products': products
     })
 
+@login_required(login_url='login')
+def supplier_update(request, supplier_id):
+    # Find the specific supplier in the database
+    supplier = get_object_or_404(Supplier, supplier_id=supplier_id)
+    
+    if request.method == 'POST':
+        # Grab the updated data from the modal
+        new_name = request.POST.get('supplier_name', '').strip()
+        new_person = request.POST.get('contact_person', '').strip()
+        new_number = request.POST.get('supplier_contact_number', '').strip()
+        new_address = request.POST.get('supplier_address', '').strip()
+        
+        # Simple validation just to be safe
+        if new_name and new_person:
+            supplier.supplier_name = new_name
+            supplier.contact_person = new_person
+            supplier.supplier_contact_number = new_number
+            supplier.supplier_address = new_address
+            supplier.save()
+            
+            messages.success(request, f'Supplier "{supplier.supplier_name}" updated successfully.')
+        else:
+            messages.error(request, 'Supplier Name and Contact Person cannot be empty.')
+            
+    return redirect('supplier_db')
 
 # ─────────────────────────────────────────────
 # EMPLOYEE VIEWS (Owner Only)
@@ -800,12 +1115,31 @@ def employee_list(request):
     last_user = User.objects.order_by('id').last()
     next_account_id = (last_user.id + 1) if last_user else 1
 
-    return render(request, 'clinic/employee_list.html', {
-        'employees': User.objects.all().order_by('username'),
+    employees = User.objects.all().order_by('username')
+    
+    query = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', '')
+    
+    if query:
+        employees = employees.filter(
+            Q(first_name__icontains=query) | 
+            Q(username__icontains=query)
+        )
+        
+    if status_filter == 'active':
+        employees = employees.filter(is_active=True)
+    elif status_filter == 'inactive':
+        employees = employees.filter(is_active=False)
+
+    context = {
+        'employees': employees,
         'groups': Group.objects.all(),
         'branches': ClinicBranch.objects.all(),
-        'next_account_id': next_account_id
-    })
+        'next_account_id': next_account_id,
+        'query': query,
+    }
+    
+    return render(request, 'clinic/employee_list.html', context)
 
 @login_required(login_url='login')
 @user_passes_test(is_owner, login_url='login')
@@ -817,13 +1151,23 @@ def add_employee(request):
         is_active = request.POST.get('is_active') == 'True'
         password = request.POST.get('password')
 
+        # --- MODIFIED: Just grab the string, no splitting ---
+        full_name = request.POST.get('full_name', '').strip()
+
         try:
             with transaction.atomic():
                 if User.objects.filter(username__iexact=username).exists():
                     messages.error(request, f'The username "{username}" is already taken.')
                     return redirect('employee_list')
 
-                user = User.objects.create_user(username=username, password=password, is_active=is_active)
+                # --- MODIFIED: Save the whole name into first_name ---
+                user = User.objects.create_user(
+                    username=username, 
+                    password=password, 
+                    is_active=is_active,
+                    first_name=full_name,
+                    last_name=''
+                )
 
                 if role_name:
                     user.groups.add(Group.objects.get(name=role_name))
@@ -848,6 +1192,9 @@ def update_employee(request, employee_id):
         is_active = request.POST.get('is_active') == 'True'
         password = request.POST.get('password', '').strip()
         
+        # --- MODIFIED: Just grab the string ---
+        full_name = request.POST.get('full_name', '').strip()
+        
         try:
             with transaction.atomic():
                 if User.objects.filter(username__iexact=username).exclude(id=employee_id).exists():
@@ -856,6 +1203,11 @@ def update_employee(request, employee_id):
                 
                 user.username = username
                 user.is_active = is_active
+                
+                # --- MODIFIED: Save the whole name into first_name, clear last_name ---
+                user.first_name = full_name
+                user.last_name = ''
+
                 if password:
                     user.set_password(password)
                 user.save()

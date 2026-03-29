@@ -37,10 +37,14 @@ urlpatterns = [
     path('sales/<int:transaction_id>/update/', views.sales_update, name='sales_update'),
     path('sales/<int:transaction_id>/delete/', views.sales_delete, name='sales_delete'),
     
+# ── Products & Inventory ──
+    path('products/add/', views.product_add, name='product_add'),
     # ── Inventory ──
     path('inventory/', views.inventory_db, name='inventory_db'),
-    path('inventory/add/', views.product_add, name='inventory_add'), # <-- Add this line
-    path('inventory/<int:product_id>/', views.inventory_details, name='inventory_details'),
+    path('inventory/add/', views.inventory_add, name='inventory_add'),
+    path('inventory/<int:record_id>/update/', views.inventory_update, name='inventory_update'),
+    path('inventory/<int:record_id>/delete/', views.inventory_delete, name='inventory_delete'),
+    path('inventory/<int:record_id>/', views.inventory_details, name='inventory_details'),
     
     # ── Products & Treatments ──    
     path('products-treatments/', views.producttreatment_db, name='producttreatment_db'),
@@ -56,7 +60,7 @@ urlpatterns = [
     # ── Suppliers ──
     path('suppliers/', views.supplier_db, name='supplier_db'),
     path('suppliers/<int:supplier_id>/', views.supplier_details, name='supplier_details'),
-
+    path('suppliers/<int:supplier_id>/update/', views.supplier_update, name='supplier_update'), 
     # ── Branches ──
     path('branches/', views.branch_list, name='branch_list'),
     path('branches/add/', views.add_branch, name='add_branch'),

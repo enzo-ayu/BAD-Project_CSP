@@ -26,8 +26,10 @@
             <input type="text" name="q" value="{{ query }}"
                    class="patient-db-search-input" placeholder="  Search">
         </form>
+        <a href="{% url 'inventory_db' %}" class="btn btn-sm btn-secondary">← Back</a>
         <button type="button" class="btn btn-sm text-white" style="background-color: #CE548D;"
                 onclick="openAddModal()">+ Add Supplier</button>
+
     </div>
 </div>
 

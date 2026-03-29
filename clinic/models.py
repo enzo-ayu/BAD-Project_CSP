@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-
+from django.utils import timezone
 # 1. PATIENT 
 class Patient(models.Model):
     patient_id = models.AutoField(primary_key=True) # INT(4) 
@@ -89,13 +89,13 @@ class EmployeeProfile(models.Model):
 class InventoryShipment(models.Model):
     inventory_record_id = models.AutoField(primary_key=True) # INT(6) 
     received_product_name = models.CharField(max_length=100)
-    date_received = models.DateField(auto_now_add=True)
+    date_received = models.DateField(default=timezone.now)
     supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE)
     branch = models.ForeignKey(ClinicBranch, on_delete=models.CASCADE)
 
 # 8. RECEIVED_PRODUCT (Associative) 
 class ReceivedProduct(models.Model):
-    inventory_record = models.ForeignKey(InventoryShipment, on_delete=models.CASCADE)
+    inventory_record = models.ForeignKey(InventoryShipment, on_delete=models.CASCADE, related_name='received_products')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity_received = models.IntegerField() # Range 1-10,000
     expiration_date = models.DateField()

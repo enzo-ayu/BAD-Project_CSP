@@ -48,10 +48,10 @@
                             Update
                         </button>
                     
-                    <form action="/branches/delete/{{ branch.branch_id }}/" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this branch?');">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-sm text-white px-3">Delete</button>
-                    </form>
+                        <form action="{% url 'delete_branch' branch.branch_id %}" method="POST" class="d-inline" id="deleteBranchForm_{{ branch.branch_id }}">
+                            {% csrf_token %}
+                            <button type="button" class="btn btn-danger btn-sm text-white px-3" onclick="openDeleteConfirm('{{ branch.branch_id }}')">Delete</button>
+                        </form>
                 </div>
             </td>
         </tr>
@@ -91,7 +91,7 @@
             </div>
 
             <div class="d-flex justify-content-end mt-4 pt-3">
-                <button type="submit" class="btn text-white px-5 py-2 fw-bold" style="background-color: #2CB3E5; border-radius: 8px;">Confirm</button>
+                <button type="button" class="btn text-white px-5 py-2 fw-bold" style="background-color: #2CB3E5; border-radius: 8px;" onclick="document.getElementById('addConfirmModal').style.display='flex'">Confirm</button>
             </div>
         </form>
     </div>
@@ -125,9 +125,42 @@
             </div>
 
             <div class="d-flex justify-content-end mt-4 pt-3">
-                <button type="submit" class="btn text-white px-5 py-2 fw-bold" style="background-color: #2CB3E5; border-radius: 8px;">Confirm</button>
+                <button type="button" class="btn text-white px-5 py-2 fw-bold" style="background-color: #2CB3E5; border-radius: 8px;" onclick="document.getElementById('updateConfirmModal').style.display='flex'">Confirm</button>
             </div>
         </form>
+    </div>
+</div>
+
+<div id="addConfirmModal" class="modal-overlay" style="z-index:10000;">
+    <div class="card border-0 p-4 shadow-lg" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm Action</h5>
+        <p class="mb-4 text-muted">Are you sure you want to add this new branch?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-light border" onclick="document.getElementById('addConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn text-white px-4" style="background-color:#CE548D;" onclick="document.getElementById('addBranchForm').submit()">Yes, Add</button>
+        </div>
+    </div>
+</div>
+
+<div id="updateConfirmModal" class="modal-overlay" style="z-index:10000;">
+    <div class="card border-0 p-4 shadow-lg" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm Update</h5>
+        <p class="mb-4 text-muted">Are you sure you want to save these changes?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-light border" onclick="document.getElementById('updateConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn text-white px-4" style="background-color:#CE548D;" onclick="document.getElementById('updateBranchForm').submit()">Yes, Update</button>
+        </div>
+    </div>
+</div>
+
+<div id="deleteConfirmModal" class="modal-overlay" style="z-index:10000;">
+    <div class="card border-0 p-4 shadow-lg" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2 text-danger">Confirm Delete</h5>
+        <p class="mb-4 text-muted">Are you sure you want to delete this branch? This action cannot be undone.</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-light border" onclick="document.getElementById('deleteConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn btn-danger px-4" onclick="executeDelete()">Yes, Delete</button>
+        </div>
     </div>
 </div>
 
@@ -174,24 +207,36 @@
 
     // --- UPDATE MODAL LOGIC ---
     function openUpdateModal(buttonElement) {
-        // 1. Grab data from the button clicked in the table
         const branchId = buttonElement.getAttribute('data-id');
         const branchLocation = buttonElement.getAttribute('data-location');
+        const branchAddress = buttonElement.getAttribute('data-address'); 
         
-        // 2. Populate the fields in the update modal
         document.getElementById('update_branch_id').value = branchId;
         document.getElementById('update_branch_location').value = branchLocation;
+        document.getElementById('update_branch_address').value = branchAddress; 
         
-        // 3. Update the form's action URL so it submits to the correct Django view
         const updateForm = document.getElementById('updateBranchForm');
-        updateForm.action = `/branches/update/${branchId}/`; 
+        updateForm.action = `/branches/${branchId}/update/`; 
 
-        // 4. Show the modal
         document.getElementById('updateBranchModal').style.display = 'flex';
     }
 
     function closeUpdateModal() {
         document.getElementById('updateBranchModal').style.display = 'none';
+    }
+
+    // --- DELETE MODAL LOGIC ---
+    let currentDeleteFormId = null; // Keeps track of which row we are deleting
+
+    function openDeleteConfirm(branchId) {
+        currentDeleteFormId = 'deleteBranchForm_' + branchId;
+        document.getElementById('deleteConfirmModal').style.display = 'flex';
+    }
+
+    function executeDelete() {
+        if (currentDeleteFormId) {
+            document.getElementById(currentDeleteFormId).submit();
+        }
     }
 
     // --- CLOSE MODALS ON OUTSIDE CLICK ---
@@ -204,20 +249,6 @@
         } else if (event.target === updateOverlay) {
             closeUpdateModal();
         }
-    function openUpdateModal(buttonElement) {
-    const branchId = buttonElement.getAttribute('data-id');
-    const branchLocation = buttonElement.getAttribute('data-location');
-    const branchAddress = buttonElement.getAttribute('data-address'); // Grab address
-    
-    document.getElementById('update_branch_id').value = branchId;
-    document.getElementById('update_branch_location').value = branchLocation;
-    document.getElementById('update_branch_address').value = branchAddress; // Set address
-    
-    const updateForm = document.getElementById('updateBranchForm');
-    updateForm.action = `/branches/update/${branchId}/`; 
-
-    document.getElementById('updateBranchModal').style.display = 'flex';
-    }
     }
 </script>
 

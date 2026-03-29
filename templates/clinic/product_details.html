@@ -1,136 +1,66 @@
 {% extends 'clinic/base.html' %}
 {% block content %}
 
-<div class="card shadow-sm p-4">
+<div class="container-fluid d-flex justify-content-center">
+    <div class="card shadow-sm p-4 w-100" style="max-width: 900px; border-radius: 12px; border: none;">
 
-    <a href="{% url 'producttreatment_db' %}?{{ query_string }}" class="text-decoration-none text-muted">← Back</a>
-
-    <h4 class="fw-bold mt-3 mb-4">Product Details</h4>
-
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <small class="text-muted fw-semibold">Product ID</small>
-            <div>{{ product.product_id }}</div>
+        <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
+            <div>
+                <a href="{% url 'producttreatment_db' %}?{{ query_string }}" class="text-decoration-none text-muted mb-2 d-inline-block">← Back to Products</a>
+                <h3 class="fw-bold mb-1" style="color:#CE548D;">{{ product.product_name }}</h3>
+                <span class="badge bg-secondary">{{ product.product_type }}</span>
+            </div>
+            <div class="mt-4">
+                <a href="{% url 'product_update' product.product_id %}?{{ query_string }}" class="btn btn-primary px-4">Edit Product</a>
+            </div>
         </div>
 
-        <div class="col-md-6">
-            <small class="text-muted fw-semibold">Product Type</small>
-            <div>{{ product.product_type }}</div>
+        <div class="row g-5 mt-2">
+            
+            <div class="col-md-6">
+                <h6 class="fw-bold text-uppercase mb-4" style="color: #6c757d; letter-spacing: 1px;">General Information</h6>
+                
+                <div class="d-flex mb-3">
+                    <div class="text-muted fw-semibold" style="width: 35%;">Product ID:</div>
+                    <div class="text-dark fw-medium">{{ product.product_id }}</div>
+                </div>
+                
+                <div class="d-flex mb-3">
+                    <div class="text-muted fw-semibold" style="width: 35%;">Description</div>
+                    <div class="text-dark fw-medium">{{ product.description|default:"-" }}</div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <h6 class="fw-bold text-uppercase mb-4" style="color: #6c757d; letter-spacing: 1px;">Inventory & Pricing</h6>
+                
+                <div class="d-flex mb-3">
+                    <div class="text-muted fw-semibold" style="width: 35%;">Unit Cost:</div>
+                    <div class="text-dark fw-medium">Php {{ product.unit_cost }}</div>
+                </div>
+                
+                <div class="d-flex mb-3">
+                    <div class="text-muted fw-semibold" style="width: 35%;">Branch:</div>
+                    <div class="text-dark fw-medium">{{ branch.branch_location|default:"-" }}</div>
+                </div>
+                
+                <div class="d-flex mb-3">
+                    <div class="text-muted fw-semibold" style="width: 35%;">Stock Quantity:</div>
+                    <div class="text-dark fw-bold {% if branch_product.stock_quantity <= branch_product.quantity_minimum %}text-danger{% endif %}">
+                        {{ branch_product.stock_quantity|default:0 }}
+                    </div>
+                </div>
+
+                <div class="d-flex mb-3">
+                    <div class="text-muted fw-semibold" style="width: 35%;">Minimum Qty:</div>
+                    <div class="text-dark fw-medium">{{ branch_product.quantity_minimum|default:0 }}</div>
+                </div>
+
+                <div class="d-flex mb-3">
+                    <div class="text-muted fw-semibold" style="width: 35%;">Supplier:</div>
+                    <div class="text-dark fw-medium">{{ supplier.supplier_name|default:"-" }}</div>
+                </div>
+            </div>
+
         </div>
-    </div>
-
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <small class="text-muted fw-semibold">Product Name</small>
-            <div>{{ product.product_name }}</div>
-        </div>
-
-        <div class="col-md-6">
-            <small class="text-muted fw-semibold">Unit Cost</small>
-            <div>Php {{ product.unit_cost }}</div>
-        </div>
-    </div>
-
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <small class="text-muted fw-semibold">Stock Quantity</small>
-            <div>{{ product.stock_quantity }}</div>
-        </div>
-
-        <div class="col-md-4">
-            <small class="text-muted fw-semibold">Quantity Minimum</small>
-            <div>{{ product.quantity_minimum }}</div>
-        </div>
-
-        <div class="col-md-4">
-            <small class="text-muted fw-semibold">Supplier</small>
-            <div>{{ supplier.supplier_name }}</div>
-        </div>
-    </div>
-
-    <div class="mb-3">
-        <small class="text-muted fw-semibold">Branch</small>
-        <div>{{ branch.branch_location }}</div>
-    </div>
-
-    <div class="mb-4">
-        <small class="text-muted fw-semibold">Description</small>
-        <div class="text-muted">{{ product.description|default:"-" }}</div>
-    </div>
-
-    <div class="text-end">
-        <a href="{% url 'producttreatment_db' %}" class="btn btn-outline-danger">Back</a>
-        <a href="{% url 'product_update' product.product_id %}" class="btn btn-primary">Update</a>
-    </div>
-
-</div>
-<style>
-.page-container {
-    background: #f3e6ec;
-    min-height: 100vh;
-    padding: 30px 40px;
-}
-
-.card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 30px;
-    width: 100%;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.page-title {
-    color: #c94f7c;
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 20px;
-}
-
-.back-btn {
-    margin-bottom: 15px;
-    display: inline-block;
-    color: #777;
-}
-
-.form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.form-group.full {
-    grid-column: span 2;
-}
-
-input, textarea {
-    width: 100%;
-    padding: 10px;
-    border-radius: 8px;
-    background: #eeeeee;
-    border: 1px solid #ddd;
-}
-
-textarea {
-    min-height: 120px;
-}
-
-.actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.btn.save {
-    background: #c94f7c;
-    color: white;
-}
-
-.btn.cancel {
-    border: 1px solid #e57373;
-    color: #e57373;
-    background: transparent;
-}
-</style>
-
 {% endblock %}

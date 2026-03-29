@@ -140,8 +140,8 @@ body.sb-expanded .sidebar-text {
 /* Readonly totals and cost fields */
 /* ----------------------------- */
 .form-control[readonly] {
-    background-color: #e9ecef;  /* light gray background */
-    color: #000000;             /* black text */
+    background-color: #e9ecef;  
+    color: #000000;             
     font-weight: 600;
     cursor: default;
 }
@@ -185,7 +185,7 @@ body.sb-expanded .sidebar-text {
 
 /* Header styling */
 table.table > thead > tr > th {
-    background-color: #CE548D !important;
+    background-color: #ffffff !important;
     color: #ffffff !important;
     font-weight: 600;
     padding: 14px;
@@ -210,6 +210,7 @@ table.table > thead > tr > th {
 
 .patient-db-header-row {
     gap: 12px;
+
 }
 
 .patient-db-search-tools {
@@ -296,7 +297,7 @@ table.patient-db-table > thead > tr > th {
 
 .patient-db-table tbody td {
     background-color: #ffffff !important;
-    color: #8f8b91 !important;          /* lighter than header */
+    color: #8f8b91 !important;         
     border-bottom: 1px solid #ece7eb !important;
 }
 
@@ -320,4 +321,100 @@ table.sales-db-table.table > thead > tr > th {
 .sales-db-table thead tr,
 .sales-db-table thead th {
     border-top: none !important;
+}
+
+/* =======================================
+   Inventory DB - Table styling 
+   ======================================= */
+
+table.inventory-db-table.table > thead > tr > th {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #7d7780 !important; 
+    border-bottom: 1px solid #ddd6db !important; 
+}
+
+.inventory-db-table {
+    border-top: none !important;
+}
+
+.inventory-db-table thead,
+.inventory-db-table thead tr,
+.inventory-db-table thead th {
+    border-top: none !important;
+}
+
+
+/* =======================================
+   Product & Treatment DB - Table styling 
+   ======================================= */
+
+table.product-db-table > thead > tr > th,
+table.treatment-db-table > thead > tr > th {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #495057 !important; 
+    border-bottom: 1px solid #ddd6db !important;
+}
+
+.product-db-table, .treatment-db-table {
+    border-top: none !important;
+}
+
+.product-db-table thead, .product-db-table thead tr, .product-db-table thead th,
+.treatment-db-table thead, .treatment-db-table thead tr, .treatment-db-table thead th {
+    border-top: none !important;
+}
+
+/* =======================================
+   Date fix 
+   ======================================= */
+
+.flatpickr-calendar { 
+    min-width: 450px !important; 
+    width: 550px !important;
+    overflow: visible !important; 
+    display: grid !important;
+    grid-template-columns: 160px auto !important; 
+    grid-template-rows: auto auto !important;     
+}
+
+.quick-ranges { 
+    background: white; 
+    padding: 10px; 
+    border-right: 1px solid #ddd; 
+    grid-column: 1 / 2 !important; 
+    grid-row: 1 / 3 !important; 
+}
+
+.flatpickr-months { 
+    grid-column: 2 / 3 !important; 
+    grid-row: 1 / 2 !important; 
+    display: flex !important; 
+    width: 100% !important; 
+    padding-top: 10px !important;
+}
+
+.flatpickr-innerContainer { 
+    grid-column: 2 / 3 !important; 
+    grid-row: 2 / 3 !important; 
+    display: block !important; 
+    min-height: 280px !important;
+}
+
+.flatpickr-rContainer {
+    display: inline-block !important;
+    padding: 20px !important;
+}
+
+.quick-ranges .quick-item { 
+    cursor: pointer; 
+    padding: 6px 8px; 
+    border-radius: 6px; 
+    color: #333; 
+    margin-bottom: 4px;
+}
+
+.quick-ranges .quick-item:hover { 
+    background: #f1f1f1; 
 }
