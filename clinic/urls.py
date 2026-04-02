@@ -12,6 +12,7 @@ urlpatterns = [
     # ── Authentication ──
     path('login/', auth_views.LoginView.as_view(template_name='clinic/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
+    path('set-branch/', views.set_branch_session, name='set_branch_session'),
     
     # ── Employees ──
     path('employees/', views.employee_list, name='employee_list'),
@@ -61,10 +62,15 @@ urlpatterns = [
     path('suppliers/', views.supplier_db, name='supplier_db'),
     path('suppliers/<int:supplier_id>/', views.supplier_details, name='supplier_details'),
     path('suppliers/<int:supplier_id>/update/', views.supplier_update, name='supplier_update'), 
+    
     # ── Branches ──
     path('branches/', views.branch_list, name='branch_list'),
     path('branches/add/', views.add_branch, name='add_branch'),
-    path('branches/<int:branch_id>/', views.branch_details, name='branch_details'),
     path('branches/<int:branch_id>/update/', views.update_branch, name='update_branch'),
     path('branches/<int:branch_id>/delete/', views.delete_branch, name='delete_branch'),
+
+    # ── Export CSV ──
+    path('inventory/export/', views.export_inventory_csv, name='export_inventory_csv'),
+    path('patients/export/', views.export_patients_csv, name='export_patients_csv'),
+    path('sales/export/', views.export_sales_csv, name='export_sales_csv'),
 ]

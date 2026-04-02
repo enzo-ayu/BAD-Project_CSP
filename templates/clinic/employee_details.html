@@ -3,14 +3,11 @@
 
 <div class="container mt-4">
     <div class="card shadow-sm p-4">
-        
         <div class="d-flex justify-content-between mb-4">
             <a href="{% url 'employee_list' %}" class="text-decoration-none text-muted">← Back</a>
         </div>
-        
-        <hr class="mt-2"> 
 
-        <div class="row mb-5"> 
+        <div class="row mb-5">
             <div class="col-md-3">
                 <small class="text-muted fw-bold">Account ID</small>
                 <div class="mt-1">{{ employee.id }}</div>
@@ -29,7 +26,7 @@
 
             <div class="col-md-3">
                 <small class="text-muted fw-bold">Account Name</small>
-                <div class="mt-1">{{ employee.get_full_name|default:employee.username }}</div>
+                <div class="mt-1">{{ employee.first_name|default:employee.username }}</div>
             </div>
 
             <div class="col-md-3">
@@ -38,24 +35,26 @@
             </div>
         </div>
 
-        <div class="row mb-5"> <div class="col-md-3">
+        <div class="row mb-5">
+            <div class="col-md-3">
                 <small class="text-muted fw-bold">Password</small>
-                <div class="mt-1">********</div> 
+                <div class="mt-1">********</div>
             </div>
 
             <div class="col-md-3">
-                <small class="text-muted fw-bold">Branch ID</small>
+                <small class="text-muted fw-bold">Date Created</small>
+                <div class="mt-1">{{ employee.date_joined|date:"Y-m-d" }}</div>
+            </div>
+
+            <div class="col-md-3">
+                <small class="text-muted fw-bold">All Branches</small>
                 <div class="mt-1">
-                    {% if employee.employeeprofile.branch %}
-                        {{ employee.employeeprofile.branch.branch_id }}
-                    {% else %}
-                        -
-                    {% endif %}
+                    {% if employee.employeeprofile.all_branches %}Yes{% else %}No{% endif %}
                 </div>
             </div>
 
             <div class="col-md-3">
-                <small class="text-muted fw-bold">Branch</small>
+                <small class="text-muted fw-bold">Branch Name</small>
                 <div class="mt-1">
                     {% if employee.employeeprofile.branch %}
                         {{ employee.employeeprofile.branch.branch_location }}
@@ -64,15 +63,7 @@
                     {% endif %}
                 </div>
             </div>
-
-            <div class="col-md-3">
-                <small class="text-muted fw-bold">Date Created</small>
-                <div class="mt-1">{{ employee.date_joined|date:"Y-m-d" }}</div>
-            </div>
         </div>
-
-        <hr class="mt-5 mb-4"> 
-        
     </div>
 </div>
 

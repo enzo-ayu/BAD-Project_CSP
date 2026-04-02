@@ -34,22 +34,31 @@
 </div>
 {% endif %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0 fw-bold" style="color: #CE548D;">Inventory</h2>
-    <form method="GET" class="d-flex gap-2 align-items-center">
+<div class="d-flex align-items-center gap-2 mb-3">
+    <h2 class="mb-0 fw-bold" style="color: #CE548D;">Inventory Shipments</h2>
+    <button type="button"
+            class="btn text-white ms-2"
+            style="background-color:#CE548D; white-space:nowrap;"
+            onclick="openShipmentModal()">
+        + Add Shipment
+    </button>
+    <form method="GET" class="d-flex gap-2 align-items-center ms-auto">
+        <a href="{% url 'export_inventory_csv' %}?{{ request.GET.urlencode }}"
+        class="btn btn-secondary ms-auto"
+        style="white-space:nowrap;">
+            Export
+        </a>
         <input type="text" id="datePicker" name="date" value="{{ date_filter }}"
                class="form-control" placeholder="Select date or range"
                style="width:300px; height:40px;">
         <input type="text" name="q" value="{{ query }}"
                class="form-control" placeholder="Search"
                style="width:400px; height:40px;">
-        <button type="submit" class="btn btn-primary">Filter</button>
+        <button type="submit" class="btn btn-dark">Filter</button>
         {% if query or date_filter %}
         <a href="{% url 'inventory_db' %}" class="btn btn-outline-secondary">Reset</a>
         {% endif %}
-        <a href="{% url 'supplier_db' %}" class="btn btn-secondary" style="white-space:nowrap;">Suppliers</a>
-        <button type="button" class="btn text-white" style="background-color:#CE548D; white-space:nowrap;"
-                onclick="openShipmentModal()">+ Add Shipment</button>
+        <a href="{% url 'supplier_db' %}" class="btn text-white" style="font-weight: bold; background-color:#CE548D;">Suppliers</a>
     </form>
 </div>
 
@@ -152,14 +161,20 @@
                         </select>
                     </div>
                     <div class="mb-4">
-                        <label class="form-label fw-semibold">Branch <span class="text-danger">*</span></label>
-                        <select name="branch" class="form-select" required>
-                            <option value="">— Select Branch —</option>
-                            {% for branch in branches %}
-                            <option value="{{ branch.branch_id }}">{{ branch.branch_location }}</option>
-                            {% endfor %}
-                        </select>
+                        <label class="form-label fw-semibold">Branch {% if user_is_owner %}<span class="text-danger">*</span>{% endif %}</label>
+                        {% if user_is_owner %}
+                            <select name="branch" class="form-select" required>
+                                <option value="">— Select Branch —</option>
+                                {% for branch in branches %}
+                                <option value="{{ branch.branch_id }}">{{ branch.branch_location }}</option>
+                                {% endfor %}
+                            </select>
+                        {% else %}
+                            <input type="text" class="form-control bg-light text-muted"
+                                   value="{{ user_branch.branch_location|default:'Auto-assigned' }}" disabled>
+                        {% endif %}
                     </div>
+
                     <div class="d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-secondary" onclick="closeShipmentModal()">Cancel</button>
                         <button type="button" class="btn text-white" style="background-color:#CE548D;"
@@ -179,7 +194,7 @@
         <p class="mb-3">Are you sure you want to add this inventory record?</p>
         <div class="d-flex justify-content-end gap-2">
             <button class="btn btn-secondary"
-                    onclick="document.getElementById('addShipmentConfirm').style.display='none'">No</button>
+                    onclick="document.getElementById('addShipmentConfirm').style.display='none'">Cancel</button>
             <button class="btn text-white" style="background-color:#CE548D;"
                     onclick="document.getElementById('addShipmentForm').submit()">Yes</button>
         </div>
@@ -246,16 +261,25 @@
                             {% endfor %}
                         </select>
                     </div>
+
+                    <!-- BRANCH: owner gets dropdown, aesthetician gets locked display + hidden input -->
                     <div class="mb-4">
-                        <label class="form-label fw-semibold">Branch <span class="text-danger">*</span></label>
-                        <select name="branch" id="upd_branch" class="form-select" required>
-                            <option value="">— Select Branch —</option>
-                            {% for branch in branches %}
-                            <option value="{{ branch.branch_id }}">{{ branch.branch_location }}</option>
-                            {% endfor %}
-                        </select>
+                        <label class="form-label fw-semibold">Branch {% if user_is_owner %}<span class="text-danger">*</span>{% endif %}</label>
+                        {% if user_is_owner %}
+                            <select name="branch" id="upd_branch" class="form-select" required>
+                                <option value="">— Select Branch —</option>
+                                {% for branch in branches %}
+                                <option value="{{ branch.branch_id }}">{{ branch.branch_location }}</option>
+                                {% endfor %}
+                            </select>
+                        {% else %}
+                            <input type="text" class="form-control bg-light text-muted"
+                                   value="{{ user_branch.branch_location|default:'Auto-assigned' }}" disabled>
+                            <input type="hidden" id="upd_branch_hidden" name="branch" value="{{ user_branch.branch_id }}">
+                        {% endif %}
                     </div>
-<div class="d-flex justify-content-between">
+
+                    <div class="d-flex justify-content-between">
                         <button type="button" class="btn btn-danger"
                                 onclick="closeUpdateShipmentModal(); openDeleteShipmentModal(document.getElementById('upd_record_id').value, document.getElementById('upd_productSelect').options[document.getElementById('upd_productSelect').selectedIndex].text)">
                             Delete
@@ -277,10 +301,10 @@
      background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
     <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
         <h5 class="fw-bold mb-2">Confirm</h5>
-        <p class="mb-3">Are you sure you want to update this inventory record?</p>
+        <p class="mb-3">Are you sure you want to save these changes?</p>
         <div class="d-flex justify-content-end gap-2">
             <button class="btn btn-secondary"
-                    onclick="document.getElementById('updateShipmentConfirm').style.display='none'">No</button>
+                    onclick="document.getElementById('updateShipmentConfirm').style.display='none'">Cancel</button>
             <button class="btn text-white" style="background-color:#CE548D;"
                     onclick="document.getElementById('updateShipmentForm').submit()">Yes</button>
         </div>
@@ -301,7 +325,7 @@
         <div class="d-flex justify-content-end gap-2">
             <button class="btn btn-secondary" onclick="closeDeleteShipmentModal()">Cancel</button>
             <button class="btn btn-danger" onclick="document.getElementById('deleteShipmentForm').submit()">
-                Delete
+                Yes, Delete
             </button>
         </div>
     </div>
@@ -370,12 +394,16 @@ function openUpdateShipmentModal(recordId, productId, productType, qty, dateRece
     const supplierSel = document.getElementById('upd_supplier');
     for (let opt of supplierSel.options) { opt.selected = opt.value == supplierId; }
 
+    // Only set for owners — aestheticians use a hidden input instead
     const branchSel = document.getElementById('upd_branch');
-    for (let opt of branchSel.options) { opt.selected = opt.value == branchId; }
+    if (branchSel) {
+        for (let opt of branchSel.options) { opt.selected = opt.value == branchId; }
+    }
 
     document.getElementById('updateShipmentForm').action = '/inventory/' + recordId + '/update/';
     document.getElementById('updateShipmentOverlay').style.display = 'flex';
 }
+
 function closeUpdateShipmentModal() {
     document.getElementById('updateShipmentOverlay').style.display = 'none';
     document.getElementById('updateShipmentConfirm').style.display = 'none';
@@ -393,8 +421,11 @@ function closeDeleteShipmentModal() {
 document.getElementById('addShipmentForm').addEventListener('submit', function() {
     sessionStorage.setItem('lastInventoryModal', 'add');
 });
+
 document.getElementById('updateShipmentForm').addEventListener('submit', function() {
     sessionStorage.setItem('lastInventoryModal', 'update');
+    const branchSel = document.getElementById('upd_branch');
+    const branchHidden = document.getElementById('upd_branch_hidden');
     sessionStorage.setItem('lastInventoryData', JSON.stringify({
         recordId: document.getElementById('upd_record_id').value,
         productId: document.getElementById('upd_productSelect').value,
@@ -403,7 +434,7 @@ document.getElementById('updateShipmentForm').addEventListener('submit', functio
         dateReceived: document.getElementById('upd_date_received').value,
         expiration: document.getElementById('upd_expiration').value,
         supplierId: document.getElementById('upd_supplier').value,
-        branchId: document.getElementById('upd_branch').value,
+        branchId: branchSel ? branchSel.value : (branchHidden ? branchHidden.value : ''),
     }));
 });
 

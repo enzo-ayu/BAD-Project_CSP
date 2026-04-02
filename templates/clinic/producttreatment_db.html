@@ -11,9 +11,10 @@
     {% endfor %}
 </div>
 {% endif %}
+<div id="alert-container" class="mb-3"></div>
 
 {% if low_stock_alerts %}
-<div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 16px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+<div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 16px; margin-bottom:16px; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
     <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
         ⚠️ <strong>Low Stock Alert:</strong>
         {% for bp in low_stock_alerts %}
@@ -30,54 +31,38 @@
     <!-- ================= PRODUCTS ================= -->
     <div class="col-md-6">
         <div class="d-flex justify-content-between align-items-center mb-3">
-
-            <h3 class="fw-bold mb-0" style="color:#CE548D;">Product</h3>
-
+            <h3 class="fw-bold mb-0" style="color:#CE548D;">Products</h3>
             <form method="GET" class="d-flex align-items-center gap-2 flex-nowrap">
-
-                <!-- Search -->
                 <input type="text" name="product_q" value="{{ product_query }}"
-                    placeholder="Search"
-                    class="form-control form-control-sm"
-                    style="width: 300px; height: 40px;">
-
-
-                <!-- Sort -->
-                <select name="product_sort"
-                        class="form-select form-select-sm"
-                        style="width:140px; height: 40px;">
+                    placeholder="Search" class="form-control form-control-sm" style="width:200px; height:40px;">
+                <select name="product_sort" class="form-select form-select-sm" style="width:140px; height:40px;">
                     <option value="">Sort</option>
                     <option value="price_desc" {% if product_sort == "price_desc" %}selected{% endif %}>Most Expensive</option>
-                    <option value="price_asc" {% if product_sort == "price_asc" %}selected{% endif %}>Least Expensive</option>
-                    <option value="name_asc" {% if product_sort == "name_asc" %}selected{% endif %}>A-Z</option>
-                    <option value="name_desc" {% if product_sort == "name_desc" %}selected{% endif %}>Z-A</option>
+                    <option value="price_asc"  {% if product_sort == "price_asc"  %}selected{% endif %}>Least Expensive</option>
+                    <option value="name_asc"   {% if product_sort == "name_asc"   %}selected{% endif %}>A-Z</option>
+                    <option value="name_desc"  {% if product_sort == "name_desc"  %}selected{% endif %}>Z-A</option>
                 </select>
-
-                <!-- Type -->
-                <select name="product_type"
-                        class="form-select form-select-sm"
-                        style="width:140px; height: 40px;">
+                <select name="product_type" class="form-select form-select-sm" style="width:140px; height:40px;">
                     <option value="">All Types</option>
                     {% for type in product_types %}
-                    <option value="{{ type }}" {% if product_type == type %}selected{% endif %}>
-                        {{ type }}
-                    </option>
+                    <option value="{{ type }}" {% if product_type == type %}selected{% endif %}>{{ type }}</option>
                     {% endfor %}
                 </select>
-
-                <button type="submit" class="btn btn-outline-secondary btn-sm" style="height: 40px;">Filter</button>
-
+                <button type="submit" class="btn btn-dark btn-sm" style="height:40px;">Filter</button>
             </form>
         </div>
 
         <div class="card shadow-sm">
             <div class="card-body">
-
-
                 <div class="d-flex justify-content-end mb-2">
-                    <a href="{% url 'product_add' %}?{{ request.GET.urlencode }}" class="btn btn-primary">Add Product</a>
+                    {% if user_is_owner %}
+                        <button type="button" class="btn text-white" style="background-color:#CE548D;"
+                                onclick="openAddProductModal()">+ Add Product</button>
+                    {% else %}
+                        <button type="button" class="btn text-white" style="background-color:#CE548D;"
+                                onclick="showBranchWarning('You are not authorized to add products.')">+ Add Product</button>
+                    {% endif %}
                 </div>
-
                 <table class="table treatment-db-table">
                     <thead>
                         <tr>
@@ -99,24 +84,51 @@
                             <td>
                                 <div class="d-flex gap-2">
                                     <a href="{% url 'product_details' product.product_id %}?{{ request.GET.urlencode }}"
-                                        class="btn btn-info btn-sm text-white">
-                                        Details
-                                        </a>
-                                    <a href="{% url 'product_update' product.product_id %}?{{ request.GET.urlencode }}"
-                                        class="btn btn-warning btn-sm text-white">
-                                        Update
-                                        </a>
+                                    class="btn btn-info btn-sm text-white">Details</a>
+
+                                    {% if user_is_owner %}
+                                        {% if not branch %}
+                                            <!-- Owner has All Branches selected — block update -->
+                                            <button type="button" class="btn btn-warning btn-sm text-white"
+                                                    onclick="showBranchWarning()">Update</button>
+                                        {% else %}
+                                            <!-- Owner has a specific branch selected — allow update -->
+                                            <button type="button" class="btn btn-warning btn-sm text-white"
+                                                    onclick="openUpdateProductModal(
+                                                        '{{ product.product_id }}',
+                                                        '{{ product.product_name|escapejs }}',
+                                                        '{{ product.product_type|escapejs }}',
+                                                        '{{ product.unit_cost }}',
+                                                        '{{ product.description|escapejs }}',
+                                                        '{{ product.supplier_id }}',
+                                                        '{{ product.branch_stock }}',
+                                                        '{{ product.branch_minimum }}',
+                                                        '{{ product.branch_id_val }}'
+                                                    )">Update</button>
+                                        {% endif %}
+                                    {% else %}
+                                        <!-- Aesthetician — branch auto-applied in view -->
+                                        <button type="button" class="btn btn-warning btn-sm text-white"
+                                                onclick="openUpdateProductModal(
+                                                    '{{ product.product_id }}',
+                                                    '{{ product.product_name|escapejs }}',
+                                                    '{{ product.product_type|escapejs }}',
+                                                    '{{ product.unit_cost }}',
+                                                    '{{ product.description|escapejs }}',
+                                                    '{{ product.supplier_id }}',
+                                                    '{{ product.branch_stock }}',
+                                                    '{{ product.branch_minimum }}',
+                                                    '{{ product.branch_id_val }}'
+                                                )">Update</button>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center">No products found.</td>
-                        </tr>
+                        <tr><td colspan="4" class="text-center">No products found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
-
             </div>
         </div>
     </div>
@@ -124,49 +136,38 @@
     <!-- ================= TREATMENTS ================= -->
     <div class="col-md-6">
         <div class="d-flex justify-content-between align-items-center mb-3">
-
-            <h3 class="fw-bold mb-0" style="color:#CE548D;">Treatment</h3>
-
+            <h3 class="fw-bold mb-0" style="color:#CE548D;">Treatments</h3>
             <form method="GET" class="d-flex align-items-center gap-2 flex-nowrap">
-
                 <input type="text" name="treatment_q" value="{{ treatment_query }}"
-                    placeholder="Search"
-                    class="form-control form-control-sm"
-                    style="width: 300px; height: 40px;">
-
-                <select name="treatment_sort"
-                        class="form-select form-select-sm"
-                        style="width:140px; height: 40px;">
+                    placeholder="Search" class="form-control form-control-sm" style="width:200px; height:40px;">
+                <select name="treatment_sort" class="form-select form-select-sm" style="width:140px; height:40px;">
                     <option value="">Sort</option>
                     <option value="price_desc" {% if treatment_sort == "price_desc" %}selected{% endif %}>Most Expensive</option>
-                    <option value="price_asc" {% if treatment_sort == "price_asc" %}selected{% endif %}>Least Expensive</option>
-                    <option value="name_asc" {% if treatment_sort == "name_asc" %}selected{% endif %}>A-Z</option>
-                    <option value="name_desc" {% if treatment_sort == "name_desc" %}selected{% endif %}>Z-A</option>
+                    <option value="price_asc"  {% if treatment_sort == "price_asc"  %}selected{% endif %}>Least Expensive</option>
+                    <option value="name_asc"   {% if treatment_sort == "name_asc"   %}selected{% endif %}>A-Z</option>
+                    <option value="name_desc"  {% if treatment_sort == "name_desc"  %}selected{% endif %}>Z-A</option>
                 </select>
-
-                <select name="treatment_type"
-                        class="form-select form-select-sm"
-                        style="width:140px; height: 40px;">
+                <select name="treatment_type" class="form-select form-select-sm" style="width:140px; height:40px;">
                     <option value="">All Types</option>
                     {% for type in treatment_types %}
-                    <option value="{{ type }}" {% if treatment_type == type %}selected{% endif %}>
-                        {{ type }}
-                    </option>
+                    <option value="{{ type }}" {% if treatment_type == type %}selected{% endif %}>{{ type }}</option>
                     {% endfor %}
                 </select>
-
-                <button type="submit" class="btn btn-outline-secondary btn-sm" style="height: 40px;">Filter</button>
-
+                <button type="submit" class="btn btn-dark btn-sm" style="height:40px;">Filter</button>
             </form>
         </div>
 
         <div class="card shadow-sm">
             <div class="card-body">
-
                 <div class="d-flex justify-content-end mb-2">
-                    <a href="{% url 'treatment_add' %}?{{ request.GET.urlencode }}" class="btn btn-primary">Add Treatment</a>
+                    {% if user_is_owner %}
+                        <button type="button" class="btn text-white" style="background-color:#CE548D;"
+                                onclick="openAddTreatmentModal()">+ Add Treatment</button>
+                    {% else %}
+                        <button type="button" class="btn text-white" style="background-color:#CE548D;"
+                                onclick="showBranchWarning('You are not authorized to add treatments.')">+ Add Treatment</button>
+                    {% endif %}
                 </div>
-
                 <table class="table treatment-db-table">
                     <thead>
                         <tr>
@@ -178,31 +179,585 @@
                     <tbody>
                         {% for treatment in treatments %}
                         <tr>
-                            <td>{{ treatment.treatment_name }}</td>
+                            <td {% if treatment.is_unavailable %}style="color:#DC3545 !important;"{% endif %}>
+                                {{ treatment.treatment_name }}
+                            </td>
                             <td>{{ treatment.treatment_type }}</td>
                             <td>
                                 <div class="d-flex gap-2">
                                     <a href="{% url 'treatment_details' treatment.treatment_id %}?{{ request.GET.urlencode }}"
-                                        class="btn btn-info btn-sm text-white">
-                                        Details
-                                        </a>
-                                    <a href="{% url 'treatment_update' treatment.treatment_id %}?{{ request.GET.urlencode }}"
-                                        class="btn btn-warning btn-sm text-white">Update</a>
+                                       class="btn btn-info btn-sm text-white">Details</a>
+                                    {% if user_is_owner %}
+                                        {% if not branch %}
+                                            <button type="button" class="btn btn-warning btn-sm text-white"
+                                                    onclick="showBranchWarning()">Update</button>
+                                        {% else %}
+                                            <button type="button" class="btn btn-warning btn-sm text-white"
+                                                    onclick="openUpdateTreatmentModal(
+                                                        '{{ treatment.treatment_id }}',
+                                                        '{{ treatment.treatment_name|escapejs }}',
+                                                        '{{ treatment.treatment_type|escapejs }}',
+                                                        '{{ treatment.treatment_cost }}',
+                                                        '{{ treatment.description|escapejs }}',
+                                                        '{{ treatment.branch_id_val }}',
+                                                        '{% if not treatment.is_unavailable %}true{% else %}false{% endif %}'
+                                                    )">Update</button>
+                                        {% endif %}
+                                    {% else %}
+                                        <button type="button" class="btn btn-warning btn-sm text-white"
+                                                onclick="openUpdateTreatmentModal(
+                                                    '{{ treatment.treatment_id }}',
+                                                    '{{ treatment.treatment_name|escapejs }}',
+                                                    '{{ treatment.treatment_type|escapejs }}',
+                                                    '{{ treatment.treatment_cost }}',
+                                                    '{{ treatment.description|escapejs }}',
+                                                    '{{ treatment.branch_id_val }}',
+                                                    '{% if not treatment.is_unavailable %}true{% else %}false{% endif %}'
+                                                )">Update</button>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="3" class="text-center">No treatments found.</td>
-                        </tr>
+                        <tr><td colspan="3" class="text-center">No treatments found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
-
             </div>
         </div>
     </div>
-
 </div>
+
+
+<!-- ── ADD PRODUCT MODAL ── -->
+<div id="addProductOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="width:100%; max-width:620px; max-height:90vh; overflow-y:auto;">
+        <div style="background:#fff; border-radius:12px; padding:30px; box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+            <div class="mb-3">
+                <a href="javascript:void(0)" onclick="closeAddProductModal()"
+                   class="text-decoration-none text-muted">← Back</a>
+            </div>
+            <h4 class="fw-bold mb-4" style="color:#CE548D;">Add Product</h4>
+            <form method="POST" action="{% url 'product_add' %}" id="addProductForm">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Product Name <span class="text-danger">*</span></label>
+                        <input type="text" name="product_name" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Product Type <span class="text-danger">*</span></label>
+                        <input type="text" name="product_type" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Unit Cost <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" name="unit_cost" class="form-control" placeholder="0.00" min="0" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Stock Quantity <span class="text-danger">*</span></label>
+                        <input type="number" name="stock_quantity" class="form-control" min="0" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Quantity Minimum <span class="text-danger">*</span></label>
+                        <input type="number" name="quantity_minimum" class="form-control" min="1" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Supplier <span class="text-danger">*</span></label>
+                        <select name="supplier" class="form-select" required>
+                            <option value="">— Select Supplier —</option>
+                            {% for s in suppliers %}
+                            <option value="{{ s.supplier_id }}">{{ s.supplier_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Branch <span class="text-danger">*</span></label>
+                        <select name="branch" class="form-select" required>
+                            <option value="">— Select Branch —</option>
+                            {% for b in branches %}
+                            <option value="{{ b.branch_id }}">{{ b.branch_location }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="Enter product details..." required></textarea>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddProductModal()">Cancel</button>
+                    <button type="button" class="btn text-white" style="background-color:#CE548D;"
+                            onclick="document.getElementById('addProductConfirm').style.display='flex'">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Product Confirm -->
+<div id="addProductConfirm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm</h5>
+        <p class="mb-3">Are you sure you want to add this product?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary"
+                    onclick="document.getElementById('addProductConfirm').style.display='none'">Cancel</button>
+            <button class="btn text-white" style="background-color:#CE548D;"
+                    onclick="document.getElementById('addProductForm').submit()">Yes</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ── UPDATE PRODUCT MODAL ── -->
+<div id="updateProductOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="width:100%; max-width:620px; max-height:90vh; overflow-y:auto;">
+        <div style="background:#fff; border-radius:12px; padding:30px; box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+            <div class="mb-3">
+                <a href="javascript:void(0)" onclick="closeUpdateProductModal()"
+                   class="text-decoration-none text-muted">← Back</a>
+            </div>
+            <h4 class="fw-bold mb-4" style="color:#CE548D;">Update Product</h4>
+            <form method="POST" action="" id="updateProductForm">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Product Name <span class="text-danger">*</span></label>
+                        <input type="text" name="product_name" id="upd_product_name" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Product Type <span class="text-danger">*</span></label>
+                        <input type="text" name="product_type" id="upd_product_type" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Unit Cost <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" name="unit_cost" id="upd_unit_cost" class="form-control" min="0" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Stock Quantity</label>
+                        <input type="number" name="stock_quantity" id="upd_stock" class="form-control bg-light" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Quantity Minimum <span class="text-danger">*</span></label>
+                        <input type="number" name="quantity_minimum" id="upd_min_qty" class="form-control" min="1" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Supplier <span class="text-danger">*</span></label>
+                        <select name="supplier" id="upd_supplier" class="form-select" required>
+                            <option value="">— Select Supplier —</option>
+                            {% for s in suppliers %}
+                            <option value="{{ s.supplier_id }}">{{ s.supplier_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Branch <span class="text-danger">*</span></label>
+                        <select name="branch" id="upd_branch" class="form-select" required>
+                            <option value="">— Select Branch —</option>
+                            {% for b in branches %}
+                            <option value="{{ b.branch_id }}">{{ b.branch_location }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+                        <textarea name="description" id="upd_description" class="form-control" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mt-4">
+                    {% if user_is_owner %}
+                        <button type="button" class="btn btn-danger"
+                                onclick="closeUpdateProductModal(); openDeleteProductModal()">Delete</button>
+                    {% else %}
+                        <button type="button" class="btn btn-danger" disabled
+                                style="opacity:0.5; cursor:not-allowed;">Delete</button>
+                    {% endif %}
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" onclick="closeUpdateProductModal()">Cancel</button>
+                        <button type="button" class="btn text-white" style="background-color:#CE548D;"
+                                onclick="document.getElementById('updateProductConfirm').style.display='flex'">Save</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Update Product Confirm -->
+<div id="updateProductConfirm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm Update</h5>
+        <p class="mb-3">Are you sure you want to save these changes?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary"
+                    onclick="document.getElementById('updateProductConfirm').style.display='none'">Cancel</button>
+            <button class="btn text-white" style="background-color:#CE548D;"
+                    onclick="document.getElementById('updateProductForm').submit()">Yes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Product Confirm -->
+<div id="deleteProductConfirm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2 text-danger">Confirm Delete</h5>
+        <p class="mb-3">Are you sure you want to delete this product?</p>
+        <form method="POST" id="deleteProductForm">{% csrf_token %}</form>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary"
+                    onclick="document.getElementById('deleteProductConfirm').style.display='none'">Cancel</button>
+            <button class="btn btn-danger"
+                    onclick="document.getElementById('deleteProductForm').submit()">Yes, Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── ADD TREATMENT MODAL (FIXED) ── -->
+<div id="addTreatmentOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    
+    <div style="width:100%; max-width:620px; max-height:90vh; overflow-y:auto;">
+        <div style="background:#fff; border-radius:12px; padding:30px; box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+            
+            <!-- Back -->
+            <div class="mb-3">
+                <a href="javascript:void(0)" onclick="closeAddTreatmentModal()"
+                   class="text-decoration-none text-muted">← Back</a>
+            </div>
+
+            <!-- Title -->
+            <h4 class="fw-bold mb-4" style="color:#CE548D;">Add Treatment</h4>
+
+            <form method="POST" action="{% url 'treatment_add' %}" id="addTreatmentForm">
+                {% csrf_token %}
+
+                <div class="row g-3">
+
+                    <!-- NAME -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Treatment Name <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" name="treatment_name"
+                               class="form-control"
+                               required>
+                    </div>
+
+                    <!-- TYPE -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Treatment Type <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" name="treatment_type"
+                               class="form-control"
+                               required>
+                    </div>
+
+                    <!-- COST -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Treatment Cost <span class="text-danger">*</span>
+                        </label>
+                        <input type="number" step="0.01" name="treatment_cost"
+                               class="form-control"
+                               placeholder="0.00"
+                               min="0"
+                               required>
+                    </div>
+
+                    <!-- BRANCH -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Branch <span class="text-danger">*</span>
+                        </label>
+                        <select name="branch" class="form-select" required>
+                            <option value="">— Select Branch —</option>
+                            {% for b in branches %}
+                            <option value="{{ b.branch_id }}">{{ b.branch_location }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- DESCRIPTION -->
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">
+                            Description <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="description"
+                                  class="form-control"
+                                  rows="3"
+                                  placeholder="Enter treatment details..."
+                                  required></textarea>
+                    </div>
+
+                    <!-- AVAILABILITY -->
+                    <div class="col-12">
+                        <div class="form-check mt-2">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="availability_status"
+                                   id="add_treatment_status"
+                                   checked>
+                            <label class="form-check-label fw-semibold" for="add_treatment_status">
+                                Available
+                            </label>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- BUTTONS -->
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button type="button" class="btn btn-secondary"
+                            onclick="closeAddTreatmentModal()">Cancel</button>
+
+                    <button type="button" class="btn text-white"
+                            style="background-color:#CE548D;"
+                            onclick="document.getElementById('addTreatmentConfirm').style.display='flex'">
+                        Save
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- CONFIRM ADD -->
+<div id="addTreatmentConfirm" style="display:none;" class="confirm-overlay">
+    <div class="confirm-box">
+        <h5>Confirm</h5>
+        <p>Add this treatment?</p>
+        <button onclick="document.getElementById('addTreatmentForm').submit()">Yes</button>
+        <button onclick="this.parentElement.parentElement.style.display='none'">No</button>
+    </div>
+</div>
+
+<!-- UPDATE TREATMENT -->
+<div id="updateTreatmentOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="width:100%; max-width:620px; max-height:90vh; overflow-y:auto;">
+        <div style="background:#fff; border-radius:12px; padding:30px; box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+            <div class="mb-3">
+                <a href="javascript:void(0)" onclick="closeUpdateTreatmentModal()"
+                   class="text-decoration-none text-muted">← Back</a>
+            </div>
+            <h4 class="fw-bold mb-4" style="color:#CE548D;">Update Treatment</h4>
+
+            <form method="POST" id="updateTreatmentForm">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Treatment Name <span class="text-danger">*</span></label>
+                        <input type="text" name="treatment_name" id="upd_treatment_name" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Treatment Type <span class="text-danger">*</span></label>
+                        <input type="text" name="treatment_type" id="upd_treatment_type" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Treatment Cost <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" name="treatment_cost" id="upd_treatment_cost" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Availability</label><br>
+                        <input type="checkbox" name="availability_status" id="upd_treatment_status"> Available
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea name="description" id="upd_treatment_desc" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mt-4">
+                    {% if user_is_owner %}
+                        <button type="button" class="btn btn-danger"
+                                onclick="closeUpdateTreatmentModal(); openDeleteTreatmentModal()">Delete</button>
+                    {% else %}
+                        <button type="button" class="btn btn-danger" disabled
+                                style="opacity:0.5; cursor:not-allowed;">Delete</button>
+                    {% endif %}
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary"
+                                onclick="closeUpdateTreatmentModal()">Cancel</button>
+                        <button type="button" class="btn text-white" style="background-color:#CE548D;"
+                                onclick="document.getElementById('updateTreatmentConfirm').style.display='flex'">Save</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- CONFIRM UPDATE TREATMENT -->
+<div id="updateTreatmentConfirm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm Update</h5>
+        <p class="mb-3">Are you sure you want to save these changes?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary"
+                    onclick="document.getElementById('updateTreatmentConfirm').style.display='none'">Cancel</button>
+            <button class="btn text-white" style="background-color:#CE548D;"
+                    onclick="document.getElementById('updateTreatmentForm').submit()">Yes</button>
+        </div>
+    </div>
+</div>
+
+<!-- DELETE TREATMENT CONFIRM -->
+<div id="deleteTreatmentConfirm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2 text-danger">Confirm Delete</h5>
+        <p class="mb-3">Are you sure you want to delete this treatment?</p>
+
+        <form method="POST" id="deleteTreatmentForm">
+            {% csrf_token %}
+        </form>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary"
+                    onclick="document.getElementById('deleteTreatmentConfirm').style.display='none'">
+                Cancel
+            </button>
+            <button class="btn btn-danger"
+                    onclick="document.getElementById('deleteTreatmentForm').submit()">
+                Yes, Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showBranchWarning(msg) {
+        msg = msg || '⚠️ Please select a specific branch from the navbar before updating.';
+        const alertContainer = document.getElementById('alert-container');
+        alertContainer.innerHTML = '';
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `${msg} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        alertContainer.appendChild(alertDiv);
+        setTimeout(() => alertDiv.remove(), 5000);
+    }
+    // ── ADD PRODUCT ──
+    function openAddProductModal() {
+        document.getElementById('addProductOverlay').style.display = 'flex';
+    }
+    function closeAddProductModal() {
+        document.getElementById('addProductOverlay').style.display = 'none';
+        document.getElementById('addProductConfirm').style.display = 'none';
+    }
+
+    // ── UPDATE PRODUCT ──
+    function openUpdateProductModal(productId, name, type, cost, description, supplierId, stock, minQty, branchId) {
+        document.getElementById('upd_product_name').value       = name;
+        document.getElementById('upd_product_type').value       = type;
+        document.getElementById('upd_unit_cost').value          = cost;
+        document.getElementById('upd_description').value        = description;
+        document.getElementById('upd_stock').value              = stock;
+        document.getElementById('upd_min_qty').value            = minQty;
+
+        const supplierSel = document.getElementById('upd_supplier');
+        for (let opt of supplierSel.options) { opt.selected = opt.value == supplierId; }
+
+        const branchSel = document.getElementById('upd_branch');
+        for (let opt of branchSel.options) { opt.selected = opt.value == branchId; }
+
+        document.getElementById('updateProductForm').action = '/products/' + productId + '/update/';
+        document.getElementById('deleteProductForm').action = '/products/' + productId + '/delete/';
+        document.getElementById('updateProductOverlay').style.display = 'flex';
+    }
+    function closeUpdateProductModal() {
+        document.getElementById('updateProductOverlay').style.display = 'none';
+        document.getElementById('updateProductConfirm').style.display = 'none';
+    }
+
+    // ── DELETE PRODUCT ──
+    function openDeleteProductModal() {
+        document.getElementById('deleteProductConfirm').style.display = 'flex';
+    }
+
+    // ── CLOSE ON OUTSIDE CLICK ──
+    window.addEventListener('click', function(e) {
+        if (e.target === document.getElementById('addProductOverlay'))    closeAddProductModal();
+        if (e.target === document.getElementById('updateProductOverlay')) closeUpdateProductModal();
+    });
+
+    // ── RE-OPEN MODAL ON ERROR ──
+    window.addEventListener('DOMContentLoaded', function() {
+        const hasError = document.querySelector('.alert-danger') !== null;
+        if (hasError) {
+            const last = sessionStorage.getItem('lastProductModal');
+            if (last === 'add') openAddProductModal();
+            sessionStorage.removeItem('lastProductModal');
+        }
+    });
+    document.getElementById('addProductForm').addEventListener('submit', function() {
+        sessionStorage.setItem('lastProductModal', 'add');
+    });
+
+    // ADD TREATMENT
+    function openAddTreatmentModal() {
+        document.getElementById('addTreatmentOverlay').style.display = 'flex';
+    }
+    function closeAddTreatmentModal() {
+        document.getElementById('addTreatmentOverlay').style.display = 'none';
+    }
+
+    // UPDATE TREATMENT
+    function openUpdateTreatmentModal(id, name, type, cost, desc, branchId, status) {
+        document.getElementById('upd_treatment_name').value   = name;
+        document.getElementById('upd_treatment_type').value   = type;
+        document.getElementById('upd_treatment_cost').value   = cost;
+        document.getElementById('upd_treatment_desc').value   = desc;
+        document.getElementById('upd_treatment_status').checked = (status === 'true');
+
+        document.getElementById('updateTreatmentForm').action = '/treatments/' + id + '/update/';
+        document.getElementById('deleteTreatmentForm').action = '/treatments/' + id + '/delete/';
+        document.getElementById('updateTreatmentOverlay').style.display = 'flex';
+    }
+    function closeUpdateTreatmentModal() {
+        document.getElementById('updateTreatmentOverlay').style.display = 'none';
+        document.getElementById('updateTreatmentConfirm').style.display = 'none';
+    }
+    function openDeleteTreatmentModal() {
+        document.getElementById('deleteTreatmentConfirm').style.display = 'flex';
+    }
+    // ── DELETE TREATMENT ──
+    function openDeleteTreatmentModal() {
+        document.getElementById('deleteTreatmentConfirm').style.display = 'flex';
+    }
+
+    // ── CLOSE ON OUTSIDE CLICK ──
+    window.addEventListener('click', function(e) {
+        if (e.target === document.getElementById('addTreatmentOverlay'))
+            closeAddTreatmentModal();
+
+        if (e.target === document.getElementById('updateTreatmentOverlay'))
+            closeUpdateTreatmentModal();
+    });
+
+    // ── REOPEN MODAL ON ERROR ──
+    window.addEventListener('DOMContentLoaded', function() {
+        const hasError = document.querySelector('.alert-danger') !== null;
+
+        if (hasError) {
+            const last = sessionStorage.getItem('lastTreatmentModal');
+
+            if (last === 'add') openAddTreatmentModal();
+            if (last === 'update') {
+                // ⚠️ optional: only reopen shell, data won't persist unless you store it
+                document.getElementById('updateTreatmentOverlay').style.display = 'flex';
+            }
+
+            sessionStorage.removeItem('lastTreatmentModal');
+        }
+    });
+</script>
 
 {% endblock %}

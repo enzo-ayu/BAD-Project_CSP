@@ -47,6 +47,15 @@ class Product(models.Model):
 
 #     def __str__(self):
 #         return self.branch_location
+class ClinicBranch(models.Model):
+    branch_id = models.AutoField(primary_key=True) 
+    branch_location = models.CharField(max_length=255, unique=True)
+    branch_address = models.CharField(max_length=500, null=True, blank=True)
+    
+    date_added = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.branch_location
 
 # 2. SALES_TRANSACTION 
 class SalesTransaction(models.Model):
@@ -58,20 +67,10 @@ class SalesTransaction(models.Model):
     total_amount = models.DecimalField(max_digits=8, decimal_places=2)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     notes = models.TextField(blank=True, null=True)
+    branch = models.ForeignKey(ClinicBranch, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f"TXN-{self.transaction_id}"
-    
-# 15. BRANCH
-class ClinicBranch(models.Model):
-    branch_id = models.AutoField(primary_key=True) 
-    branch_location = models.CharField(max_length=255, unique=True)
-    branch_address = models.CharField(max_length=500, null=True, blank=True)
-    
-    date_added = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.branch_location
 
 # 6. EMPLOYEE PROFILE (Replaces Account)
 class EmployeeProfile(models.Model):

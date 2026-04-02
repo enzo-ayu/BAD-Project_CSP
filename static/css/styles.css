@@ -243,7 +243,7 @@ table.table > thead > tr > th {
 /* Search box */
 .patient-db-search-form {
     position: relative;
-    width: 1000px;     /* <- adjust na lang if ever */
+    width: 500px;     /* <- adjust na lang if ever */
     max-width: 100%;
     margin: 0;
 }
@@ -297,7 +297,7 @@ table.patient-db-table > thead > tr > th {
 
 .patient-db-table tbody td {
     background-color: #ffffff !important;
-    color: #8f8b91 !important;         
+    color: #000 !important;         
     border-bottom: 1px solid #ece7eb !important;
 }
 

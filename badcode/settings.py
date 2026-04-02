@@ -45,6 +45,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'clinic.context_processors.branches',
             ],
         },
     },
@@ -117,8 +118,8 @@ DatabaseFeatures.can_return_columns_from_insert = property(lambda self: False)
 
 # badcode/settings.py
 
-# Redirect to the patient database after a successful login
-LOGIN_REDIRECT_URL = 'patient_db' 
+# Redirect to the sales database after a successful login
+LOGIN_REDIRECT_URL = 'sales_db' 
 
 # Redirect back to the login page after logging out
 LOGOUT_REDIRECT_URL = 'login'

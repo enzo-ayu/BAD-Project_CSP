@@ -32,6 +32,19 @@
     </style>
 </head>
 
+<script>
+    function switchBranch(branchId) {
+        fetch("{% url 'set_branch_session' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ branch_id: branchId })  
+        }).then(() => location.reload());
+    }
+</script>
+
 <body id="body">
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <div class="container-fluid px-4">
@@ -43,6 +56,26 @@
 
             <div class="d-flex align-items-center gap-3">
                 {% if request.user.is_authenticated %}
+                    <!-- Branch selector: only visible to Owners -->
+                    {% for group in request.user.groups.all %}
+                    {% if group.name == 'Owner' %}
+                    <form method="GET" action="" id="branchSwitchForm" class="m-0">
+                        <select name="branch_view" class="form-select form-select-sm text-dark border-0"
+                                style="background-color: #fff3f9; min-width: 160px; cursor: pointer;"
+                                onchange="switchBranch(this.value)">
+                            <option value="" {% if not request.session.selected_branch %}selected{% endif %}>
+                                All Branches
+                            </option>
+                            {% for branch in all_branches %}
+                                <option value="{{ branch.branch_id }}"
+                                    {% if request.session.selected_branch == branch.branch_id|stringformat:"s" %}selected{% endif %}>
+                                    {{ branch.branch_location }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    {% endif %}
+                    {% endfor %}
                 
                     <span class="text-light">
                         {{ request.user.username }}

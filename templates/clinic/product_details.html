@@ -6,12 +6,9 @@
 
         <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
             <div>
-                <a href="{% url 'producttreatment_db' %}?{{ query_string }}" class="text-decoration-none text-muted mb-2 d-inline-block">← Back to Products</a>
+                <a href="{% url 'producttreatment_db' %}?{{ query_string }}" class="text-decoration-none text-muted mb-2 d-inline-block">← Back</a>
                 <h3 class="fw-bold mb-1" style="color:#CE548D;">{{ product.product_name }}</h3>
                 <span class="badge bg-secondary">{{ product.product_type }}</span>
-            </div>
-            <div class="mt-4">
-                <a href="{% url 'product_update' product.product_id %}?{{ query_string }}" class="btn btn-primary px-4">Edit Product</a>
             </div>
         </div>
 

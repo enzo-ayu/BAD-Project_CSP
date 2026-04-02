@@ -32,9 +32,32 @@
     </div>
 
 
-    <!-- RIGHT SIDE : CHARGESLIP HISTORY -->
+    <!-- RIGHT SIDE -->
     <div class="col-md-8">
 
+        <!-- ✅ NEW: CONSOLIDATED NOTES -->
+        <h4>Patient Notes</h4>
+
+        <div class="card shadow-sm p-3 mb-4" style="max-height: 250px; overflow-y: auto;">
+            
+            {% if all_notes %}
+                <ul class="mb-0">
+                    {% for note in all_notes %}
+                        <li>
+                            <strong>#{{ note.transaction_id }}</strong> 
+                            ({{ note.transaction_date|date:"M d, Y" }}): 
+                            {{ note.notes }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted mb-0">No notes available.</p>
+            {% endif %}
+
+        </div>
+
+
+        <!-- EXISTING: CHARGESLIP HISTORY -->
         <h4>Chargeslip History</h4>
 
         {% for txn in transactions %}

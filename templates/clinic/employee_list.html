@@ -14,7 +14,7 @@
 
 <div class="d-flex align-items-center mb-3 gap-4">
     <div class="d-flex align-items-center gap-3 flex-shrink-0">
-        <h2 class="mb-0 fw-bold text-nowrap" style="color: #CE548D;">Employee Directory</h2>
+        <h2 class="mb-0 fw-bold text-nowrap" style="color: #CE548D;">Employee List</h2>
 
         <button type="button" onclick="openModal()" class="btn text-white text-nowrap" style="background-color: #CE548D;">
             + Add Employee
@@ -71,10 +71,10 @@
 <table class="table table-bordered bg-white sales-db-table">
     <thead>
         <tr>
-            <th>Role</th>
-            <th>Username</th>
-            <th>Branch</th>
+            <th>Account Type</th>
+            <th>Account Name</th>
             <th>Status</th>
+            <th>Branch</th>
             <th></th> 
         </tr>
     </thead>
@@ -83,20 +83,25 @@
         <tr>
             <td>
                 {% for group in employee.groups.all %}
-                    <span class="badge" style="background-color: #f0cadd; color: #CE548D; border: 1px solid #CE548D;">
+                    <span class="badge
+                        {% if group.name == 'Owner' %}
+                            bg-dark
+                        {% elif group.name == 'Aesthetician' %}
+                            bg-secondary
+                        {% elif group.name == 'Sales' %}
+                            bg-light text-dark
+                        {% else %}
+                            bg-secondary
+                        {% endif %}
+                    ">
                         {{ group.name }}
                     </span>
                 {% empty %}
                     <span class="badge bg-secondary">No Role Assigned</span>
                 {% endfor %}
             </td>
-            <td class="fw-bold">{{ employee.username }}</td>
-            <td>
-                {% if employee.employeeprofile.branch %}
-                    {{ employee.employeeprofile.branch.branch_location }}
-                {% else %}
-                    <span class="text-muted fst-italic">Unassigned</span>
-                {% endif %}
+            <td class="fw-normal">
+                {{ employee.first_name }}
             </td>
             <td>
                 {% if employee.is_active %}
@@ -106,15 +111,25 @@
                 {% endif %}
             </td>
             <td>
+                {% if employee.employeeprofile.branch %}
+                    {{ employee.employeeprofile.branch.branch_location }}
+                {% elif employee.employeeprofile.all_branches %}
+                    All Branches
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>
                 <div class="d-flex gap-2">
                     <a href="{% url 'employee_details' employee.id %}" class="btn btn-info btn-sm text-white">Details</a>
                     <button type="button" class="btn btn-warning btn-sm text-white"
                         data-id="{{ employee.id }}"
                         data-username="{{ employee.username }}"
                         data-active="{{ employee.is_active }}"
-                        data-branch="{% if employee.employeeprofile.branch %}{{ employee.employeeprofile.branch.branch_id }}{% endif %}"
                         data-role="{% for group in employee.groups.all %}{{ group.name }}{% endfor %}"
                         data-fullname="{{ employee.first_name }}"
+                        data-date="{{ employee.date_joined|date:'Y-m-d' }}"
+                        data-branch="{% if employee.employeeprofile.branch %}{{ employee.employeeprofile.branch.branch_id }}{% endif %}"
                         onclick="openUpdateModal(this)">
                         Update
                     </button>
@@ -123,7 +138,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="5" class="text-center py-4">No employees found.</td>
+            <td colspan="4" class="text-center py-4">No employees found.</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -144,78 +159,78 @@
             {% csrf_token %}
 
             <div class="row g-4">
+
+                <!-- Account ID -->
                 <div class="col-md-6">
-                    <label class="small fw-bold text-secondary mb-1">Acct ID</label>
-                    <input type="text" class="form-control bg-light text-muted" value="{{ next_account_id }}" disabled>
+                    <label class="small fw-bold text-secondary mb-1">Account ID</label>
+                    <input type="text" class="form-control bg-light" value="{{ next_account_id }}" disabled>
                 </div>
 
+                <!-- Date Created -->
                 <div class="col-md-6">
-                    <label class="small fw-bold text-secondary mb-1">Acct Name <span class="text-danger">*</span></label>
-                    <input type="text" name="full_name" class="form-control" placeholder="First and Last Name" required>
+                    <label class="small fw-bold text-secondary mb-1">Date Created</label>
+                    <input type="text" class="form-control bg-light" value="{% now 'Y-m-d' %}" disabled>
                 </div>
 
+                <!-- Account Type -->
                 <div class="col-md-6">
-                    <label class="small fw-bold text-secondary mb-1">Acct Type (Role) <span class="text-danger">*</span></label>
+                    <label class="small fw-bold text-secondary mb-1">Account Type</label>
                     <select name="role" class="form-select" required>
-                        <option value="" disabled selected>Select Role</option>
+                        <option disabled selected>Select Role</option>
                         {% for group in groups %}
                             <option value="{{ group.name }}">{{ group.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
+                <!-- Account Name -->
                 <div class="col-md-6">
-                    <label class="small fw-bold text-secondary mb-1">Date Created</label>
-                    <input type="text" class="form-control bg-light text-muted" value="{% now 'Y-m-d' %}" disabled>
+                    <label class="small fw-bold text-secondary mb-1">Account Name</label>
+                    <input type="text" name="full_name" class="form-control" required>
                 </div>
 
+                <!-- Username -->
                 <div class="col-md-6">
-                    <label class="small fw-bold text-secondary mb-1">Branch <span class="text-danger">*</span></label>
-                    <select name="branch_id" id="branchSelect" class="form-select" required>
-                        <option value="" disabled selected>Select Branch</option>
-                        {% for branch in branches %}
-                            <option value="{{ branch.branch_id }}" data-id="{{ branch.branch_id }}">
-                                {{ branch.branch_location }}
-                            </option>
-                        {% endfor %}
-                    </select>
+                    <label class="small fw-bold text-secondary mb-1">Username</label>
+                    <input type="text" name="username" class="form-control" required>
                 </div>
 
+                <!-- Status -->
                 <div class="col-md-6">
-                    <label class="small fw-bold text-secondary mb-1">Branch ID</label>
-                    <input type="text" id="branchIdField" class="form-control bg-light text-muted" placeholder="-" disabled>
-                </div>
-
-                <div class="col-md-6">
-                    <label class="small fw-bold text-secondary mb-1">Username <span class="text-danger">*</span></label>
-                    <input type="text" name="username" class="form-control" placeholder="e.g. Anna Banana" required>
-                </div>
-
-                <div class="col-md-6">
-                    <label class="small fw-bold text-secondary mb-1">Status <span class="text-danger">*</span></label>
-                    <select name="is_active" class="form-select" required>
-                        <option value="True" selected>Active</option>
+                    <label class="small fw-bold text-secondary mb-1">Status</label>
+                    <select name="is_active" class="form-select">
+                        <option value="True">Active</option>
                         <option value="False">Inactive</option>
                     </select>
                 </div>
 
-                <div class="col-12">
-                    <label class="small fw-bold text-secondary mb-1">Password <span class="text-danger">*</span></label>
-                    <div class="input-group">
-                        <input type="password" name="password" id="add_password" class="form-control" placeholder="***************" required>
-                        <button class="btn btn-outline-secondary border text-muted" type="button" onclick="togglePassword('add_password', 'add_eye_icon')">
-                            <span id="add_eye_icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                            </span>
-                        </button>
-                    </div>
+                <!-- All Branches -->
+                <div class="col-md-6">
+                    <label class="small fw-bold text-secondary mb-1">All Branches</label><br>
+                    <input type="checkbox" name="all_branches" id="addBranchesCheckbox">
                 </div>
+
+                <!-- Branch -->
+                <div class="col-md-6">
+                    <label class="small fw-bold text-secondary mb-1">Branch Name</label>
+                    <select name="branch_id" id="branchSelect" class="form-select">
+                        <option disabled selected>Select Branch</option>
+                        {% for branch in branches %}
+                            <option value="{{ branch.branch_id }}">{{ branch.branch_location }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Password -->
+                <div class="col-12">
+                    <label class="small fw-bold text-secondary mb-1">Password</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+
             </div>
 
             <div class="d-flex justify-content-end mt-4 pt-3">
-                <button type="button" class="btn text-white px-5 py-2 fw-bold" style="background-color: #2CB3E5; border-radius: 8px;" onclick="document.getElementById('addConfirmModal').style.display='flex'">Confirm</button>                            
+                <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;" onclick="document.getElementById('addConfirmModal').style.display='flex'">Save</button>                            
             </div>
         </form>
     </div>
@@ -237,23 +252,33 @@
             
             <div class="row g-4">
                 <div class="col-md-6">
-                    <label class="small fw-bold text-secondary mb-1">Acct ID</label>
+                    <label class="small fw-bold text-secondary mb-1">Account ID</label>
                     <input type="text" id="update_acct_id" class="form-control bg-light text-muted" disabled>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="small fw-bold text-secondary mb-1">Acct Name <span class="text-danger">*</span></label>
+                    <label class="small fw-bold text-secondary mb-1">Date Created</label>
+                    <input type="text" id="update_date_created" class="form-control bg-light text-muted" disabled>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="small fw-bold text-secondary mb-1">Account Name<span class="text-danger">*</span></label>
                     <input type="text" name="full_name" id="update_full_name" class="form-control" required>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="small fw-bold text-secondary mb-1">Acct Type (Role) <span class="text-danger">*</span></label>
+                    <label class="small fw-bold text-secondary mb-1">Account Type<span class="text-danger">*</span></label>
                     <select name="role" id="update_role" class="form-select" required>
                         <option value="" disabled>Select Role</option>
                         {% for group in groups %}
                             <option value="{{ group.name }}">{{ group.name }}</option>
                         {% endfor %}
                     </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="small fw-bold text-secondary mb-1">All Branches</label><br>
+                    <input type="checkbox" name="all_branches" id="updateBranchesCheckbox">
                 </div>
 
                 <div class="col-md-6">
@@ -283,20 +308,12 @@
             <div class="row align-items-end mt-4 pt-2">
                 <div class="col-md-6">
                     <label class="small fw-bold text-secondary mb-1">Password</label>
-                    <div class="input-group">
-                        <input type="password" name="password" id="update_password" class="form-control" placeholder="Leave blank to keep current password">
-                        <button class="btn btn-outline-secondary border text-muted" type="button" onclick="togglePassword('update_password', 'update_eye_icon')">
-                            <span id="update_eye_icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                            </span>
-                        </button>
-                    </div>
+                    <input type="password" name="new_password" class="form-control mb-2" placeholder="New Password">
+                    <input type="password" name="confirm_password" class="form-control" placeholder="Confirm New Password">
                 </div>
                 
                 <div class="col-md-6 d-flex justify-content-md-end mt-3 mt-md-0">
-                    <button type="button" class="btn text-white px-5 py-2 fw-bold" style="background-color: #2CB3E5; border-radius: 8px;" onclick="document.getElementById('updateConfirmModal').style.display='flex'">Confirm</button>         
+                    <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;" onclick="document.getElementById('updateConfirmModal').style.display='flex'">Save</button>         
                 </div>
             </div>
         </form>
@@ -364,63 +381,54 @@
 </div>
 
 <script>
+    // --- Declare these at the TOP so openUpdateModal can access them ---
+    let updateCheckbox;
+    let updateBranch;
+
+    // --- ADD MODAL ---
     function openModal() {
         document.getElementById('employeeModal').style.display = 'flex';
     }
-
     function closeModal() {
         document.getElementById('employeeModal').style.display = 'none';
     }
 
-    // Optional: Close modal if user clicks outside the white card
-    window.onclick = function(event) {
-        const overlay = document.getElementById('employeeModal');
-        if (event.target === overlay) {
-            closeModal();
-        }
-    }
-
-    // Function to open and populate the Update Modal
+    // --- UPDATE MODAL ---
     function openUpdateModal(buttonElement) {
-        const empId = buttonElement.getAttribute('data-id');
-        const username = buttonElement.getAttribute('data-username');
-        const isActive = buttonElement.getAttribute('data-active');
-        const branchId = buttonElement.getAttribute('data-branch');
-        const role = buttonElement.getAttribute('data-role');
-        
-        // --> NEW: Grab the full name from the button
-        const fullName = buttonElement.getAttribute('data-fullname') || ''; 
-        
-        document.getElementById('update_acct_id').value = empId;
-        document.getElementById('update_username').value = username;
-        
-        // --> NEW: Populate the full name field in the modal
-        document.getElementById('update_full_name').value = fullName.trim();
-        
-        // Always reset the password field and type when opening the modal
-        const pwField = document.getElementById('update_password');
-        pwField.value = '';
-        pwField.type = 'password';
-        
-        // Reset the update icon to the standard eye
-        document.getElementById('update_eye_icon').innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>
-            </svg>
-        `;
-        
-        document.getElementById('update_status').value = isActive;
-        
-        if(branchId) {
-            document.getElementById('update_branch').value = branchId;
+        const empId       = buttonElement.getAttribute('data-id');
+        const username    = buttonElement.getAttribute('data-username');
+        const isActive    = buttonElement.getAttribute('data-active');
+        const branchId    = buttonElement.getAttribute('data-branch');
+        const role        = buttonElement.getAttribute('data-role');
+        const dateCreated = buttonElement.getAttribute('data-date');
+        const fullName    = buttonElement.getAttribute('data-fullname') || '';
+        const allBranches = buttonElement.getAttribute('data-allbranches') === 'true';
+
+        document.getElementById('update_acct_id').value      = empId;
+        document.getElementById('update_username').value     = username;
+        document.getElementById('update_full_name').value    = fullName.trim();
+        document.getElementById('update_date_created').value = dateCreated;
+        document.getElementById('update_status').value       = isActive;
+
+        if (role)     document.getElementById('update_role').value   = role;
+        if (branchId) document.getElementById('update_branch').value = branchId;
+
+        // Owner auto-check or restore from data attribute
+        const isOwnerRole = role === 'Owner';
+        if (isOwnerRole) {
+            updateCheckbox.checked = true;
+            updateBranch.disabled  = true;
+            updateBranch.value     = '';
+        } else {
+            updateCheckbox.checked = allBranches;
+            updateBranch.disabled  = allBranches;
+            if (allBranches) updateBranch.value = '';
         }
 
-        if(role) {
-            document.getElementById('update_role').value = role;
-        }
+        // Clear password fields
+        document.querySelectorAll('#updateEmployeeModal input[type="password"]').forEach(i => i.value = '');
 
-        const updateForm = document.getElementById('updateEmployeeForm');
-        updateForm.action = `/employees/${empId}/update/`;
+        document.getElementById('updateEmployeeForm').action = `/employees/${empId}/update/`;
         document.getElementById('updateEmployeeModal').style.display = 'flex';
     }
 
@@ -428,40 +436,55 @@
         document.getElementById('updateEmployeeModal').style.display = 'none';
     }
 
-    // Bulletproof Password Toggle
-    function togglePassword(inputId, iconId) {
-        const passwordInput = document.getElementById(inputId);
-        const iconSpan = document.getElementById(iconId);
-        
-        if (passwordInput.type === 'password') {
-            passwordInput.type = 'text';
-            iconSpan.innerHTML = `
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                </svg>
-            `;
-        } else {
-            passwordInput.type = 'password';
-            iconSpan.innerHTML = `
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>
-                </svg>
-            `;
-        }
+    // --- CLOSE ON OUTSIDE CLICK ---
+    window.onclick = function(event) {
+        if (event.target === document.getElementById('employeeModal'))       closeModal();
+        if (event.target === document.getElementById('updateEmployeeModal')) closeUpdateModal();
     }
 
-    // AUTO-POPULATE BRANCH ID FIELD WHEN A BRANCH IS SELECTED
-    document.addEventListener('DOMContentLoaded', function() {
-        const branchSelect = document.getElementById('branchSelect');
-        const branchIdField = document.getElementById('branchIdField');
+    // --- ALL BRANCHES + ROLE LOGIC ---
+    document.addEventListener('DOMContentLoaded', function () {
 
-        if (branchSelect && branchIdField) {
-            branchSelect.addEventListener('change', function() {
-                // The select element's 'value' attribute holds the branch_id
-                branchIdField.value = this.value;
+        const addCheckbox  = document.getElementById('addBranchesCheckbox');
+        const addBranch    = document.getElementById('branchSelect');
+
+        // Assign to the outer-scope variables declared above
+        updateCheckbox = document.getElementById('updateBranchesCheckbox');
+        updateBranch   = document.getElementById('update_branch');
+
+        // ADD checkbox
+        addCheckbox.addEventListener('change', function () {
+            addBranch.disabled = this.checked;
+            if (this.checked) addBranch.value = '';
+        });
+
+        // UPDATE checkbox
+        updateCheckbox.addEventListener('change', function () {
+            updateBranch.disabled = this.checked;
+            if (this.checked) updateBranch.value = '';
+        });
+
+        // ADD role → auto-check Owner
+        const addRoleSelect = document.querySelector('#addEmployeeForm select[name="role"]');
+        if (addRoleSelect) {
+            addRoleSelect.addEventListener('change', function () {
+                const isOwner = this.value === 'Owner';
+                addCheckbox.checked = isOwner;
+                addBranch.disabled  = isOwner;
+                if (isOwner) addBranch.value = '';
             });
         }
+
+        // UPDATE role → auto-check Owner
+        const updateRoleSelect = document.getElementById('update_role');
+        if (updateRoleSelect) {
+            updateRoleSelect.addEventListener('change', function () {
+                const isOwner = this.value === 'Owner';
+                updateCheckbox.checked = isOwner;
+                updateBranch.disabled  = isOwner;
+                if (isOwner) updateBranch.value = '';
+            });
+        }  // ← this closing brace was missing before
     });
 </script>
 
