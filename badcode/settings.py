@@ -119,7 +119,7 @@ DatabaseFeatures.can_return_columns_from_insert = property(lambda self: False)
 # badcode/settings.py
 
 # Redirect to the sales database after a successful login
-LOGIN_REDIRECT_URL = 'sales_db' 
+LOGIN_REDIRECT_URL = 'patient_db' 
 
 # Redirect back to the login page after logging out
 LOGOUT_REDIRECT_URL = 'login'
