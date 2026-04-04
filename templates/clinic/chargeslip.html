@@ -24,6 +24,23 @@
     .select2-container .select2-selection--single .select2-selection__arrow {
         height: 38px !important;
     }
+
+    .select2-container--default .select2-selection--single {
+        height: 38px !important;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px !important;
+        padding-left: 10px;
+        color: #212529;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 38px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__placeholder {
+        color: #6c757d;
+    }
 </style>
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -209,16 +226,34 @@
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('chargeslipForm');
     
-    // 1. Hook into the submit event for validation
+    // 1. Validation on submit
     form.addEventListener('submit', function(e) {
         if (!validateInputs()) {
             e.preventDefault();
-            e.stopImmediatePropagation(); // This prevents setupGlobalConfirmation from triggering the modal
+            e.stopImmediatePropagation();
             return;
         }
     });
 
-    // 2. Initialize the Global Helper from base.html
+    // 2. Initialize Select2 on existing patient dropdown with fill logic bound
+    $('#existingPatient').select2({
+        placeholder: 'Choose existing patient name...',
+        allowClear: true,
+        width: '100%'
+    }).on('change', function() {
+        const sel = document.getElementById('existingPatient');
+        const s = sel.options[sel.selectedIndex];
+        if (!s || !s.value) return;
+        document.querySelector("input[name='last_name']").value    = s.dataset.last     || "";
+        document.querySelector("input[name='first_name']").value   = s.dataset.first    || "";
+        document.querySelector("input[name='middle_name']").value  = s.dataset.middle   || "";
+        document.querySelector("input[name='address']").value      = s.dataset.address  || "";
+        document.querySelector("input[name='contact']").value      = s.dataset.contact  || "";
+        document.querySelector("input[name='birthday']").value     = s.dataset.birthday || "";
+        document.querySelector("select[name='sex']").value         = s.dataset.sex      || "";
+    });
+
+    // 3. Global confirmation modal
     setupGlobalConfirmation(
         'chargeslipForm', 
         'Confirm Charge Slip', 
@@ -255,23 +290,13 @@ document.getElementById("newPatient").addEventListener("change", function () {
     if (this.checked) {
         fields.forEach(f => { f.disabled = false; f.value = ""; });
         existingSelect.disabled = true;
+        $('#existingPatient').val(null).trigger('change');  // ← clears Select2
         document.getElementById("isNewPatientInput").value = "true";
     } else {
         fields.forEach(f => f.disabled = true);
         existingSelect.disabled = false;
         document.getElementById("isNewPatientInput").value = "false";
     }
-});
-
-document.getElementById("existingPatient").addEventListener("change", function () {
-    let s = this.options[this.selectedIndex];
-    document.querySelector("input[name='last_name']").value = s.dataset.last || "";
-    document.querySelector("input[name='first_name']").value = s.dataset.first || "";
-    document.querySelector("input[name='middle_name']").value = s.dataset.middle || "";
-    document.querySelector("input[name='address']").value = s.dataset.address || "";
-    document.querySelector("input[name='contact']").value = s.dataset.contact || "";
-    document.querySelector("input[name='birthday']").value = s.dataset.birthday || "";
-    document.querySelector("select[name='sex']").value = s.dataset.sex || "";
 });
 
 // ================= DYNAMIC ITEMS =================
@@ -392,13 +417,6 @@ window.setPrice = function(selectElement) {
 
     calculateTotals();
 };
-
-    // ===== NORMAL PRICE SET =====
-    row.querySelector(".id-input").value = selectedId;
-    row.querySelector(".price-input").value =
-        parseFloat(selectElement.value || 0).toFixed(2);
-
-    calculateTotals();
 
 window.calculateTotals = function() {
     let tTotal = 0, pTotal = 0;

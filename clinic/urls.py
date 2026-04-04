@@ -62,6 +62,7 @@ urlpatterns = [
     path('suppliers/', views.supplier_db, name='supplier_db'),
     path('suppliers/<int:supplier_id>/', views.supplier_details, name='supplier_details'),
     path('suppliers/<int:supplier_id>/update/', views.supplier_update, name='supplier_update'), 
+    path('suppliers/<int:supplier_id>/delete/', views.supplier_delete, name='supplier_delete'),
     
     # ── Branches ──
     path('branches/', views.branch_list, name='branch_list'),

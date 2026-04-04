@@ -280,10 +280,15 @@
                     </div>
 
                     <div class="d-flex justify-content-between">
-                        <button type="button" class="btn btn-danger"
-                                onclick="closeUpdateShipmentModal(); openDeleteShipmentModal(document.getElementById('upd_record_id').value, document.getElementById('upd_productSelect').options[document.getElementById('upd_productSelect').selectedIndex].text)">
-                            Delete
-                        </button>
+                        {% if user_is_owner %}
+                            <button type="button" class="btn btn-danger"
+                                    onclick="closeUpdateShipmentModal(); openDeleteShipmentModal(document.getElementById('upd_record_id').value, document.getElementById('upd_productSelect').options[document.getElementById('upd_productSelect').selectedIndex].text)">
+                                Delete
+                            </button>
+                        {% else %}
+                            <button type="button" class="btn btn-danger" disabled
+                                    style="opacity:0.5; cursor:not-allowed;">Delete</button>
+                        {% endif %}
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-secondary" onclick="closeUpdateShipmentModal()">Cancel</button>
                             <button type="button" class="btn text-white" style="background-color:#CE548D;"

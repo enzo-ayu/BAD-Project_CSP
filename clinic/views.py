@@ -253,8 +253,8 @@ def chargeslip(request):
                 sale.total_amount = total_products + total_treatments
                 sale.save()
 
-            messages.success(request, 'Charge slip saved successfully.')
-            return redirect('patient_db')
+            messages.success(request, 'Chargeslip saved successfully.')
+            return redirect('sales_db')
 
         except Exception as e:
             messages.error(request, f'An error occurred while saving: {str(e)}')
@@ -793,19 +793,16 @@ def inventory_update(request, record_id):
 
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician'])
+@role_required(['Owner', 'Aesthetician', 'Sales'])  
 def inventory_delete(request, record_id):
+    if not is_owner(request.user):
+        messages.error(request, "You are not authorized to access this page.")
+        referer = request.META.get('HTTP_REFERER')
+        return redirect(referer if referer else 'inventory_db')
+
     if request.method == 'POST':
         from .models import BranchProduct
         shipment = get_object_or_404(InventoryShipment, pk=record_id)
-
-        # Non-owners can only delete shipments from their own branch
-        if not is_owner(request.user):
-            user_branch = get_user_branch(request)
-            if user_branch and shipment.branch != user_branch:
-                messages.error(request, "You are not authorized to delete this shipment.")
-                return redirect('inventory_db')
-
         try:
             with transaction.atomic():
                 for received in shipment.received_products.all():
@@ -1260,7 +1257,8 @@ def supplier_db(request):
         
     return render(request, 'clinic/supplier_db.html', {
         'suppliers': suppliers.order_by('supplier_name'),
-        'query': query
+        'query': query,
+        'user_is_owner': is_owner(request.user),
     })
 
 @never_cache
@@ -1543,7 +1541,7 @@ def delete_branch(request, branch_id):
         branch = get_object_or_404(ClinicBranch, branch_id=branch_id)
         location_name = branch.branch_location
         branch.delete()
-        messages.success(request, f'Branch "{location_name}" was permanently deleted.')
+        messages.success(request, f'Branch "{location_name}" was deleted.')
     return redirect('branch_list')
 
 # ─────────────────────────────────────────────

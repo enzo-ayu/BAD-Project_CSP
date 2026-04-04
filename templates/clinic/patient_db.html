@@ -168,7 +168,7 @@
                 </div>
 
                 <div class="d-flex justify-content-between mt-5 border-top pt-4">
-                    {% if user_is_owner %}
+                    {% if user_is_owner or user_is_aesthetician %}
                         <button type="button" class="btn btn-danger px-4"
                                 onclick="closeUpdatePatientModal(); openDeletePatientModal()">
                             Delete 

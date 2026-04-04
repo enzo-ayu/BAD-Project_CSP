@@ -39,20 +39,11 @@ class Product(models.Model):
     def __str__(self):
         return self.product_name
 
-# # 5. CLINIC_BRANCH 
-# class ClinicBranch(models.Model):
-#     branch_id = models.AutoField(primary_key=True) # INT(1) 
-#     branch_location = models.CharField(max_length=100)
-#     branch_address = models.CharField(max_length=300)
-
-#     def __str__(self):
-#         return self.branch_location
+# 5. CLINIC_BRANCH 
 class ClinicBranch(models.Model):
     branch_id = models.AutoField(primary_key=True) 
     branch_location = models.CharField(max_length=255, unique=True)
     branch_address = models.CharField(max_length=500, null=True, blank=True)
-    
-    date_added = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.branch_location
@@ -151,15 +142,6 @@ class TransactionItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
     treatment = models.ForeignKey(Treatment, on_delete=models.SET_NULL, null=True, blank=True)
     transaction = models.ForeignKey(SalesTransaction, on_delete=models.CASCADE)
-
-# 14. PATIENT_VISIT (Associative) 
-class PatientVisit(models.Model):
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    branch = models.ForeignKey(ClinicBranch, on_delete=models.CASCADE)
-    patient_notes = models.TextField(blank=True, null=True)
-    
-    class Meta:
-        unique_together = (('patient', 'branch'),)
 
 
 
