@@ -493,6 +493,8 @@ def sales_update(request, transaction_id):
     mode_of_payment = request.POST.get('mode_of_payment', '').strip()
     product_ids = [p for p in request.POST.getlist('product_ids') if p]
     treatment_ids = [t for t in request.POST.getlist('treatment_ids') if t]
+    product_qtys = request.POST.getlist('product_qtys')
+    treatment_qtys = request.POST.getlist('treatment_qtys')
 
     if not transaction_date:
         errors.append('Transaction date is required.')
@@ -501,9 +503,19 @@ def sales_update(request, transaction_id):
     if not product_ids and not treatment_ids:
         errors.append('Please add at least one product or treatment.')
 
+    for qty in product_qtys + treatment_qtys:
+        try:
+            if int(qty) < 1:
+                errors.append('Invalid Quantity Value: quantities must be at least 1.')
+                break
+        except (ValueError, TypeError):
+            errors.append('Invalid Quantity Value: please enter a valid number.')
+            break
+
     if errors:
         for error in errors:
             messages.error(request, error)
+        request.session['reopen_sale_modal'] = str(transaction_id)
         return redirect('sales_db')
 
     try:
@@ -582,8 +594,15 @@ def sales_update(request, transaction_id):
 
     except Exception as e:
         messages.error(request, f'An error occurred while saving: {str(e)}')
+        request.session['reopen_sale_modal'] = str(transaction_id)
 
     return redirect('sales_db')
+
+@login_required(login_url='login')
+def clear_reopen_session(request):
+    if request.method == 'POST':
+        request.session.pop('reopen_sale_modal', None)
+    return JsonResponse({'status': 'ok'}) 
     
 @never_cache
 @login_required(login_url='login')

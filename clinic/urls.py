@@ -13,6 +13,7 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='clinic/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('set-branch/', views.set_branch_session, name='set_branch_session'),
+    path('clear-reopen-session/', views.clear_reopen_session, name='clear_reopen_session'),
     
     # ── Employees ──
     path('employees/', views.employee_list, name='employee_list'),

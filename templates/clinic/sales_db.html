@@ -168,6 +168,7 @@ flatpickr("#datePicker", {
                    class="text-decoration-none text-muted small">← Back</a>
                 <h4 class="fw-bold mt-2" style="color:#CE548D;">Update Transaction</h4>
             </div>
+            <div id="saleModalErrors" class="mb-3" style="display:none;"></div>
 
             <form method="POST" action="" id="updateSaleForm">
                 {% csrf_token %}
@@ -180,8 +181,9 @@ flatpickr("#datePicker", {
                             <input class="form-control bg-white" id="upd_sale_trans_id_display" disabled>
                         </div>
                         <div class="mb-3">
-                            <label class="small fw-bold text-secondary">Transaction Date <span class="text-danger">*</span></label>
-                            <input type="date" name="transaction_date" id="upd_sale_date" class="form-control bg-white" required>
+                            <label class="small fw-bold text-secondary">Transaction Date</label>
+                            <input type="date" name="transaction_date" id="upd_sale_date" class="form-control bg-white" disabled>
+                            <input type="hidden" name="transaction_date" id="upd_sale_date_hidden">
                         </div>
                         <div class="mb-3">
                             <label class="small fw-bold text-secondary">Mode of Payment <span class="text-danger">*</span></label>
@@ -259,7 +261,7 @@ flatpickr("#datePicker", {
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-secondary" onclick="closeUpdateSaleModal()">Cancel</button>
                         <button type="button" class="btn text-white px-3" style="background-color:#CE548D;"
-                                onclick="document.getElementById('updateSaleConfirm').style.display='flex'">
+                                onclick="validateAndConfirmSale()">
                             Save
                         </button>
                     </div>
@@ -463,7 +465,8 @@ function openUpdateSaleModal(transactionId, date, payment) {
     document.getElementById('upd_sale_product_section').innerHTML = '';
     document.getElementById('upd_sale_treatment_section').innerHTML = '';
     document.getElementById('upd_sale_trans_id_display').value = transactionId;
-    document.getElementById('upd_sale_date').value = date;
+    document.getElementById('upd_sale_date').value        = date;
+    document.getElementById('upd_sale_date_hidden').value = date;  // ← hidden field posts the value
     document.getElementById('upd_sale_payment').value = payment;
 
     const data = SALE_ITEMS[transactionId];
@@ -478,9 +481,55 @@ function openUpdateSaleModal(transactionId, date, payment) {
     recalcSaleTotals();
 }
 
+function validateAndConfirmSale() {
+    const errorContainer = document.getElementById('saleModalErrors');
+    const errors = [];
+
+    const payment = document.getElementById('upd_sale_payment').value;
+    if (!payment) {
+        errors.push('Please select a mode of payment.');
+    }
+
+    const productRows  = document.querySelectorAll('.upd-product-row');
+    const treatmentRows = document.querySelectorAll('.upd-treatment-row');
+    if (productRows.length === 0 && treatmentRows.length === 0) {
+        errors.push('Please add at least one product or treatment.');
+    }
+
+    let hasInvalidQty = false;
+    document.querySelectorAll('.upd-product-qty, .upd-treatment-qty').forEach(input => {
+        const val = parseInt(input.value);
+        if (isNaN(val) || val < 1) hasInvalidQty = true;
+    });
+    if (hasInvalidQty) {
+        errors.push('Invalid Quantity Value: all quantities must be at least 1.');
+    }
+
+    if (errors.length > 0) {
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+        document.querySelector('#updateSaleOverlay > div').scrollTop = 0;
+        return;
+    }
+
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
+    document.getElementById('updateSaleConfirm').style.display = 'flex';
+}
+
 function closeUpdateSaleModal() {
     document.getElementById('updateSaleOverlay').style.display = 'none';
     document.getElementById('updateSaleConfirm').style.display = 'none';
+    const errorContainer = document.getElementById('saleModalErrors');
+    if (errorContainer) {
+        errorContainer.style.display = 'none';
+        errorContainer.innerHTML = '';
+    }
 }
 
 function openDeleteSaleModal() {
@@ -501,6 +550,17 @@ document.addEventListener('DOMContentLoaded', function() {
             recalcSaleTotals();
         }
     });
+
+    const reopenId = "{{ request.session.reopen_sale_modal|default:'' }}";
+    if (reopenId && document.querySelector('.alert-danger')) {
+        // Find the sale's date and payment from SALE_ITEMS or the table
+        const row = document.querySelector(`button[onclick*="openUpdateSaleModal('${reopenId}'"]`);
+        if (row) {
+            row.click();
+        }
+        // Clear the session key after use
+        fetch("{% url 'clear_reopen_session' %}", { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token }}'} });
+    }
 });
 
 window.addEventListener('click', function(e) {
