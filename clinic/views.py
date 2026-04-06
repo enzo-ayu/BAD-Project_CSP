@@ -1,14 +1,21 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from django.db.models import Q
+from django.db import models
+from django.contrib.auth.models import User
 from django.shortcuts import redirect
 from django.contrib import messages
 from datetime import date, datetime
 from django.urls import reverse
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import authenticate, login, logout
+from django.utils import timezone
+from datetime import timedelta
+from django.contrib.auth.models import Group
 from django.views.decorators.cache import never_cache
 from functools import wraps
+from .models import UserLockout
 from django.http import JsonResponse
 import json
 
@@ -66,6 +73,7 @@ def get_user_branch(request):
         return profile.branch or ClinicBranch.objects.first()
     except:
         return ClinicBranch.objects.first()
+        
 # ─────────────────────────────────────────────
 #  NAVBAR (for owner)
 # ─────────────────────────────────────────────
@@ -1730,3 +1738,88 @@ def export_sales_csv(request):
             f"{t.total_amount:.2f}"
         ])
     return response
+
+def custom_login_view(request):
+    # ─── 0. REDIRECT IF ALREADY LOGGED IN ───
+    if request.user.is_authenticated:
+        return redirect('sales_db')
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        # ─── 1. BROWSER LOCKOUT CHECK ───
+        lock_until_ts = request.session.get('lock_until')
+        if lock_until_ts and timezone.now().timestamp() < lock_until_ts:
+            return render(request, 'clinic/login.html', {
+                'error': 'Account locked due to too many failed attempts (Browser). Please try again in 1 minute.'
+            })
+
+        # ─── 2. DATABASE LOCKOUT CHECK ───
+        try:
+            user = User.objects.get(username=username)
+            lockout, created = UserLockout.objects.get_or_create(user=user)
+            if lockout.lock_until and lockout.lock_until > timezone.now():
+                return render(request, 'clinic/login.html', {
+                    'error': 'Account locked due to too many failed attempts (Account). Please try again in 1 minute.'
+                })
+        except User.DoesNotExist:
+            user = None
+            lockout = None
+
+        # ─── 3. AUTHENTICATION ───
+        print(f"DEBUG: Attempting login for username: {username}")
+        auth_user = authenticate(request, username=username, password=password)
+
+        if auth_user is not None:
+            print("DEBUG: Authentication successful!")
+            # Reset everything on success
+            request.session['failed_attempts'] = 0
+            request.session['lock_until'] = None
+            
+            if lockout:
+                lockout.failed_attempts = 0
+                lockout.lock_until = None
+                lockout.save()
+            
+            # CRITICAL: This is the part that actually logs you in!
+            login(request, auth_user)
+            return redirect('sales_db') 
+            
+        else:
+            # ─── 4. FAILED ATTEMPT LOGIC ───
+            exists = User.objects.filter(username=username).exists()
+            print(f"DEBUG: Authentication failed. User exists in DB? {exists}")
+            
+            failed_attempts = request.session.get('failed_attempts', 0) + 1
+            request.session['failed_attempts'] = failed_attempts
+            
+            if failed_attempts >= 4:
+                lock_time = timezone.now() + timedelta(minutes=1)
+                request.session['lock_until'] = lock_time.timestamp()
+                
+                if lockout:
+                    lockout.failed_attempts = failed_attempts
+                    lockout.lock_until = lock_time
+                    lockout.save()
+
+                return render(request, 'clinic/login.html', {
+                    'error': 'Account locked due to too many failed attempts. Please try again in 1 minute.'
+                })
+
+            if lockout:
+                lockout.failed_attempts = failed_attempts
+                lockout.save()
+
+            attempts_left = 4 - failed_attempts
+            error_message = f'Invalid username or password. You have {attempts_left} attempt(s) remaining.'
+            return render(request, 'clinic/login.html', {'error': error_message})
+
+    # ─── 5. DEFAULT GET REQUEST ───
+    return render(request, 'clinic/login.html')
+
+def custom_logout_view(request):
+    # This logs the user out and clears their session
+    logout(request) 
+    # This sends them back to your custom login page
+    return redirect('login')

@@ -63,6 +63,7 @@ class SalesTransaction(models.Model):
     def __str__(self):
         return f"TXN-{self.transaction_id}"
 
+
 # 6. EMPLOYEE PROFILE (Replaces Account)
 class EmployeeProfile(models.Model):
     # This links your clinic data to Django's secure login system
@@ -143,6 +144,15 @@ class TransactionItem(models.Model):
     treatment = models.ForeignKey(Treatment, on_delete=models.SET_NULL, null=True, blank=True)
     transaction = models.ForeignKey(SalesTransaction, on_delete=models.CASCADE)
 
+#14 LOGIN RESTRICTIONS
+class UserLockout(models.Model):
+    # Links directly to Django's auth_user table
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='lockout_profile')
+    failed_attempts = models.IntegerField(default=0)
+    lock_until = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Lockout status for {self.user.username}"
 
 
     
