@@ -1267,19 +1267,29 @@ def supplier_db(request):
         number = request.POST.get('supplier_contact_number', '').strip()
         address = request.POST.get('supplier_address', '').strip()
 
-        # Basic validation to ensure required fields aren't empty
-        if name and person:
-            Supplier.objects.create(
-                supplier_name=name,
-                contact_person=person,
-                supplier_contact_number=number,
-                supplier_address=address
-            )
-            messages.success(request, f'Supplier "{name}" added successfully.')
-        else:
+        # 1. Check if required fields are missing
+        if not name or not person:
             messages.error(request, 'Supplier Name and Contact Person are required.')
-            
-        # Refresh the page to show the new supplier
+            return redirect('supplier_db')
+
+        # 2. CHECK FOR CHARACTER LENGTHS (Matched to your models.py)
+        if len(name) > 150 or len(person) > 100 or len(number) > 11 or len(address) > 300:
+            messages.error(request, 'Some fields exceed maximum character length.')
+            return redirect('supplier_db')
+
+        # 3. CHECK FOR DUPLICATES (Case-insensitive)
+        if Supplier.objects.filter(supplier_name__iexact=name).exists():
+            messages.error(request, 'Supplier already exists.')
+            return redirect('supplier_db')
+
+        # 4. If all clear, create the supplier
+        Supplier.objects.create(
+            supplier_name=name,
+            contact_person=person,
+            supplier_contact_number=number,
+            supplier_address=address
+        )
+        messages.success(request, f'Supplier "{name}" added successfully.')
         return redirect('supplier_db')
 
     # ── 2. DISPLAY THE PAGE & SEARCH (GET REQUEST) ──
@@ -1289,7 +1299,7 @@ def supplier_db(request):
     if query:
         suppliers = suppliers.filter(
             Q(supplier_name__icontains=query) |
-            Q(contact_person__icontains=query) # Swapped email for contact_person to match your model better!
+            Q(contact_person__icontains=query) 
         )
         
     return render(request, 'clinic/supplier_db.html', {
@@ -1325,17 +1335,37 @@ def supplier_update(request, supplier_id):
         new_number = request.POST.get('supplier_contact_number', '').strip()
         new_address = request.POST.get('supplier_address', '').strip()
         
-        # Simple validation just to be safe
-        if new_name and new_person:
-            supplier.supplier_name = new_name
-            supplier.contact_person = new_person
-            supplier.supplier_contact_number = new_number
-            supplier.supplier_address = new_address
-            supplier.save()
-            
-            messages.success(request, f'Supplier "{supplier.supplier_name}" updated successfully.')
-        else:
+        # 1. Check for empty required fields
+        if not new_name or not new_person:
             messages.error(request, 'Supplier Name and Contact Person cannot be empty.')
+            return redirect('supplier_db')
+            
+        # 2. CHECK SPECIFICALLY FOR INVALID CONTACT NUMBER LENGTH
+        # This checks if it's over 11 characters. 
+        # (Change "> 11" to "!= 11" if it must be EXACTLY 11 digits)
+        if new_number and len(new_number) > 11:
+            messages.error(request, 'Invalid Supplier Contact Number Length.')
+            return redirect('supplier_db')
+
+        # 3. Check character lengths for the remaining fields to match database limits
+        if len(new_name) > 150 or len(new_person) > 100 or len(new_address) > 300:
+            messages.error(request, 'Some fields exceed maximum character length.')
+            return redirect('supplier_db')
+            
+        # 4. CHECK FOR DUPLICATES
+        # if they only want to update their contact number or address.
+        if Supplier.objects.filter(supplier_name__iexact=new_name).exclude(supplier_id=supplier_id).exists():
+            messages.error(request, 'Supplier already exists.')
+            return redirect('supplier_db')
+            
+        # 5. If validation passes, update and save
+        supplier.supplier_name = new_name
+        supplier.contact_person = new_person
+        supplier.supplier_contact_number = new_number
+        supplier.supplier_address = new_address
+        supplier.save()
+        
+        messages.success(request, f'Supplier "{supplier.supplier_name}" updated successfully.')
             
     return redirect('supplier_db')
 
