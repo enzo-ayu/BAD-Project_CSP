@@ -923,8 +923,18 @@ def producttreatment_db(request):
 
     product_types = Product.objects.values_list('product_type', flat=True).distinct()
     treatment_types = Treatment.objects.values_list('treatment_type', flat=True).distinct()
-    branch = get_user_branch(request)
-
+    if is_owner(request.user):
+            # Owners should look at the dropdown's session value
+            selected_branch = request.session.get('selected_branch')
+            
+            if selected_branch == 'all' or not selected_branch:
+                branch = None  # Triggers your "All Branches" stock sum logic
+            else:
+                # Get the specific branch from the dropdown (using its ID)
+                branch = ClinicBranch.objects.filter(pk=selected_branch).first()
+    else:
+        # Staff members just get their assigned branch
+        branch = get_user_branch(request)
     # ── Stock map: always load ALL branch stocks ──
     # If a specific branch is selected, show that branch's stock
     # Otherwise aggregate across all branches
@@ -1354,7 +1364,14 @@ def employee_list(request):
     last_user = User.objects.order_by('id').last()
     next_account_id = (last_user.id + 1) if last_user else 1
 
+    # Start with all users
     employees = User.objects.all().order_by('username')
+    
+    # ─── NEW: Apply Branch Filter from Session ───
+    selected_branch = request.session.get('selected_branch')
+    if selected_branch:
+        employees = employees.filter(branch_id=selected_branch)
+    # ─────────────────────────────────────────────
     
     query = request.GET.get('q', '').strip()
     status_filter = request.GET.get('status', '')
