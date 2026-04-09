@@ -13,10 +13,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name="clinicbranch",
-            name="date_added",
-        ),
         migrations.CreateModel(
             name="UserLockout",
             fields=[
