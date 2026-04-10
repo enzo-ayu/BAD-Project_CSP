@@ -1580,11 +1580,16 @@ def add_branch(request):
         location = request.POST.get('branch_location', '').strip()
         address = request.POST.get('branch_address', '').strip()
         
-        if location:
-            ClinicBranch.objects.create(branch_location=location, branch_address=address)
-            messages.success(request, f'Branch "{location}" was successfully added!')
-        else:
-            messages.error(request, 'Branch location cannot be empty.')
+        if not location or not address:
+            messages.error(request, 'All fields required.')
+            return redirect('branch_list')
+            
+        if ClinicBranch.objects.filter(branch_location__iexact=location).exists():
+            messages.error(request, 'Branch name already exists.')
+            return redirect('branch_list')
+        ClinicBranch.objects.create(branch_location=location, branch_address=address)
+        
+        messages.success(request, 'Branch creation successful')
             
     return redirect('branch_list')
 
@@ -1597,13 +1602,19 @@ def update_branch(request, branch_id):
         new_location = request.POST.get('branch_location', '').strip()
         new_address = request.POST.get('branch_address', '').strip()
         
-        if new_location:
-            branch.branch_location = new_location
-            branch.branch_address = new_address
-            branch.save()
-            messages.success(request, 'Branch updated successfully!')
-        else:
-            messages.error(request, 'Branch location cannot be empty.')
+        if not new_location or not new_address:
+            messages.error(request, 'All fields required.')
+            return redirect('branch_list')
+            
+        if ClinicBranch.objects.filter(branch_location__iexact=new_location).exclude(branch_id=branch_id).exists():
+            messages.error(request, 'Branch name already exists.')
+            return redirect('branch_list')
+            
+        branch.branch_location = new_location
+        branch.branch_address = new_address
+        branch.save()
+        
+        messages.success(request, 'Update successful')
             
     return redirect('branch_list')
 
@@ -1613,9 +1624,10 @@ def update_branch(request, branch_id):
 def delete_branch(request, branch_id):
     if request.method == 'POST':
         branch = get_object_or_404(ClinicBranch, branch_id=branch_id)
-        location_name = branch.branch_location
-        branch.delete()
-        messages.success(request, f'Branch "{location_name}" was deleted.')
+        branch.delete() 
+
+        messages.success(request, 'Branch deleted')
+        
     return redirect('branch_list')
 
 # ─────────────────────────────────────────────

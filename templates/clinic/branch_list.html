@@ -56,7 +56,6 @@
     </tbody>
 </table>
 
-<!-- ADD MODAL -->
 <div id="branchModal" class="modal-overlay">
     <div class="modal-card" style="max-width: 650px;">
         <div class="mb-3">
@@ -73,12 +72,12 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="small fw-bold text-secondary mb-1">Branch Location <span class="text-danger">*</span></label>
-                    <input type="text" name="branch_location" class="form-control" placeholder="e.g. Quezon City Branch" required>
+                    <input type="text" name="branch_location" class="form-control" placeholder="e.g. Quezon City Branch" maxlength="100" required>
                 </div>
             </div>
             <div class="mb-3">
-                <label class="small fw-bold text-secondary mb-1">Branch Address</label>
-                <textarea name="branch_address" class="form-control" rows="2" placeholder="Complete physical address"></textarea>
+                <label class="small fw-bold text-secondary mb-1">Branch Address <span class="text-danger">*</span></label>
+                <textarea name="branch_address" class="form-control" rows="2" placeholder="Complete physical address" maxlength="255" required></textarea>
             </div>
             <div class="d-flex justify-content-end mt-4 pt-3">
                 <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;" onclick="document.getElementById('addConfirmModal').style.display='flex'">Save</button>
@@ -87,7 +86,6 @@
     </div>
 </div>
 
-<!-- UPDATE MODAL -->
 <div id="updateBranchModal" class="modal-overlay">
     <div class="modal-card" style="max-width: 650px;">
         <div class="mb-3">
@@ -104,33 +102,30 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="small fw-bold text-secondary mb-1">Branch Location <span class="text-danger">*</span></label>
-                    <input type="text" name="branch_location" id="update_branch_location" class="form-control" required>
+                    <input type="text" name="branch_location" id="update_branch_location" class="form-control" maxlength="100" required>
                 </div>
             </div>
             <div class="mb-3">
-                <label class="small fw-bold text-secondary mb-1">Branch Address</label>
-                <textarea name="branch_address" id="update_branch_address" class="form-control" rows="2"></textarea>
+                <label class="small fw-bold text-secondary mb-1">Branch Address <span class="text-danger">*</span></label>
+                <textarea name="branch_address" id="update_branch_address" class="form-control" rows="2" maxlength="255" required></textarea>
             </div>
 
-            <!-- Footer: Delete on left, Confirm on right -->
             <div class="d-flex justify-content-between align-items-center mt-4 pt-3">
                 <button type="button" class="btn btn-danger px-3 py-2" onclick="openDeleteConfirm()">Delete</button>
                 <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;" onclick="document.getElementById('updateConfirmModal').style.display='flex'">Save</button>
             </div>
         </form>
 
-        <!-- Hidden delete form, action set dynamically -->
         <form action="" method="POST" id="deleteBranchForm">
             {% csrf_token %}
         </form>
     </div>
 </div>
 
-<!-- ADD CONFIRM MODAL -->
 <div id="addConfirmModal" class="modal-overlay" style="z-index:10000;">
     <div class="card border-0 p-4 shadow-lg" style="max-width:380px; width:100%; border-radius:12px;">
         <h5 class="fw-bold mb-2">Confirm Action</h5>
-        <p class="mb-4 text-muted">Are you sure you want to add this new branch?</p>
+        <p class="mb-4 text-muted">Are you sure you want to create a new branch?</p>
         <div class="d-flex justify-content-end gap-2">
             <button class="btn btn-light border" onclick="document.getElementById('addConfirmModal').style.display='none'">Cancel</button>
             <button class="btn text-white px-4" style="background-color:#CE548D;" onclick="document.getElementById('addBranchForm').submit()">Yes</button>
@@ -138,11 +133,10 @@
     </div>
 </div>
 
-<!-- UPDATE CONFIRM MODAL -->
 <div id="updateConfirmModal" class="modal-overlay" style="z-index:10000;">
     <div class="card border-0 p-4 shadow-lg" style="max-width:380px; width:100%; border-radius:12px;">
         <h5 class="fw-bold mb-2">Confirm Update</h5>
-        <p class="mb-4 text-muted">Are you sure you want to save these changes?</p>
+        <p class="mb-4 text-muted">Are you sure you want to update account?</p>
         <div class="d-flex justify-content-end gap-2">
             <button class="btn btn-light border" onclick="document.getElementById('updateConfirmModal').style.display='none'">Cancel</button>
             <button class="btn text-white px-4" style="background-color:#CE548D;" onclick="document.getElementById('updateBranchForm').submit()">Yes</button>
@@ -150,11 +144,10 @@
     </div>
 </div>
 
-<!-- DELETE CONFIRM MODAL -->
 <div id="deleteConfirmModal" class="modal-overlay" style="z-index:10000;">
     <div class="card border-0 p-4 shadow-lg" style="max-width:380px; width:100%; border-radius:12px;">
         <h5 class="fw-bold mb-2 text-danger">Confirm Delete</h5>
-        <p class="mb-4 text-muted">Are you sure you want to delete this branch?</p>
+        <p class="mb-4 text-muted">Are you sure you want to delete branch?</p>
         <div class="d-flex justify-content-end gap-2">
             <button class="btn btn-light border" onclick="document.getElementById('deleteConfirmModal').style.display='none'">Cancel</button>
             <button class="btn btn-danger px-4" onclick="executeDelete()">Yes, Delete</button>
