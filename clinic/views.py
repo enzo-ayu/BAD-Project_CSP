@@ -1,34 +1,39 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.db import transaction
-from django.db.models import Q
-from django.db import models
-from django.contrib.auth.models import User
-from django.shortcuts import redirect
-from django.contrib import messages
-from datetime import date, datetime
-from django.urls import reverse
-from django.contrib.auth.hashers import check_password
-from django.contrib.auth import update_session_auth_hash
-from django.contrib.auth import authenticate, login, logout
-from django.utils import timezone
-from datetime import timedelta
-from django.contrib.auth.models import Group
-from django.views.decorators.cache import never_cache
-from functools import wraps
-from .models import UserLockout
-from django.http import JsonResponse
+# 1. Standard Library Imports
+import csv
+import io
 import json
+from datetime import date, datetime, timedelta
+from functools import wraps
 
-# Auth and Access Built-ins
-from django.contrib.auth.models import User, Group
+# 2. Django Core & Third-Party Imports
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.hashers import check_password
+from django.contrib.auth.models import User, Group
+from django.db import models, transaction
+from django.db.models import Q
+from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.cache import never_cache
 
-# Local Models and Forms
+# 3. Local Application Imports (Models and Forms)
 from .models import (
-    Patient, Product, Treatment, SalesTransaction, TransactionItem, 
-    ClinicBranch, Supplier, EmployeeProfile, InventoryShipment, ReceivedProduct,
-    BranchProduct, BranchTreatment
+    BranchProduct,
+    BranchTreatment,
+    ClinicBranch,
+    EmployeeProfile,
+    InventoryShipment,
+    Patient,
+    Product,
+    ReceivedProduct,
+    SalesTransaction,
+    Supplier,
+    TransactionItem,
+    Treatment,
+    UserLockout
 )
 from .forms import RoleBasedRegistrationForm
 
@@ -1817,6 +1822,121 @@ def export_sales_csv(request):
         ])
     return response
 
+
+# Helper to handle the common file reading logic
+# Helper to handle the common file reading logic
+def get_csv_reader(csv_file):
+    data_set = csv_file.read().decode('utf-8-sig')
+    io_string = io.StringIO(data_set)
+    next(io_string) # Skip Header
+    return csv.reader(io_string)
+
+@never_cache
+@login_required(login_url='login')
+def import_inventory_csv(request):
+    if request.method == 'POST':
+        csv_file = request.FILES.get('csv_file')
+        try:
+            for row in get_csv_reader(csv_file):
+                # Skip empty rows
+                if not row or len(row) < 6:
+                    continue 
+                    
+                # row indexes: 0:ID, 1:Date, 2:Name, 3:Branch, 4:SupID, 5:SupName
+                branch, _ = ClinicBranch.objects.get_or_create(branch_location=row.strip())
+                
+                # Supplier needs contact info which isn't in CSV; using placeholders
+                supplier, _ = Supplier.objects.get_or_create(
+                    supplier_id=row.strip(),
+                    defaults={
+                        'supplier_name': row.strip(), 
+                        'contact_person': 'N/A', 
+                        'supplier_contact_number': '000'
+                    }
+                )
+                
+                # Handle Date
+                date_str = row.strip()
+                if date_str and date_str != '-':
+                    try:
+                        date_rcv = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    except ValueError:
+                        date_rcv = datetime.now().date() # Fallback if format is wrong
+                else:
+                    date_rcv = datetime.now().date()
+                
+                InventoryShipment.objects.update_or_create(
+                    inventory_record_id=row.strip(),
+                    defaults={
+                        'received_product_name': row.strip(),
+                        'date_received': date_rcv,
+                        'branch': branch,
+                        'supplier': supplier
+                    }
+                )
+            messages.success(request, "Inventory imported successfully.")
+        except Exception as e:
+            import traceback
+            print("--- IMPORT INVENTORY ERROR ---")
+            traceback.print_exc()
+            messages.error(request, f"Error: {e}")
+            
+    # Assuming your inventory page URL name is 'inventory_list' - change if different!
+    return redirect('inventory_list') 
+
+@never_cache
+@login_required(login_url='login')
+def import_patients_csv(request):
+    if request.method == 'POST':
+        csv_file = request.FILES.get('csv_file')
+        try:
+            for row in get_csv_reader(csv_file):
+                # Skip empty rows
+                if not row or len(row) < 6:
+                    continue
+                    
+                # row indexes: 0:ID, 1:Full Name, 2:Contact, 3:Address, 4:Bday, 5:Sex, 6:Notes
+                full_name = row.strip()
+                
+                if ',' in full_name:
+                    name_parts = full_name.split(',')
+                    last_name = name_parts.strip()
+                    other_names = name_parts.strip().split(' ')
+                    first_name = other_names if other_names else ""
+                else:
+                    last_name = full_name
+                    first_name = ""
+                
+                # Handle Birthday Date
+                bday_str = row.strip()
+                if bday_str and bday_str != '-':
+                    try:
+                        bday_date = datetime.strptime(bday_str, '%Y-%m-%d').date()
+                    except ValueError:
+                        bday_date = None # Fallback if date is formatted wrong
+                else:
+                    bday_date = None
+                
+                Patient.objects.update_or_create(
+                    patient_id=row.strip(),
+                    defaults={
+                        'last_name': last_name,
+                        'first_name': first_name,
+                        'patient_contact_number': row.strip(),
+                        'patient_address': row.strip(),
+                        'birthday': bday_date,
+                        'sex': row.strip()
+                    }
+                )
+            messages.success(request, "Patients updated/imported successfully.")
+        except Exception as e:
+            import traceback
+            print("--- IMPORT PATIENTS ERROR ---")
+            traceback.print_exc()
+            messages.error(request, f"Error: {e}")
+            
+    # NOTE: Changed from render('import_form.html') to redirect back to your list page
+    return redirect('patient_db')
 def custom_login_view(request):
     # ─── 0. REDIRECT IF ALREADY LOGGED IN ───
     if request.user.is_authenticated:

@@ -75,4 +75,8 @@ urlpatterns = [
     path('inventory/export/', views.export_inventory_csv, name='export_inventory_csv'),
     path('patients/export/', views.export_patients_csv, name='export_patients_csv'),
     path('sales/export/', views.export_sales_csv, name='export_sales_csv'),
+
+
+    path('import-inventory/', views.import_inventory_csv, name='import_inventory'),
+    path('import-patients/', views.import_patients_csv, name='import_patients_csv'),
 ]
