@@ -227,3 +227,24 @@ INSERT IGNORE INTO `clinic_branchproduct` (`branch_id`, `product_id`, `stock_qua
 -- UPDATE BRANCH NAME
 -- ─────────────────────────────────────────────
 UPDATE `clinic_clinicbranch` SET `branch_location` = 'Meycauayan, Bulacan' WHERE `branch_id` = 1;
+
+
+
+-- NEW CHANGES FOR LOW STOCK NOTIF, PLEASE EXECUTE THIS IN SQL TO SEE CHANGES APPLIED IN LOW STOCK THANK UU 
+
+-- ─────────────────────────────────────────────
+-- STEP 1: Set PQM = 30 for all existing branch products
+-- ─────────────────────────────────────────────
+UPDATE clinic_branchproduct 
+SET quantity_minimum = 30;
+
+-- ─────────────────────────────────────────────
+-- STEP 2: Insert missing products into branch 1(Bulacan) with 0 stock and PQM = 30
+-- (covers all products that have no inventory record yet)
+-- ─────────────────────────────────────────────
+INSERT IGNORE INTO clinic_branchproduct (branch_id, product_id, stock_quantity, quantity_minimum)
+SELECT 1, product_id, 0, 30
+FROM clinic_product
+WHERE product_id NOT IN (
+    SELECT product_id FROM clinic_branchproduct WHERE branch_id = 1
+);

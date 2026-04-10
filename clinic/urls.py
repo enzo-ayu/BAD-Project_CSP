@@ -79,4 +79,7 @@ urlpatterns = [
 
     path('import-inventory/', views.import_inventory_csv, name='import_inventory'),
     path('import-patients/', views.import_patients_csv, name='import_patients_csv'),
+
+    # ── Low Stock ──
+    path('low-stock/', views.low_stock_alerts, name='low_stock_alerts'),
 ]

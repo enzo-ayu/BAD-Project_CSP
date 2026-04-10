@@ -57,11 +57,11 @@ def role_required(allowed_roles=[]):
                 return view_func(request, *args, **kwargs)
             
             messages.error(request, "You are not authorized to access this page.")
-            referer = request.META.get('HTTP_REFERER')
-            if referer:
-                return redirect(referer)
-            return redirect('sales_db')  
+            return redirect('login')  
         return wrapper
+    
+
+
     return decorator
 
 def get_user_branch(request):
@@ -2021,3 +2021,40 @@ def custom_logout_view(request):
     logout(request) 
     # This sends them back to your custom login page
     return redirect('login')
+
+# ─────────────────────────────────────────────
+# LOW STOCK ALERTS
+# ─────────────────────────────────────────────
+@never_cache
+@login_required(login_url='login')
+@role_required(['Owner', 'Aesthetician', 'Sales'])
+def low_stock_alerts(request):
+    branch = get_user_branch(request)
+
+    if branch:
+        low_stock_items = BranchProduct.objects.filter(
+            branch=branch,
+            stock_quantity__lte=models.F('quantity_minimum'),
+            quantity_minimum__gt=0
+        ).select_related('product__supplier', 'branch')
+    else:
+        low_stock_items = BranchProduct.objects.filter(
+            stock_quantity__lte=models.F('quantity_minimum'),
+            quantity_minimum__gt=0
+        ).select_related('product__supplier', 'branch')
+
+    return JsonResponse({
+        'count': low_stock_items.count(),
+        'items': [
+            {
+                'product_id':    item.product.product_id,
+                'product_name':  item.product.product_name,
+                'branch':        item.branch.branch_location,
+                'stock':         item.stock_quantity,
+                'minimum':       item.quantity_minimum,
+                'unit_cost':     str(item.product.unit_cost),
+                'supplier_name': item.product.supplier.supplier_name,
+            }
+            for item in low_stock_items
+        ]
+    })    

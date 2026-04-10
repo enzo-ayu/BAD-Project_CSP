@@ -123,3 +123,5 @@ LOGIN_REDIRECT_URL = 'sales_db'
 
 # Redirect back to the login page after logging out
 LOGOUT_REDIRECT_URL = 'login'
+
+SESSION_COOKIE_NAME = 'badproject_session'

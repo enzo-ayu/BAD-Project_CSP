@@ -29,9 +29,36 @@
             color: #333;
             border-radius: 8px;
         }
+         #lowStockModal thead th {
+            color: white !important;
+            background-color: #CE548D !important;
+            border-color: #CE548D !important;
+        }
+        #low-stock-icon-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #low-stock-badge {
+            display: none;
+            position: absolute;
+            top: -4px;
+            right: -2px;
+            background: #dc3545;
+            color: #fff;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: 700;
+            min-width: 18px;
+            height: 16px;
+            line-height: 16px;
+            text-align: center;
+            padding: 0 4px;
+        }
     </style>
 </head>
-
+<!--
 <script>
     function switchBranch(branchId) {
         fetch("{% url 'set_branch_session' %}", {
@@ -44,7 +71,7 @@
         }).then(() => location.reload());
     }
 </script>
-
+-->
 <body id="body">
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <div class="container-fluid px-4">
@@ -82,7 +109,7 @@
                         <img src="{% static 'images/LoggedIn_Details.png' %}" 
                              alt="Profile" 
                              width="32" height="32"
-                             class="hover-icon">
+                             >
                     </a>
 
                     <form action="{% url 'logout' %}" method="post" class="m-0 p-0 d-flex align-items-center">
@@ -184,6 +211,30 @@
                         </li>
                     {% endif %}
                 {% endfor %}
+
+                <!-- low stock notif addition -->
+            <li id="low-stock-nav-item">
+                <a href="#" id="low-stock-btn" onclick="openLowStockModal(); return false;">
+                    
+                    <!-- Icon (NOW MATCHES YOUR OTHER SIDEBAR ITEMS) -->
+                    <span id="low-stock-icon-wrap"></span>
+                        <img src="{% static 'images/Warning_Icon.png' %}"  
+                            alt="Low Stock"
+                            width="32" height="32"
+                            class="hover-icon">
+
+                        <!-- Badge -->
+                        <span id="low-stock-badge"
+                            style="display:none; position:absolute; top:-6px; right:-8px;
+                                    background:#dc3545; color:#fff; border-radius:50%;
+                                    font-size:10px; font-weight:700; min-width:16px; height:16px;
+                                    line-height:16px; text-align:center; padding:0 3px;">
+                        </span>
+                    </span>
+
+                    <span class="sidebar-text" style="display:none !important;"></span>
+                </a>
+            </li>
             </ul>
         </nav>
     </aside>
@@ -284,5 +335,104 @@
         return cookieValue;
     }
     </script>
+    <!-- ✅ ADD THIS BLOCK BEFORE </body> -->
+
+    <!-- Low Stock Modal -->
+    <div class="modal fade" id="lowStockModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius:15px; border:none;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">
+                        ⚠️ Low Stock Products
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted mb-3" style="font-size:0.9rem;">
+                        The following products have fallen below the product quantity minimum and need restocking.
+                    </p>
+                    <div id="low-stock-table-wrap">
+                        <p class="text-center text-muted">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function refreshLowStockBadge() {
+        fetch("{% url 'low_stock_alerts' %}")
+            .then(r => r.json())
+            .then(data => {
+                const badge = document.getElementById('low-stock-badge');
+                const navItem = document.getElementById('low-stock-nav-item');
+                if (!badge) return;
+
+                if (data.count > 0) {
+                    badge.textContent = data.count;
+                    badge.style.display = 'inline-block';
+                    if (navItem) navItem.style.display = '';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(() => {});
+    }
+
+    function openLowStockModal() {
+        const wrap = document.getElementById('low-stock-table-wrap');
+        wrap.innerHTML = '<p class="text-center text-muted">Loading...</p>';
+
+        const modal = new bootstrap.Modal(document.getElementById('lowStockModal'));
+        modal.show();
+
+        fetch("{% url 'low_stock_alerts' %}")
+            .then(r => r.json())
+            .then(data => {
+                if (data.count === 0) {
+                    wrap.innerHTML = '<p class="text-center text-success fw-bold">All products are sufficiently stocked!</p>';
+                    return;
+                }
+
+                let html = `
+                    <table class="table table-hover table-bordered align-middle" style="font-size:0.9rem;">
+                        <thead style="background-color:#CE548D; color:white;">
+                            <tr>
+                                <th>Product ID</th>
+                                <th>Product Name</th>
+                                <th>Branch</th>
+                                <th>Current Stock</th>
+                                <th>Minimum</th>
+                                <th>Unit Cost</th>
+                                <th>Supplier</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                data.items.forEach(item => {
+                    const rowClass = item.stock === 0 ? 'table-danger' : 'table-warning';
+                    html += `
+                        <tr class="${rowClass}">
+                            <td>${item.product_id}</td>
+                            <td>${item.product_name}</td>
+                            <td>${item.branch}</td>
+                            <td><strong>${item.stock}</strong></td>
+                            <td>${item.minimum}</td>
+                            <td>₱${parseFloat(item.unit_cost).toLocaleString('en-PH', {minimumFractionDigits:2})}</td>
+                            <td>${item.supplier_name}</td>
+                        </tr>`;
+                });
+
+                html += '</tbody></table>';
+                wrap.innerHTML = html;
+            })
+            .catch(() => {
+                wrap.innerHTML = '<p class="text-center text-danger">Failed to load stock data.</p>';
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', refreshLowStockBadge);
+    </script>
+
 </body>
 </html>
