@@ -711,16 +711,6 @@ def inventory_add(request):
             product_id = request.POST.get('product')
             product = Product.objects.get(pk=product_id)
             quantity_received = int(request.POST.get('quantity_received'))
-            if quantity_received < 1:
-                raise Exception("Quantity received must be at least 1.")
-            if quantity_received > 10000:
-                raise Exception("Quantity received cannot exceed 10,000.")
-                
-
-            date_received = request.POST.get('date_received')
-            expiration_date = request.POST.get('expiration_date')
-            if expiration_date and date_received and expiration_date <= date_received:
-                raise Exception("Expiration date must be after the date received.")
 
             # Use logged-in user's branch if no branch posted (non-owner)
             branch_id = request.POST.get('branch') or None
@@ -777,15 +767,6 @@ def inventory_update(request, record_id):
             product_id = request.POST.get('product')
             product = Product.objects.get(pk=product_id)
             new_qty = int(request.POST.get('quantity_received'))
-            if new_qty < 1:
-                raise Exception("Quantity received must be at least 1.")
-            if new_qty > 10000:
-                raise Exception("Quantity received cannot exceed 10,000.")
-
-            date_received = request.POST.get('date_received')
-            expiration_date = request.POST.get('expiration_date')
-            if expiration_date and date_received and expiration_date <= date_received:
-                raise Exception("Expiration date must be after the date received.")
 
             # Use posted branch for owners, user's branch for aestheticians
             new_branch_id = request.POST.get('branch') or None
@@ -982,7 +963,7 @@ def producttreatment_db(request):
         product.branch_minimum  = bp['quantity_minimum'] if bp else 0
         product.branch_id_val = bp.get('branch_id') if (bp and 'branch_id' in bp) else None
         product.is_out_of_stock = product.branch_stock == 0
-        product.is_low_stock    = product.branch_stock <= product.branch_minimum
+        product.is_low_stock    = (not product.is_out_of_stock) and (product.branch_stock <= product.branch_minimum)
 
     # ── Treatment availability ──
     if branch:

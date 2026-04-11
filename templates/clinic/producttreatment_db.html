@@ -78,7 +78,8 @@
                             <td>{{ product.product_name }}</td>
                             <td>{{ product.product_type }}</td>
                             <td {% if product.is_low_stock %}style="color:#dc3545; font-weight:bold;"{% endif %}>
-                                {% if product.is_low_stock %}⚠️{% endif %}{{ product.branch_stock }}
+                                {{ product.branch_stock }}
+                                {% if product.is_low_stock %}⚠️{% endif %}
                             </td>
                             <td>
                                 <div class="d-flex gap-2">
