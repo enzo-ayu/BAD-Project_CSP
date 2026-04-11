@@ -113,9 +113,10 @@ def custom_login_view(request):
         if is_owner(request.user) or is_sales(request.user):
             return redirect('sales_db')
         elif is_aesthetician(request.user):
-            return redirect('patient_db') # Change this to whatever page Aestheticians use
+            return redirect('patient_db') 
         else:
-            return redirect('login') 
+            # THIS BREAKS THE LOOP
+            return HttpResponseForbidden("<h1>403 Forbidden</h1><p>Your account has no roles assigned. Please ask an admin to assign you to a group (Owner, Sales, or Aesthetician).</p><a href='/logout/'>Click here to logout</a>")
 
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -164,7 +165,8 @@ def custom_login_view(request):
             elif is_aesthetician(request.user):
                 return redirect('patient_db') 
             else:
-                return redirect('login') 
+                # THIS BREAKS THE LOOP
+                return HttpResponseForbidden("<h1>403 Forbidden</h1><p>Your account has no roles assigned. Please ask an admin to assign you to a group (Owner, Sales, or Aesthetician).</p><a href='/logout/'>Click here to logout</a>")
             
         else:
             # ─── 4. FAILED ATTEMPT LOGIC ───
