@@ -14,6 +14,7 @@ from django.contrib.auth.models import User, Group
 from django.db import models, transaction
 from django.db.models import Q
 from django.http import JsonResponse
+from django.http import HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
@@ -51,17 +52,21 @@ def is_sales(user):
 
 def role_required(allowed_roles=[]):
     def decorator(view_func):
+        
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
+            # 1. Check if they have the right role
             if request.user.groups.filter(name__in=allowed_roles).exists():
                 return view_func(request, *args, **kwargs)
             
-            messages.error(request, "You are not authorized to access this page.")
+            # 2. If they are logged in but WRONG role, don't send them to login! 
+            if request.user.is_authenticated:
+                return HttpResponseForbidden("<h1>403 Forbidden</h1><p>You do not have the correct role to view this page.</p><a href='/'>Go back</a>")
+            
+            # 3. If they are NOT logged in, send them to login
+            messages.error(request, "Please log in to access this page.")
             return redirect('login')  
         return wrapper
-    
-
-
     return decorator
 
 def get_user_branch(request):
@@ -100,6 +105,104 @@ def set_branch_session(request):
 
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'status': 'error'}, status=400)
+
+
+def custom_login_view(request):
+    # ─── 0. REDIRECT IF ALREADY LOGGED IN ───
+    if request.user.is_authenticated:
+        if is_owner(request.user) or is_sales(request.user):
+            return redirect('sales_db')
+        elif is_aesthetician(request.user):
+            return redirect('patient_db') # Change this to whatever page Aestheticians use
+        else:
+            return redirect('login') 
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        # ─── 1. BROWSER LOCKOUT CHECK ───
+        lock_until_ts = request.session.get('lock_until')
+        if lock_until_ts and timezone.now().timestamp() < lock_until_ts:
+            return render(request, 'clinic/login.html', {
+                'error': 'Account locked due to too many failed attempts (Browser). Please try again in 1 minute.'
+            })
+
+        # ─── 2. DATABASE LOCKOUT CHECK ───
+        try:
+            user = User.objects.get(username=username)
+            lockout, created = UserLockout.objects.get_or_create(user=user)
+            if lockout.lock_until and lockout.lock_until > timezone.now():
+                return render(request, 'clinic/login.html', {
+                    'error': 'Account locked due to too many failed attempts (Account). Please try again in 1 minute.'
+                })
+        except User.DoesNotExist:
+            user = None
+            lockout = None
+
+        # ─── 3. AUTHENTICATION ───
+        print(f"DEBUG: Attempting login for username: {username}")
+        auth_user = authenticate(request, username=username, password=password)
+
+        if auth_user is not None:
+            print("DEBUG: Authentication successful!")
+            # Reset everything on success
+            request.session['failed_attempts'] = 0
+            request.session['lock_until'] = None
+            
+            if lockout:
+                lockout.failed_attempts = 0
+                lockout.lock_until = None
+                lockout.save()
+            
+            # CRITICAL: This is the part that actually logs you in!
+            login(request, auth_user)
+            
+            # ---> NEW REDIRECT LOGIC HERE TOO <---
+            if is_owner(request.user) or is_sales(request.user):
+                return redirect('sales_db')
+            elif is_aesthetician(request.user):
+                return redirect('patient_db') 
+            else:
+                return redirect('login') 
+            
+        else:
+            # ─── 4. FAILED ATTEMPT LOGIC ───
+            exists = User.objects.filter(username=username).exists()
+            print(f"DEBUG: Authentication failed. User exists in DB? {exists}")
+            
+            failed_attempts = request.session.get('failed_attempts', 0) + 1
+            request.session['failed_attempts'] = failed_attempts
+            
+            if failed_attempts >= 4:
+                lock_time = timezone.now() + timedelta(minutes=1)
+                request.session['lock_until'] = lock_time.timestamp()
+                
+                if lockout:
+                    lockout.failed_attempts = failed_attempts
+                    lockout.lock_until = lock_time
+                    lockout.save()
+
+                return render(request, 'clinic/login.html', {
+                    'error': 'Account locked due to too many failed attempts. Please try again in 1 minute.'
+                })
+
+            if lockout:
+                lockout.failed_attempts = failed_attempts
+                lockout.save()
+
+            attempts_left = 4 - failed_attempts
+            error_message = f'Invalid username or password. You have {attempts_left} attempt(s) remaining.'
+            return render(request, 'clinic/login.html', {'error': error_message})
+
+    # ─── 5. DEFAULT GET REQUEST ───
+    return render(request, 'clinic/login.html')
+
+def custom_logout_view(request):
+    # This logs the user out and clears their session
+    logout(request) 
+    # This sends them back to your custom login page
+    return redirect('login')
 # ─────────────────────────────────────────────
 # CHARGESLIP (Create New Sale)
 # ─────────────────────────────────────────────
@@ -1937,90 +2040,6 @@ def import_patients_csv(request):
             
     # NOTE: Changed from render('import_form.html') to redirect back to your list page
     return redirect('patient_db')
-def custom_login_view(request):
-    # ─── 0. REDIRECT IF ALREADY LOGGED IN ───
-    if request.user.is_authenticated:
-        return redirect('sales_db')
-
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-
-        # ─── 1. BROWSER LOCKOUT CHECK ───
-        lock_until_ts = request.session.get('lock_until')
-        if lock_until_ts and timezone.now().timestamp() < lock_until_ts:
-            return render(request, 'clinic/login.html', {
-                'error': 'Account locked due to too many failed attempts (Browser). Please try again in 1 minute.'
-            })
-
-        # ─── 2. DATABASE LOCKOUT CHECK ───
-        try:
-            user = User.objects.get(username=username)
-            lockout, created = UserLockout.objects.get_or_create(user=user)
-            if lockout.lock_until and lockout.lock_until > timezone.now():
-                return render(request, 'clinic/login.html', {
-                    'error': 'Account locked due to too many failed attempts (Account). Please try again in 1 minute.'
-                })
-        except User.DoesNotExist:
-            user = None
-            lockout = None
-
-        # ─── 3. AUTHENTICATION ───
-        print(f"DEBUG: Attempting login for username: {username}")
-        auth_user = authenticate(request, username=username, password=password)
-
-        if auth_user is not None:
-            print("DEBUG: Authentication successful!")
-            # Reset everything on success
-            request.session['failed_attempts'] = 0
-            request.session['lock_until'] = None
-            
-            if lockout:
-                lockout.failed_attempts = 0
-                lockout.lock_until = None
-                lockout.save()
-            
-            # CRITICAL: This is the part that actually logs you in!
-            login(request, auth_user)
-            return redirect('sales_db') 
-            
-        else:
-            # ─── 4. FAILED ATTEMPT LOGIC ───
-            exists = User.objects.filter(username=username).exists()
-            print(f"DEBUG: Authentication failed. User exists in DB? {exists}")
-            
-            failed_attempts = request.session.get('failed_attempts', 0) + 1
-            request.session['failed_attempts'] = failed_attempts
-            
-            if failed_attempts >= 4:
-                lock_time = timezone.now() + timedelta(minutes=1)
-                request.session['lock_until'] = lock_time.timestamp()
-                
-                if lockout:
-                    lockout.failed_attempts = failed_attempts
-                    lockout.lock_until = lock_time
-                    lockout.save()
-
-                return render(request, 'clinic/login.html', {
-                    'error': 'Account locked due to too many failed attempts. Please try again in 1 minute.'
-                })
-
-            if lockout:
-                lockout.failed_attempts = failed_attempts
-                lockout.save()
-
-            attempts_left = 4 - failed_attempts
-            error_message = f'Invalid username or password. You have {attempts_left} attempt(s) remaining.'
-            return render(request, 'clinic/login.html', {'error': error_message})
-
-    # ─── 5. DEFAULT GET REQUEST ───
-    return render(request, 'clinic/login.html')
-
-def custom_logout_view(request):
-    # This logs the user out and clears their session
-    logout(request) 
-    # This sends them back to your custom login page
-    return redirect('login')
 
 # ─────────────────────────────────────────────
 # LOW STOCK ALERTS
