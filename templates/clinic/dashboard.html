@@ -1,0 +1,186 @@
+{% extends 'clinic/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h4 class="fw-bold m-0" style="color: #CE548D;">Dashboard</h4>
+            
+            <form method="GET" class="d-flex gap-2 align-items-center m-0">
+                <span class="text-muted small fw-bold">Filter:</span>
+                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ request.GET.start_date }}" required>
+                <span class="text-muted small">to</span>
+                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ request.GET.end_date }}" required>
+                
+                <button type="submit" class="btn btn-sm px-3" style="background-color: #CE548D; color: white;">Apply</button>
+                <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+            </form>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 rounded-4">
+                <h6 class="text-muted mb-2">Total Sales</h6>
+                <h3 class="fw-bold m-0" style="color: #333;">PHP {{ total_sales|floatformat:2 }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 rounded-4">
+                <h6 class="text-muted mb-2">Low Stock Alerts <span class="badge bg-danger ms-1">!</span></h6>
+                <h3 class="fw-bold m-0 text-danger">{{ low_stock_count }} Items</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 rounded-4">
+                <h6 class="text-muted mb-2">Products Sold</h6>
+                <h3 class="fw-bold m-0" style="color: #333;">{{ products_sold }} units</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 rounded-4">
+                <h6 class="text-muted mb-2">Total Transactions</h6>
+                <h3 class="fw-bold m-0" style="color: #333;">{{ total_transactions }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card p-4 shadow-sm border-0 rounded-4 h-100">
+                <h6 class="text-muted mb-3">Sales Trend (Last 30 days)</h6>
+                <canvas id="salesTrendChart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 shadow-sm border-0 rounded-4 h-100">
+                <h6 class="text-muted mb-3">Revenue Breakdown</h6>
+                <canvas id="revenueChart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-7">
+            <div class="card p-4 shadow-sm border-0 rounded-4 h-100">
+                <h6 class="text-danger fw-bold mb-3">Low Stock Alerts (Action Required)</h6>
+                <div class="table-responsive">
+                    <table class="table table-borderless align-middle">
+                        <thead class="text-muted border-bottom">
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Branch</th>
+                                <th>Current Stock</th>
+                                <th>PQM</th>
+                                <th>Supplier</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in low_stock_items %}
+                            <tr>
+                                <td>{{ item.product.product_name }}</td>
+                                <td>{{ item.branch.branch_location }}</td>
+                                <td class="text-danger fw-bold">{{ item.stock_quantity }}</td>
+                                <td>{{ item.quantity_minimum }}</td>
+                                <td>{{ item.product.supplier.supplier_name }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">All stocks are healthy!</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-5">
+            <div class="card p-4 shadow-sm border-0 rounded-4 h-100">
+                <h6 class="text-muted mb-3">Top Moving Inventory</h6>
+                <canvas id="topMovingChart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Clinic Brand Colors
+    const pinkMain = '#CE548D';
+    const pinkLight = '#F0A1C2';
+    const greenAccent = '#5EE55E';
+
+    // Parse Data from Django safely
+    const trendDates = {{ trend_dates|safe }};
+    const trendSales = {{ trend_sales|safe }};
+    
+    // Sales Trend Line Chart
+    if(trendDates.length > 0) {
+        new Chart(document.getElementById('salesTrendChart'), {
+            type: 'line',
+            data: {
+                labels: trendDates,
+                datasets: [{
+                    label: 'Daily Sales (PHP)',
+                    data: trendSales,
+                    borderColor: greenAccent,
+                    backgroundColor: 'rgba(94, 229, 94, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    //Revenue Breakdown Doughnut Chart
+    const revProducts = {{ revenue_products|default:0 }};
+    const revTreatments = {{ revenue_treatments|default:0 }};
+    
+    if (revProducts > 0 || revTreatments > 0) {
+        new Chart(document.getElementById('revenueChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Products', 'Treatments'],
+                datasets: [{
+                    data: [revProducts, revTreatments],
+                    backgroundColor: [pinkMain, pinkLight],
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    //Top Moving Inventory Bar Chart
+    const topNames = {{ top_product_names|safe }};
+    const topSales = {{ top_product_sales|safe }};
+    
+    if (topNames.length > 0) {
+        new Chart(document.getElementById('topMovingChart'), {
+            type: 'bar',
+            data: {
+                labels: topNames,
+                datasets: [{
+                    label: 'Units Sold',
+                    data: topSales,
+                    backgroundColor: pinkLight,
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                indexAxis: 'y', // Makes bars horizontal
+                responsive: true, 
+                maintainAspectRatio: false 
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

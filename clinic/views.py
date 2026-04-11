@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 from functools import wraps
 
 # 2. Django Core & Third-Party Imports
+from django.db.models import Sum, Count, F
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -2079,3 +2080,85 @@ def low_stock_alerts(request):
             for item in low_stock_items
         ]
     })    
+
+# ─────────────────────────────────────────────
+# DASHBOARD
+# ─────────────────────────────────────────────
+
+@never_cache
+@login_required(login_url='login')
+@role_required(['Owner', 'Sales']) 
+def dashboard_view(request):
+    try:
+        branch = get_user_branch(request)
+    except:
+        branch = None
+    
+    sales_qs = SalesTransaction.objects.all()
+    stock_qs = BranchProduct.objects.select_related('product', 'branch', 'product__supplier')
+    items_qs = TransactionItem.objects.select_related('product')
+
+    if branch:
+        sales_qs = sales_qs.filter(branch=branch)
+        stock_qs = stock_qs.filter(branch=branch)
+        items_qs = items_qs.filter(transaction__branch=branch)
+
+    # DATE FILTER LOGIC 
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    if start_date and end_date:
+        # Filter sales and items by the selected date range
+        sales_qs = sales_qs.filter(transaction_date__range=[start_date, end_date])
+        items_qs = items_qs.filter(transaction__transaction_date__range=[start_date, end_date])
+
+    # Top Cards
+    total_sales = sales_qs.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_transactions = sales_qs.count()
+    products_sold = items_qs.filter(product__isnull=False).aggregate(Sum('quantity_purchased'))['quantity_purchased__sum'] or 0
+    
+    low_stock_items = stock_qs.filter(stock_quantity__lte=F('quantity_minimum'), quantity_minimum__gt=0)
+    low_stock_count = low_stock_items.count()
+
+    # CHART DATA CALCULATIONS 
+    
+    # Revenue Breakdown
+    revenue_products = sales_qs.aggregate(Sum('total_price_of_products'))['total_price_of_products__sum'] or 0
+    revenue_treatments = sales_qs.aggregate(Sum('total_price_of_treatments'))['total_price_of_treatments__sum'] or 0
+
+    #Top Moving Inventory
+    top_products = items_qs.filter(product__isnull=False) \
+        .values('product__product_name') \
+        .annotate(total_sold=Sum('quantity_purchased')) \
+        .order_by('-total_sold')[:5]
+        
+    top_product_names = [p['product__product_name'] for p in top_products]
+    top_product_sales = [p['total_sold'] for p in top_products]
+
+    #Sales Trend 
+    thirty_days_ago = timezone.now().date() - timedelta(days=30)
+    trend_data = sales_qs.filter(transaction_date__gte=thirty_days_ago) \
+        .values('transaction_date') \
+        .annotate(daily_sales=Sum('total_amount')) \
+        .order_by('transaction_date')
+
+    trend_dates = [t['transaction_date'].strftime('%b %d') for t in trend_data]
+    trend_sales = [float(t['daily_sales']) for t in trend_data]
+
+    context = {
+        'total_sales': total_sales,
+        'total_transactions': total_transactions,
+        'products_sold': products_sold,
+        'low_stock_count': low_stock_count,
+        'low_stock_items': low_stock_items[:5],
+        
+        # Pass Chart Data as JSON to the template
+        'revenue_products': float(revenue_products),
+        'revenue_treatments': float(revenue_treatments),
+        'top_product_names': json.dumps(top_product_names),
+        'top_product_sales': json.dumps(top_product_sales),
+        'trend_dates': json.dumps(trend_dates),
+        'trend_sales': json.dumps(trend_sales),
+    }
+
+    return render(request, 'clinic/dashboard.html', context)

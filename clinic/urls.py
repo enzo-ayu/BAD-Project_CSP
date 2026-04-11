@@ -9,6 +9,9 @@ urlpatterns = [
     path('', RedirectView.as_view(url='/login/')),
     path('admin/', admin.site.urls),
     
+    # ── Dashboard ──
+    path('dashboard/', views.dashboard_view, name='dashboard'),  
+
     # ── Authentication ──
     path('login/', views.custom_login_view, name='login'),
     path('logout/', views.custom_logout_view, name='logout'),
