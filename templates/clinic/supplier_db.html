@@ -97,10 +97,11 @@
     <div style="width:100%; max-width:500px;">
         <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:#ffffff;">
             <div class="modal-header border-0 pb-0 px-4 pt-4">
-                <h5 class="modal-title fw-bold" style="color:#CE548D;">Add Supplier</h5>
+                <h4 class="modal-title fw-bold mb-3" style="color:#CE548D;">Add Supplier</h4>
                 <button type="button" class="btn-close" onclick="closeAddModal()"></button> <!--  works but turns red idk why smthg to do with django daw  -->
             </div>
             <div class="modal-body px-4 pb-4">
+                <div id="addSupplierErrors" class="mb-3" style="display:none;"></div>
                 <form method="POST" action="{% url 'supplier_db' %}" id="addSupplierForm">
                     {% csrf_token %}
                     <div class="mb-3">
@@ -128,7 +129,7 @@
                     <div class="d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
                         <button type="button" class="btn text-white" style="background-color:#CE548D;"
-                                onclick="document.getElementById('addConfirmModal').style.display='flex'">Save</button>
+                                onclick="validateAndConfirmAddSupplier()">Save</button>
                     </div>
                 </form>
             </div>
@@ -157,10 +158,11 @@
     <div style="width:100%; max-width:500px;">
         <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:#ffffff;">
             <div class="modal-header border-0 pb-0 px-4 pt-4">
-                <h5 class="modal-title fw-bold" style="color:#CE548D;">Update Supplier</h5>
+                <h4 class="modal-title fw-bold mb-3" style="color:#CE548D;">Update Supplier</h4>
                 <button type="button" class="btn-close" onclick="closeUpdateModal()"></button>
             </div>
             <div class="modal-body px-4 pb-4">
+                <div id="updateSupplierErrors" class="mb-3" style="display:none;"></div>
                 <form method="POST" action="" id="updateSupplierForm">
                     {% csrf_token %}
                     <div class="mb-3">
@@ -197,7 +199,7 @@
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-secondary" onclick="closeUpdateModal()">Cancel</button>
                             <button type="button" class="btn text-white" style="background-color:#CE548D;"
-                                    onclick="document.getElementById('updateConfirmModal').style.display='flex'">Save</button>
+                                    onclick="validateAndConfirmUpdateSupplier()">Save</button>
                         </div>
                     </div>
                 </form>
@@ -245,9 +247,47 @@
 function openAddModal() {
     document.getElementById('addSupplierOverlay').style.display = 'flex';
 }
+async function validateAndConfirmAddSupplier() {
+    const errorContainer = document.getElementById('addSupplierErrors');
+    const errors = [];
+
+    const name = document.querySelector('#addSupplierForm [name=supplier_name]').value.trim();
+    const person = document.querySelector('#addSupplierForm [name=contact_person]').value.trim();
+    const number = document.querySelector('#addSupplierForm [name=supplier_contact_number]').value.trim();
+    const address = document.querySelector('#addSupplierForm [name=supplier_address]').value.trim();
+
+    if (!name) errors.push('Supplier Name is required.');
+    if (!person) errors.push('Contact Person is required.');
+    if (!number) errors.push('Contact Number is required.');
+    else if (number.length !== 11) errors.push('Contact Number must be exactly 11 digits.');
+    if (!address) errors.push('Address is required.');
+
+    if (name) {
+        const res = await fetch(`/check-supplier/?name=${encodeURIComponent(name)}`);
+        const data = await res.json();
+        if (data.taken) errors.push(`Supplier "${name}" already exists.`);
+    }
+
+    if (errors.length > 0) {
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+        return;
+    }
+
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
+    document.getElementById('addConfirmModal').style.display = 'flex';
+}
 function closeAddModal() {
     document.getElementById('addSupplierOverlay').style.display = 'none';
     document.getElementById('addConfirmModal').style.display = 'none';
+    const err = document.getElementById('addSupplierErrors');
+    if (err) { err.style.display = 'none'; err.innerHTML = ''; }
 }
 
 function openUpdateModal(id, name, contactPerson, contactNumber, address) {
@@ -259,11 +299,49 @@ function openUpdateModal(id, name, contactPerson, contactNumber, address) {
     document.getElementById('updateSupplierOverlay').style.display = 'flex';
     document.getElementById('deleteSupplierForm').action = '/suppliers/' + id + '/delete/';
 }
+async function validateAndConfirmUpdateSupplier() {
+    const errorContainer = document.getElementById('updateSupplierErrors');
+    const errors = [];
+
+    const supplierId = document.getElementById('updateSupplierForm').action.split('/suppliers/')[1].replace('/update/', '');
+    const name = document.getElementById('upd_name').value.trim();
+    const person = document.getElementById('upd_contact_person').value.trim();
+    const number = document.getElementById('upd_contact_number').value.trim();
+    const address = document.getElementById('upd_address').value.trim();
+
+    if (!name) errors.push('Supplier Name is required.');
+    if (!person) errors.push('Contact Person is required.');
+    if (!number) errors.push('Contact Number is required.');
+    else if (number.length !== 11) errors.push('Contact Number must be exactly 11 digits.');
+    if (!address) errors.push('Address is required.');
+
+    if (name) {
+        const res = await fetch(`/check-supplier/?name=${encodeURIComponent(name)}&exclude_id=${supplierId}`);
+        const data = await res.json();
+        if (data.taken) errors.push(`Supplier "${name}" already exists.`);
+    }
+
+    if (errors.length > 0) {
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+        return;
+    }
+
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
+    document.getElementById('updateConfirmModal').style.display = 'flex';
+}
 function closeUpdateModal() {
     document.getElementById('updateSupplierOverlay').style.display = 'none';
     document.getElementById('updateConfirmModal').style.display = 'none';
+    const err = document.getElementById('updateSupplierErrors');
+    if (err) { err.style.display = 'none'; err.innerHTML = ''; }
 }
-
 function openDeleteSupplierModal() {
     document.getElementById('deleteSupplierConfirm').style.display = 'flex';
 }

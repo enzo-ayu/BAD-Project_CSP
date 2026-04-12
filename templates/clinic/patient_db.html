@@ -115,6 +115,7 @@
                 <a href="javascript:void(0)" onclick="closeUpdatePatientModal()"
                    class="text-decoration-none text-muted small">← Back</a>
                 <h4 class="fw-bold mt-2" style="color:#CE548D;">Update Patient Record</h4>
+                <div id="updatePatientErrors" class="mb-3" style="display:none;"></div>
             </div>
 
             <form method="POST" action="" id="updatePatientModalForm">
@@ -184,7 +185,7 @@
                         </button>
                     {% endif %}
                     <button type="button" class="btn text-white px-3" style="background-color:#CE548D;"
-                            onclick="document.getElementById('updatePatientConfirm').style.display='flex'">
+                            onclick="validateAndConfirmUpdatePatient()">
                         Save
                     </button>
                 </div>
@@ -270,9 +271,39 @@ function openUpdatePatientModal(id, lastName, firstName, middleName, suffix, add
     document.getElementById('updatePatientOverlay').style.display = 'flex';
 }
 
+function validateAndConfirmUpdatePatient() {
+    const errorContainer = document.getElementById('updatePatientErrors');
+    const errors = [];
+
+    if (!document.getElementById('upd_last_name').value.trim()) errors.push('Last Name is required.');
+    if (!document.getElementById('upd_first_name').value.trim()) errors.push('First Name is required.');
+    if (!document.getElementById('upd_address').value.trim()) errors.push('Address is required.');
+    if (!document.getElementById('upd_contact').value.trim()) errors.push('Contact Number is required.');
+    if (!document.getElementById('upd_birthday').value.trim()) errors.push('Birthday is required.');
+    if (!document.getElementById('upd_sex').value.trim()) errors.push('Sex is required.');
+
+    if (errors.length > 0) {
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+        document.querySelector('#updatePatientOverlay > div').scrollTop = 0;
+        return;
+    }
+
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
+    document.getElementById('updatePatientConfirm').style.display = 'flex';
+}
+
 function closeUpdatePatientModal() {
     document.getElementById('updatePatientOverlay').style.display = 'none';
     document.getElementById('updatePatientConfirm').style.display = 'none';
+    const err = document.getElementById('updatePatientErrors');
+    if (err) { err.style.display = 'none'; err.innerHTML = ''; }
 }
 
 function openDeletePatientModal() {

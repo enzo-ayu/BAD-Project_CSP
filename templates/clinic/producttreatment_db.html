@@ -238,6 +238,7 @@
                    class="text-decoration-none text-muted">← Back</a>
             </div>
             <h4 class="fw-bold mb-4" style="color:#CE548D;">Add Product</h4>
+            <div id="addProductErrors" class="mb-3" style="display:none;"></div>
             <form method="POST" action="{% url 'product_add' %}" id="addProductForm">
                 {% csrf_token %}
                 <div class="row g-3">
@@ -272,12 +273,25 @@
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Branch <span class="text-danger">*</span></label>
-                        <select name="branch" class="form-select" required>
-                            <option value="">— Select Branch —</option>
-                            {% for b in branches %}
-                            <option value="{{ b.branch_id }}">{{ b.branch_location }}</option>
-                            {% endfor %}
-                        </select>
+                        <div class="border rounded p-2" style="max-height:120px; overflow-y:auto;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="addProduct_allBranches"
+                                    onchange="toggleAllBranches('addProduct_allBranches', 'addProductBranchList')">
+                                <label class="form-check-label fw-semibold" for="addProduct_allBranches">All Branches</label>
+                            </div>
+                            <hr class="my-1">
+                            <div id="addProductBranchList">
+                                {% for b in branches %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="branch"
+                                        value="{{ b.branch_id }}" id="addPBranch_{{ b.branch_id }}">
+                                    <label class="form-check-label" for="addPBranch_{{ b.branch_id }}">
+                                        {{ b.branch_location }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
@@ -287,7 +301,7 @@
                 <div class="d-flex justify-content-end gap-2 mt-4">
                     <button type="button" class="btn btn-secondary" onclick="closeAddProductModal()">Cancel</button>
                     <button type="button" class="btn text-white" style="background-color:#CE548D;"
-                            onclick="document.getElementById('addProductConfirm').style.display='flex'">Save</button>
+                            onclick="validateAndConfirmAddProduct()">Save</button>
                 </div>
             </form>
         </div>
@@ -320,6 +334,7 @@
                    class="text-decoration-none text-muted">← Back</a>
             </div>
             <h4 class="fw-bold mb-4" style="color:#CE548D;">Update Product</h4>
+            <div id="updateProductErrors" class="mb-3" style="display:none;"></div>
             <form method="POST" action="" id="updateProductForm">
                 {% csrf_token %}
                 <div class="row g-3">
@@ -352,15 +367,6 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Branch <span class="text-danger">*</span></label>
-                        <select name="branch" id="upd_branch" class="form-select" required>
-                            <option value="">— Select Branch —</option>
-                            {% for b in branches %}
-                            <option value="{{ b.branch_id }}">{{ b.branch_location }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
                         <textarea name="description" id="upd_description" class="form-control" rows="3" required></textarea>
@@ -377,7 +383,7 @@
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-secondary" onclick="closeUpdateProductModal()">Cancel</button>
                         <button type="button" class="btn text-white" style="background-color:#CE548D;"
-                                onclick="document.getElementById('updateProductConfirm').style.display='flex'">Save</button>
+                                onclick="validateAndConfirmUpdateProduct()">Save</button>
                     </div>
                 </div>
             </form>
@@ -431,6 +437,7 @@
 
             <!-- Title -->
             <h4 class="fw-bold mb-4" style="color:#CE548D;">Add Treatment</h4>
+            <div id="addTreatmentErrors" class="mb-3" style="display:none;"></div>
 
             <form method="POST" action="{% url 'treatment_add' %}" id="addTreatmentForm">
                 {% csrf_token %}
@@ -471,15 +478,26 @@
 
                     <!-- BRANCH -->
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">
-                            Branch <span class="text-danger">*</span>
-                        </label>
-                        <select name="branch" class="form-select" required>
-                            <option value="">— Select Branch —</option>
-                            {% for b in branches %}
-                            <option value="{{ b.branch_id }}">{{ b.branch_location }}</option>
-                            {% endfor %}
-                        </select>
+                        <label class="form-label fw-semibold">Branch <span class="text-danger">*</span></label>
+                        <div class="border rounded p-2" style="max-height:120px; overflow-y:auto;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="addTreatment_allBranches"
+                                    onchange="toggleAllBranches('addTreatment_allBranches', 'addTreatmentBranchList')">
+                                <label class="form-check-label fw-semibold" for="addTreatment_allBranches">All Branches</label>
+                            </div>
+                            <hr class="my-1">
+                            <div id="addTreatmentBranchList">
+                                {% for b in branches %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="branch"
+                                        value="{{ b.branch_id }}" id="addTBranch_{{ b.branch_id }}">
+                                    <label class="form-check-label" for="addTBranch_{{ b.branch_id }}">
+                                        {{ b.branch_location }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
 
                     <!-- DESCRIPTION -->
@@ -494,20 +512,6 @@
                                   required></textarea>
                     </div>
 
-                    <!-- AVAILABILITY -->
-                    <div class="col-12">
-                        <div class="form-check mt-2">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   name="availability_status"
-                                   id="add_treatment_status"
-                                   checked>
-                            <label class="form-check-label fw-semibold" for="add_treatment_status">
-                                Available
-                            </label>
-                        </div>
-                    </div>
-
                 </div>
 
                 <!-- BUTTONS -->
@@ -515,11 +519,8 @@
                     <button type="button" class="btn btn-secondary"
                             onclick="closeAddTreatmentModal()">Cancel</button>
 
-                    <button type="button" class="btn text-white"
-                            style="background-color:#CE548D;"
-                            onclick="document.getElementById('addTreatmentConfirm').style.display='flex'">
-                        Save
-                    </button>
+                    <button type="button" class="btn text-white" style="background-color:#CE548D;"
+                            onclick="validateAndConfirmAddTreatment()">Save</button>
                 </div>
 
             </form>
@@ -547,6 +548,7 @@
                    class="text-decoration-none text-muted">← Back</a>
             </div>
             <h4 class="fw-bold mb-4" style="color:#CE548D;">Update Treatment</h4>
+            <div id="updateTreatmentErrors" class="mb-3" style="display:none;"></div>
 
             <form method="POST" id="updateTreatmentForm">
                 {% csrf_token %}
@@ -584,7 +586,7 @@
                         <button type="button" class="btn btn-secondary"
                                 onclick="closeUpdateTreatmentModal()">Cancel</button>
                         <button type="button" class="btn text-white" style="background-color:#CE548D;"
-                                onclick="document.getElementById('updateTreatmentConfirm').style.display='flex'">Save</button>
+                                onclick="validateAndConfirmUpdateTreatment()">Save</button>
                     </div>
                 </div>
             </form>
@@ -643,37 +645,117 @@
         alertContainer.appendChild(alertDiv);
         setTimeout(() => alertDiv.remove(), 5000);
     }
-    // ── ADD PRODUCT ──
+    function toggleAllBranches(checkboxId, listId) {
+        const allChecked = document.getElementById(checkboxId).checked;
+        document.querySelectorAll(`#${listId} input[type=checkbox]`).forEach(cb => {
+            cb.checked = allChecked;
+        });
+    }
+        // ── ADD PRODUCT ──
     function openAddProductModal() {
         document.getElementById('addProductOverlay').style.display = 'flex';
+    }
+    function validateAndConfirmAddProduct() {
+        const errorContainer = document.getElementById('addProductErrors');
+        const errors = [];
+
+        const name = document.querySelector('#addProductForm [name=product_name]').value.trim();
+        const type = document.querySelector('#addProductForm [name=product_type]').value.trim();
+        const cost = document.querySelector('#addProductForm [name=unit_cost]').value;
+        const stock = document.querySelector('#addProductForm [name=stock_quantity]').value;
+        const minQty = document.querySelector('#addProductForm [name=quantity_minimum]').value;
+        const supplier = document.querySelector('#addProductForm [name=supplier]').value;
+        const branchChecked = document.querySelectorAll('#addProductForm input[name=branch]:checked').length > 0;
+        if (!branchChecked) errors.push('Please select at least one branch.');
+        const description = document.querySelector('#addProductForm [name=description]').value.trim();
+
+        if (!name) errors.push('Product Name is required.');
+        if (!type) errors.push('Product Type is required.');
+        if (cost === '' || cost < 0) errors.push('Unit Cost is required and must be 0 or more.');
+        if (stock === '') errors.push('Stock Quantity is required.');
+        if (!minQty || minQty < 1) errors.push('Quantity Minimum must be at least 1.');
+        if (!supplier) errors.push('Please select a supplier.');
+        if (!branch) errors.push('Please select a branch.');
+        if (!description) errors.push('Description is required.');
+
+        if (errors.length > 0) {
+            errorContainer.innerHTML = errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#addProductOverlay > div').scrollTop = 0;
+            return;
+        }
+
+        errorContainer.style.display = 'none';
+        errorContainer.innerHTML = '';
+        document.getElementById('addProductConfirm').style.display = 'flex';
     }
     function closeAddProductModal() {
         document.getElementById('addProductOverlay').style.display = 'none';
         document.getElementById('addProductConfirm').style.display = 'none';
+        const err = document.getElementById('addProductErrors');
+        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
     }
 
     // ── UPDATE PRODUCT ──
-    function openUpdateProductModal(productId, name, type, cost, description, supplierId, stock, minQty, branchId) {
-        document.getElementById('upd_product_name').value       = name;
-        document.getElementById('upd_product_type').value       = type;
-        document.getElementById('upd_unit_cost').value          = cost;
-        document.getElementById('upd_description').value        = description;
-        document.getElementById('upd_stock').value              = stock;
-        document.getElementById('upd_min_qty').value            = minQty;
+    function openUpdateProductModal(productId, name, type, cost, description, supplierId, stock, minQty) {
+        document.getElementById('upd_product_name').value  = name;
+        document.getElementById('upd_product_type').value  = type;
+        document.getElementById('upd_unit_cost').value     = cost;
+        document.getElementById('upd_description').value   = description;
+        document.getElementById('upd_stock').value         = stock;
+        document.getElementById('upd_min_qty').value       = minQty;
 
         const supplierSel = document.getElementById('upd_supplier');
         for (let opt of supplierSel.options) { opt.selected = opt.value == supplierId; }
-
-        const branchSel = document.getElementById('upd_branch');
-        for (let opt of branchSel.options) { opt.selected = opt.value == branchId; }
 
         document.getElementById('updateProductForm').action = '/products/' + productId + '/update/';
         document.getElementById('deleteProductForm').action = '/products/' + productId + '/delete/';
         document.getElementById('updateProductOverlay').style.display = 'flex';
     }
+    function validateAndConfirmUpdateProduct() {
+        const errorContainer = document.getElementById('updateProductErrors');
+        const errors = [];
+
+        const name = document.getElementById('upd_product_name').value.trim();
+        const type = document.getElementById('upd_product_type').value.trim();
+        const cost = document.getElementById('upd_unit_cost').value;
+        const minQty = document.getElementById('upd_min_qty').value;
+        const supplier = document.getElementById('upd_supplier').value;
+        const description = document.getElementById('upd_description').value.trim();
+
+        if (!name) errors.push('Product Name is required.');
+        if (!type) errors.push('Product Type is required.');
+        if (cost === '' || cost < 0) errors.push('Unit Cost is required and must be 0 or more.');
+        if (!minQty || minQty < 1) errors.push('Quantity Minimum must be at least 1.');
+        if (!supplier) errors.push('Please select a supplier.');
+        if (!description) errors.push('Description is required.');
+
+        if (errors.length > 0) {
+            errorContainer.innerHTML = errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#updateProductOverlay > div').scrollTop = 0;
+            return;
+        }
+
+        errorContainer.style.display = 'none';
+        errorContainer.innerHTML = '';
+        document.getElementById('updateProductConfirm').style.display = 'flex';
+    }
     function closeUpdateProductModal() {
         document.getElementById('updateProductOverlay').style.display = 'none';
         document.getElementById('updateProductConfirm').style.display = 'none';
+        const err = document.getElementById('updateProductErrors');
+        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
     }
 
     // ── DELETE PRODUCT ──
@@ -704,8 +786,43 @@
     function openAddTreatmentModal() {
         document.getElementById('addTreatmentOverlay').style.display = 'flex';
     }
+    function validateAndConfirmAddTreatment() {
+        const errorContainer = document.getElementById('addTreatmentErrors');
+        const errors = [];
+
+        const name = document.querySelector('#addTreatmentForm [name=treatment_name]').value.trim();
+        const type = document.querySelector('#addTreatmentForm [name=treatment_type]').value.trim();
+        const cost = document.querySelector('#addTreatmentForm [name=treatment_cost]').value;
+        const desc = document.querySelector('#addTreatmentForm [name=description]').value.trim();
+        const branchChecked = document.querySelectorAll('#addTreatmentForm input[name=branch]:checked').length > 0;
+        if (!branchChecked) errors.push('Please select at least one branch.');
+
+        if (!name) errors.push('Treatment Name is required.');
+        if (!type) errors.push('Treatment Type is required.');
+        if (cost === '' || parseFloat(cost) < 0) errors.push('Treatment Cost is required and must be 0 or more.');
+        if (!desc) errors.push('Description is required.');
+        if (!branch) errors.push('Please select a branch.');
+
+        if (errors.length > 0) {
+            errorContainer.innerHTML = errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show py-1 px-2 mb-1 small" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close py-1" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#addTreatmentOverlay > div').scrollTop = 0;
+            return;
+        }
+
+        errorContainer.style.display = 'none';
+        errorContainer.innerHTML = '';
+        document.getElementById('addTreatmentConfirm').style.display = 'flex';
+    }
     function closeAddTreatmentModal() {
         document.getElementById('addTreatmentOverlay').style.display = 'none';
+        const err = document.getElementById('addTreatmentErrors');
+        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
     }
 
     // UPDATE TREATMENT
@@ -720,13 +837,41 @@
         document.getElementById('deleteTreatmentForm').action = '/treatments/' + id + '/delete/';
         document.getElementById('updateTreatmentOverlay').style.display = 'flex';
     }
+    function validateAndConfirmUpdateTreatment() {
+        const errorContainer = document.getElementById('updateTreatmentErrors');
+        const errors = [];
+
+        const name = document.getElementById('upd_treatment_name').value.trim();
+        const type = document.getElementById('upd_treatment_type').value.trim();
+        const cost = document.getElementById('upd_treatment_cost').value;
+
+        if (!name) errors.push('Treatment Name is required.');
+        if (!type) errors.push('Treatment Type is required.');
+        if (cost === '' || parseFloat(cost) < 0) errors.push('Treatment Cost is required and must be 0 or more.');
+
+        if (errors.length > 0) {
+            errorContainer.innerHTML = errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show py-1 px-2 mb-1 small" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close py-1" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#updateTreatmentOverlay > div').scrollTop = 0;
+            return;
+        }
+
+        errorContainer.style.display = 'none';
+        errorContainer.innerHTML = '';
+        document.getElementById('updateTreatmentConfirm').style.display = 'flex';
+    }
     function closeUpdateTreatmentModal() {
         document.getElementById('updateTreatmentOverlay').style.display = 'none';
         document.getElementById('updateTreatmentConfirm').style.display = 'none';
+        const err = document.getElementById('updateTreatmentErrors');
+        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
     }
-    function openDeleteTreatmentModal() {
-        document.getElementById('deleteTreatmentConfirm').style.display = 'flex';
-    }
+
     // ── DELETE TREATMENT ──
     function openDeleteTreatmentModal() {
         document.getElementById('deleteTreatmentConfirm').style.display = 'flex';

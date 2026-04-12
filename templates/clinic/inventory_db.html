@@ -129,10 +129,13 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Product <span class="text-danger">*</span></label>
                         <select name="product" id="add_productSelect" class="form-select" required
-                                onchange="updateProductType('add_productSelect','add_productType')">
+                                onchange="updateProductType('add_productSelect','add_productType'); updateSupplier('add_productSelect', 'add_supplierDisplay', 'add_supplierHidden')">
                             <option value="">— Select Product —</option>
                             {% for product in products %}
-                            <option value="{{ product.product_id }}" data-type="{{ product.product_type }}">
+                            <option value="{{ product.product_id }}"
+                                    data-type="{{ product.product_type }}"
+                                    data-supplier-id="{{ product.supplier_id }}"
+                                    data-supplier-name="{{ product.supplier.supplier_name }}">
                                 {{ product.product_name }}
                             </option>
                             {% endfor %}
@@ -164,12 +167,9 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Supplier <span class="text-danger">*</span></label>
-                        <select name="supplier" class="form-select" required>
-                            <option value="">— Select Supplier —</option>
-                            {% for supplier in suppliers %}
-                            <option value="{{ supplier.supplier_id }}">{{ supplier.supplier_name }}</option>
-                            {% endfor %}
-                        </select>
+                        <input type="text" id="add_supplierDisplay" class="form-control bg-light text-muted"
+                            placeholder="Auto-filled from product" disabled>
+                        <input type="hidden" name="supplier" id="add_supplierHidden">
                     </div>
                     <div class="mb-4">
                         <label class="form-label fw-semibold">Branch {% if user_is_owner %}<span class="text-danger">*</span>{% endif %}</label>
@@ -234,10 +234,13 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Product <span class="text-danger">*</span></label>
                         <select name="product" id="upd_productSelect" class="form-select" required
-                                onchange="updateProductType('upd_productSelect','upd_productType')">
+                                onchange="updateProductType('upd_productSelect','upd_productType'); updateSupplier('upd_productSelect', 'upd_supplierDisplay', 'upd_supplierHidden')">
                             <option value="">— Select Product —</option>
                             {% for product in products %}
-                            <option value="{{ product.product_id }}" data-type="{{ product.product_type }}">
+                            <option value="{{ product.product_id }}"
+                                    data-type="{{ product.product_type }}"
+                                    data-supplier-id="{{ product.supplier_id }}"
+                                    data-supplier-name="{{ product.supplier.supplier_name }}">
                                 {{ product.product_name }}
                             </option>
                             {% endfor %}
@@ -271,12 +274,8 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Supplier <span class="text-danger">*</span></label>
-                        <select name="supplier" id="upd_supplier" class="form-select" required>
-                            <option value="">— Select Supplier —</option>
-                            {% for supplier in suppliers %}
-                            <option value="{{ supplier.supplier_id }}">{{ supplier.supplier_name }}</option>
-                            {% endfor %}
-                        </select>
+                        <input type="text" id="upd_supplierDisplay" class="form-control bg-light text-muted" disabled>
+                        <input type="hidden" name="supplier" id="upd_supplierHidden">
                     </div>
 
                     <!-- BRANCH: owner gets dropdown, aesthetician gets locked display + hidden input -->
@@ -429,6 +428,13 @@ function updateProductType(selectId, typeId) {
     document.getElementById(typeId).value = selected.dataset.type || '';
 }
 
+function updateSupplier(selectId, displayId, hiddenId) {
+    const sel = document.getElementById(selectId);
+    const selected = sel.options[sel.selectedIndex];
+    document.getElementById(displayId).value = selected.dataset.supplierName || '';
+    document.getElementById(hiddenId).value  = selected.dataset.supplierId || '';
+}
+
 function openShipmentModal() {
     document.getElementById('addShipmentOverlay').style.display = 'flex';
 }
@@ -438,19 +444,20 @@ function closeShipmentModal() {
 }
 
 function openUpdateShipmentModal(recordId, productId, productType, qty, dateReceived, expirationDate, supplierId, branchId) {
-    document.getElementById('upd_record_id').value = recordId;
-    document.getElementById('upd_qty').value = qty;
-    document.getElementById('upd_date_received').value = dateReceived;
-    document.getElementById('upd_expiration').value = expirationDate;
+    document.getElementById('upd_record_id').value        = recordId;
+    document.getElementById('upd_qty').value              = qty;
+    document.getElementById('upd_date_received').value    = dateReceived;
+    document.getElementById('upd_expiration').value       = expirationDate;
 
     const productSel = document.getElementById('upd_productSelect');
     for (let opt of productSel.options) { opt.selected = opt.value == productId; }
     document.getElementById('upd_productType').value = productType;
 
-    const supplierSel = document.getElementById('upd_supplier');
-    for (let opt of supplierSel.options) { opt.selected = opt.value == supplierId; }
+    // Auto-populate supplier from selected product option
+    const selectedOpt = productSel.options[productSel.selectedIndex];
+    document.getElementById('upd_supplierDisplay').value = selectedOpt.dataset.supplierName || '';
+    document.getElementById('upd_supplierHidden').value  = selectedOpt.dataset.supplierId || '';
 
-    // Only set for owners — aestheticians use a hidden input instead
     const branchSel = document.getElementById('upd_branch');
     if (branchSel) {
         for (let opt of branchSel.options) { opt.selected = opt.value == branchId; }
@@ -468,7 +475,7 @@ function validateAndConfirmAddShipment() {
     const qty = parseInt(document.querySelector('#addShipmentForm [name=quantity_received]').value);
     const dateReceived = document.querySelector('#addShipmentForm [name=date_received]').value;
     const expiry = document.querySelector('#addShipmentForm [name=expiration_date]').value;
-    const supplier = document.querySelector('#addShipmentForm [name=supplier]').value;
+    const supplier = document.getElementById('add_supplierHidden').value;
     const branchEl = document.querySelector('#addShipmentForm [name=branch]');
 
     if (!product) errors.push('Please select a product.');
@@ -505,7 +512,7 @@ function validateAndConfirmUpdateShipment() {
     const qty = parseInt(document.getElementById('upd_qty').value);
     const dateReceived = document.getElementById('upd_date_received').value;
     const expiry = document.getElementById('upd_expiration').value;
-    const supplier = document.getElementById('upd_supplier').value;
+    const supplier = document.getElementById('upd_supplierHidden').value;
     const branchEl = document.getElementById('upd_branch');
 
     if (!product) errors.push('Please select a product.');
