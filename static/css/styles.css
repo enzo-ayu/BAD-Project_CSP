@@ -378,6 +378,19 @@ table.treatment-db-table > thead > tr > th {
     border-top: none !important;
 }
 
+.product-db-table,
+.treatment-db-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.product-db-table td,
+.treatment-db-table td {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
 /* =======================================
    Date fix 
    ======================================= */

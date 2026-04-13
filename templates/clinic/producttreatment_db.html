@@ -63,13 +63,13 @@
                                 onclick="showBranchWarning('You are not authorized to add products.')">+ Add Product</button>
                     {% endif %}
                 </div>
-                <table class="table treatment-db-table">
+                <table class="table treatment-db-table" style="table-layout: fixed; width: 100%;">
                     <thead>
                         <tr>
-                            <th>Product Name</th>
-                            <th>Type</th>
-                            <th>Stock</th>
-                            <th></th>
+                            <th style="width: 45%;">Product Name</th>
+                            <th style="width: 20%;">Type</th>
+                            <th style="width: 15%;">Stock</th>
+                            <th style="width: 20%;"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -167,12 +167,12 @@
                                 onclick="showBranchWarning('You are not authorized to add treatments.')">+ Add Treatment</button>
                     {% endif %}
                 </div>
-                <table class="table treatment-db-table">
+                <table class="table treatment-db-table" style="table-layout: fixed; width: 100%;">
                     <thead>
                         <tr>
-                            <th>Treatment Name</th>
-                            <th>Type</th>
-                            <th></th>
+                            <th style="width: 50%;">Treatment Name</th>
+                            <th style="width: 20%;">Type</th>
+                            <th style="width: 30%;"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -244,15 +244,18 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Product Name <span class="text-danger">*</span></label>
-                        <input type="text" name="product_name" class="form-control" required>
+                        <!-- maxlength="100" added -->
+                        <input type="text" name="product_name" class="form-control" maxlength="100" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Product Type <span class="text-danger">*</span></label>
-                        <input type="text" name="product_type" class="form-control" required>
+                        <input type="text" name="product_type" class="form-control" maxlength="30" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Unit Cost <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" name="unit_cost" class="form-control" placeholder="0.00" min="0" required>
+                        <!-- max="999999.99" added -->
+                        <input type="number" step="0.01" name="unit_cost" class="form-control"
+                               placeholder="0.00" min="0.01" max="999999.99" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Stock Quantity <span class="text-danger">*</span></label>
@@ -295,7 +298,8 @@
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
-                        <textarea name="description" class="form-control" rows="3" placeholder="Enter product details..." required></textarea>
+                        <textarea name="description" class="form-control" rows="3"
+                                  placeholder="Enter product details..." required></textarea>
                     </div>
                 </div>
                 <div class="d-flex justify-content-end gap-2 mt-4">
@@ -318,7 +322,7 @@
             <button class="btn btn-secondary"
                     onclick="document.getElementById('addProductConfirm').style.display='none'">Cancel</button>
             <button class="btn text-white" style="background-color:#CE548D;"
-                    onclick="document.getElementById('addProductForm').submit()">Yes</button>
+                    onclick="submitAddProduct()">Yes</button>
         </div>
     </div>
 </div>
@@ -338,25 +342,37 @@
             <form method="POST" action="" id="updateProductForm">
                 {% csrf_token %}
                 <div class="row g-3">
+                    <!-- READ-ONLY PRODUCT ID — new field -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Product ID</label>
+                        <input type="text" id="upd_product_id_display" class="form-control bg-light"
+                               readonly tabindex="-1">
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Product Name <span class="text-danger">*</span></label>
-                        <input type="text" name="product_name" id="upd_product_name" class="form-control" required>
+                        <!-- maxlength="100" added -->
+                        <input type="text" name="product_name" id="upd_product_name"
+                               class="form-control" maxlength="100" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Product Type <span class="text-danger">*</span></label>
-                        <input type="text" name="product_type" id="upd_product_type" class="form-control" required>
+                        <input type="text" name="product_type" id="upd_product_type" class="form-control" maxlength="30" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Unit Cost <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" name="unit_cost" id="upd_unit_cost" class="form-control" min="0" required>
+                        <!-- max="999999.99" added -->
+                        <input type="number" step="0.01" name="unit_cost" id="upd_unit_cost"
+                               class="form-control" min="0.01" max="999999.99" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Stock Quantity</label>
-                        <input type="number" name="stock_quantity" id="upd_stock" class="form-control bg-light" readonly>
+                        <input type="number" name="stock_quantity" id="upd_stock"
+                               class="form-control bg-light" readonly>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Quantity Minimum <span class="text-danger">*</span></label>
-                        <input type="number" name="quantity_minimum" id="upd_min_qty" class="form-control" min="1" required>
+                        <input type="number" name="quantity_minimum" id="upd_min_qty"
+                               class="form-control" min="1" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Supplier <span class="text-danger">*</span></label>
@@ -369,7 +385,8 @@
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
-                        <textarea name="description" id="upd_description" class="form-control" rows="3" required></textarea>
+                        <textarea name="description" id="upd_description"
+                                  class="form-control" rows="3" required></textarea>
                     </div>
                 </div>
                 <div class="d-flex justify-content-between mt-4">
@@ -381,7 +398,8 @@
                                 style="opacity:0.5; cursor:not-allowed;">Delete</button>
                     {% endif %}
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-secondary" onclick="closeUpdateProductModal()">Cancel</button>
+                        <button type="button" class="btn btn-secondary"
+                                onclick="closeUpdateProductModal()">Cancel</button>
                         <button type="button" class="btn text-white" style="background-color:#CE548D;"
                                 onclick="validateAndConfirmUpdateProduct()">Save</button>
                     </div>
@@ -401,7 +419,7 @@
             <button class="btn btn-secondary"
                     onclick="document.getElementById('updateProductConfirm').style.display='none'">Cancel</button>
             <button class="btn text-white" style="background-color:#CE548D;"
-                    onclick="document.getElementById('updateProductForm').submit()">Yes</button>
+                    onclick="submitUpdateTreatment()">Yes</button>
         </div>
     </div>
 </div>
@@ -425,59 +443,34 @@
 <!-- ── ADD TREATMENT MODAL (FIXED) ── -->
 <div id="addTreatmentOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
      background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
-    
     <div style="width:100%; max-width:620px; max-height:90vh; overflow-y:auto;">
         <div style="background:#fff; border-radius:12px; padding:30px; box-shadow:0 8px 32px rgba(0,0,0,0.18);">
-            
-            <!-- Back -->
             <div class="mb-3">
                 <a href="javascript:void(0)" onclick="closeAddTreatmentModal()"
                    class="text-decoration-none text-muted">← Back</a>
             </div>
-
-            <!-- Title -->
             <h4 class="fw-bold mb-4" style="color:#CE548D;">Add Treatment</h4>
             <div id="addTreatmentErrors" class="mb-3" style="display:none;"></div>
-
             <form method="POST" action="{% url 'treatment_add' %}" id="addTreatmentForm">
                 {% csrf_token %}
-
                 <div class="row g-3">
-
-                    <!-- NAME -->
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">
-                            Treatment Name <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" name="treatment_name"
-                               class="form-control"
-                               required>
+                        <label class="form-label fw-semibold">Treatment Name <span class="text-danger">*</span></label>
+                        <!-- maxlength="100" added -->
+                        <input type="text" name="treatment_name" class="form-control"
+                               maxlength="100" required>
                     </div>
-
-                    <!-- TYPE -->
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">
-                            Treatment Type <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" name="treatment_type"
-                               class="form-control"
-                               required>
+                        <label class="form-label fw-semibold">Treatment Type <span class="text-danger">*</span></label>
+                        <input type="text" name="treatment_type" class="form-control" maxlength="30" required>
                     </div>
-
-                    <!-- COST -->
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">
-                            Treatment Cost <span class="text-danger">*</span>
-                        </label>
-                        <input type="number" step="0.01" name="treatment_cost"
-                               class="form-control"
-                               placeholder="0.00"
-                               min="0"
-                               required>
+                        <label class="form-label fw-semibold">Treatment Cost <span class="text-danger">*</span></label>
+                        <!-- max="999999.99" added -->
+                        <input type="number" step="0.01" name="treatment_cost" class="form-control"
+                               placeholder="0.00" min="0.01" max="999999.99" required>
                     </div>
-
-                    <!-- BRANCH -->
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <label class="form-label fw-semibold">Branch <span class="text-danger">*</span></label>
                         <div class="border rounded p-2" style="max-height:120px; overflow-y:auto;">
                             <div class="form-check">
@@ -499,42 +492,35 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- DESCRIPTION -->
                     <div class="col-12">
-                        <label class="form-label fw-semibold">
-                            Description <span class="text-danger">*</span>
-                        </label>
-                        <textarea name="description"
-                                  class="form-control"
-                                  rows="3"
-                                  placeholder="Enter treatment details..."
-                                  required></textarea>
+                        <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+                        <textarea name="description" class="form-control" rows="3"
+                                  placeholder="Enter treatment details..." required></textarea>
                     </div>
-
                 </div>
-
-                <!-- BUTTONS -->
                 <div class="d-flex justify-content-end gap-2 mt-4">
                     <button type="button" class="btn btn-secondary"
                             onclick="closeAddTreatmentModal()">Cancel</button>
-
                     <button type="button" class="btn text-white" style="background-color:#CE548D;"
                             onclick="validateAndConfirmAddTreatment()">Save</button>
                 </div>
-
             </form>
         </div>
     </div>
 </div>
 
-<!-- CONFIRM ADD -->
-<div id="addTreatmentConfirm" style="display:none;" class="confirm-overlay">
-    <div class="confirm-box">
-        <h5>Confirm</h5>
-        <p>Add this treatment?</p>
-        <button onclick="document.getElementById('addTreatmentForm').submit()">Yes</button>
-        <button onclick="this.parentElement.parentElement.style.display='none'">No</button>
+<!-- Confirm Add Treatment -->
+<div id="addTreatmentConfirm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm</h5>
+        <p class="mb-3">Are you sure you want to add this treatment?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary"
+                    onclick="document.getElementById('addTreatmentConfirm').style.display='none'">Cancel</button>
+            <button class="btn text-white" style="background-color:#CE548D;"
+                    onclick="document.getElementById('addTreatmentForm').submit()">Yes</button>
+        </div>
     </div>
 </div>
 
@@ -549,29 +535,41 @@
             </div>
             <h4 class="fw-bold mb-4" style="color:#CE548D;">Update Treatment</h4>
             <div id="updateTreatmentErrors" class="mb-3" style="display:none;"></div>
-
             <form method="POST" id="updateTreatmentForm">
                 {% csrf_token %}
                 <div class="row g-3">
+                    <!-- READ-ONLY TREATMENT ID — new field -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Treatment ID</label>
+                        <input type="text" id="upd_treatment_id_display" class="form-control bg-light"
+                               readonly tabindex="-1">
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Treatment Name <span class="text-danger">*</span></label>
-                        <input type="text" name="treatment_name" id="upd_treatment_name" class="form-control" required>
+                        <!-- maxlength="100" added -->
+                        <input type="text" name="treatment_name" id="upd_treatment_name"
+                               class="form-control" maxlength="100" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Treatment Type <span class="text-danger">*</span></label>
-                        <input type="text" name="treatment_type" id="upd_treatment_type" class="form-control" required>
+                        <input type="text" name="treatment_type" id="upd_treatment_type"
+                               class="form-control" maxlength="30" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Treatment Cost <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" name="treatment_cost" id="upd_treatment_cost" class="form-control" required>
+                        <!-- max="999999.99" added -->
+                        <input type="number" step="0.01" name="treatment_cost" id="upd_treatment_cost"
+                               class="form-control" min="0.01" max="999999.99" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Availability</label><br>
-                        <input type="checkbox" name="availability_status" id="upd_treatment_status"> Available
+                        <input type="checkbox" name="availability_status"
+                               id="upd_treatment_status"> Available
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Description</label>
-                        <textarea name="description" id="upd_treatment_desc" class="form-control" rows="3"></textarea>
+                        <textarea name="description" id="upd_treatment_desc"
+                                  class="form-control" rows="3"></textarea>
                     </div>
                 </div>
                 <div class="d-flex justify-content-between mt-4">
@@ -634,274 +632,334 @@
 </div>
 
 <script>
-    function showBranchWarning(msg) {
-        msg = msg || '⚠️ Please select a specific branch from the navbar before updating.';
-        const alertContainer = document.getElementById('alert-container');
-        alertContainer.innerHTML = '';
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
-        alertDiv.role = 'alert';
-        alertDiv.innerHTML = `${msg} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-        alertContainer.appendChild(alertDiv);
-        setTimeout(() => alertDiv.remove(), 5000);
-    }
-    function toggleAllBranches(checkboxId, listId) {
-        const allChecked = document.getElementById(checkboxId).checked;
-        document.querySelectorAll(`#${listId} input[type=checkbox]`).forEach(cb => {
-            cb.checked = allChecked;
-        });
-    }
-        // ── ADD PRODUCT ──
-    function openAddProductModal() {
-        document.getElementById('addProductOverlay').style.display = 'flex';
-    }
-    function validateAndConfirmAddProduct() {
-        const errorContainer = document.getElementById('addProductErrors');
-        const errors = [];
+const MAX_NAME_LENGTH = 100;
+const MAX_COST = 999999.99;
 
-        const name = document.querySelector('#addProductForm [name=product_name]').value.trim();
-        const type = document.querySelector('#addProductForm [name=product_type]').value.trim();
-        const cost = document.querySelector('#addProductForm [name=unit_cost]').value;
-        const stock = document.querySelector('#addProductForm [name=stock_quantity]').value;
-        const minQty = document.querySelector('#addProductForm [name=quantity_minimum]').value;
-        const supplier = document.querySelector('#addProductForm [name=supplier]').value;
-        const branchChecked = document.querySelectorAll('#addProductForm input[name=branch]:checked').length > 0;
-        if (!branchChecked) errors.push('Please select at least one branch.');
-        const description = document.querySelector('#addProductForm [name=description]').value.trim();
+function showBranchWarning(msg) {
+    msg = msg || '⚠️ Please select a specific branch from the navbar before updating.';
+    const alertContainer = document.getElementById('alert-container');
+    alertContainer.innerHTML = '';
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+    alertDiv.role = 'alert';
+    alertDiv.innerHTML = `${msg} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+    alertContainer.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 5000);
+}
 
-        if (!name) errors.push('Product Name is required.');
-        if (!type) errors.push('Product Type is required.');
-        if (cost === '' || cost < 0) errors.push('Unit Cost is required and must be 0 or more.');
-        if (stock === '') errors.push('Stock Quantity is required.');
-        if (!minQty || minQty < 1) errors.push('Quantity Minimum must be at least 1.');
-        if (!supplier) errors.push('Please select a supplier.');
-        if (!branch) errors.push('Please select a branch.');
-        if (!description) errors.push('Description is required.');
+function toggleAllBranches(checkboxId, listId) {
+    const allChecked = document.getElementById(checkboxId).checked;
+    document.querySelectorAll(`#${listId} input[type=checkbox]`).forEach(cb => {
+        cb.checked = allChecked;
+    });
+}
 
-        if (errors.length > 0) {
-            errorContainer.innerHTML = errors.map(e =>
-                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
-                    ${e}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>`
-            ).join('');
+// ── ADD PRODUCT ──
+function openAddProductModal() {
+    document.getElementById('addProductOverlay').style.display = 'flex';
+}
+function validateAndConfirmAddProduct() {
+    const errorContainer = document.getElementById('addProductErrors');
+    const errors = [];
+
+    const name     = document.querySelector('#addProductForm [name=product_name]').value.trim();
+    const type     = document.querySelector('#addProductForm [name=product_type]').value.trim();
+    const cost     = document.querySelector('#addProductForm [name=unit_cost]').value;
+    const stock    = document.querySelector('#addProductForm [name=stock_quantity]').value;
+    const minQty   = document.querySelector('#addProductForm [name=quantity_minimum]').value;
+    const supplier = document.querySelector('#addProductForm [name=supplier]').value;
+    const branchChecked = document.querySelectorAll('#addProductForm input[name=branch]:checked').length > 0;
+    const description   = document.querySelector('#addProductForm [name=description]').value.trim();
+
+    if (!name)                              errors.push('Product Name is required.');
+    if (name.length > MAX_NAME_LENGTH)      errors.push(`Product Name must not exceed ${MAX_NAME_LENGTH} characters.`);
+    if (!type)                              errors.push('Product Type is required.');
+    if (cost === '' || parseFloat(cost) <= 0)  errors.push('Unit Cost cannot be 0 or less.');
+    if (parseFloat(cost) > MAX_COST)        errors.push(`Unit Cost cannot exceed ${MAX_COST.toLocaleString()}.`);
+    if (stock === '')                       errors.push('Stock Quantity is required.');
+    if (!minQty || parseInt(minQty) < 1)   errors.push('Quantity Minimum must be at least 1.');
+    if (!supplier)                          errors.push('Please select a supplier.');
+    if (!branchChecked)                     errors.push('Please select at least one branch.');
+    if (!description)                       errors.push('Description is required.');
+
+    if (errors.length > 0) {
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+        document.querySelector('#addProductOverlay > div').scrollTop = 0;
+        return;
+    }
+
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
+    document.getElementById('addProductConfirm').style.display = 'flex';
+}
+function closeAddProductModal() {
+    document.getElementById('addProductOverlay').style.display = 'none';
+    document.getElementById('addProductConfirm').style.display = 'none';
+    const err = document.getElementById('addProductErrors');
+    if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+}
+
+// ── UPDATE PRODUCT ──
+function openUpdateProductModal(productId, name, type, cost, description, supplierId, stock, minQty) {
+    // Populate read-only ID display
+    document.getElementById('upd_product_id_display').value = productId;
+
+    document.getElementById('upd_product_name').value  = name;
+    document.getElementById('upd_product_type').value  = type;
+    document.getElementById('upd_unit_cost').value     = cost;
+    document.getElementById('upd_description').value   = description;
+    document.getElementById('upd_stock').value         = stock;
+    document.getElementById('upd_min_qty').value       = minQty;
+
+    const supplierSel = document.getElementById('upd_supplier');
+    for (let opt of supplierSel.options) { opt.selected = opt.value == supplierId; }
+
+    document.getElementById('updateProductForm').action = '/products/' + productId + '/update/';
+    document.getElementById('deleteProductForm').action = '/product/delete/' + productId + '/';
+    document.getElementById('updateProductOverlay').style.display = 'flex';
+}
+function validateAndConfirmUpdateProduct() {
+    const errorContainer = document.getElementById('updateProductErrors');
+    const errors = [];
+
+    const name        = document.getElementById('upd_product_name').value.trim();
+    const type        = document.getElementById('upd_product_type').value.trim();
+    const cost        = document.getElementById('upd_unit_cost').value;
+    const minQty      = document.getElementById('upd_min_qty').value;
+    const supplier    = document.getElementById('upd_supplier').value;
+    const description = document.getElementById('upd_description').value.trim();
+
+    if (!name)                              errors.push('Product Name is required.');
+    if (name.length > MAX_NAME_LENGTH)      errors.push(`Product Name must not exceed ${MAX_NAME_LENGTH} characters.`);
+    if (!type)                              errors.push('Product Type is required.');
+    if (cost === '' || parseFloat(cost) <= 0)  errors.push('Unit Cost cannot be 0 or less.');
+    if (parseFloat(cost) > MAX_COST)        errors.push(`Unit Cost cannot exceed ${MAX_COST.toLocaleString()}.`);
+    if (!minQty || parseInt(minQty) < 1)   errors.push('Quantity Minimum must be at least 1.');
+    if (!supplier)                          errors.push('Please select a supplier.');
+    if (!description)                       errors.push('Description is required.');
+
+    if (errors.length > 0) {
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+        document.querySelector('#updateProductOverlay > div').scrollTop = 0;
+        return;
+    }
+
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
+    document.getElementById('updateProductConfirm').style.display = 'flex';
+}
+function closeUpdateProductModal() {
+    document.getElementById('updateProductOverlay').style.display = 'none';
+    document.getElementById('updateProductConfirm').style.display = 'none';
+    const err = document.getElementById('updateProductErrors');
+    if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+}
+
+function submitAddProduct() {
+    const form = document.getElementById('addProductForm');
+    const errorContainer = document.getElementById('addProductErrors');
+    const formData = new FormData(form);
+    fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => res.ok ? window.location.reload() : res.json().then(data => {
+            document.getElementById('addProductConfirm').style.display = 'none';
+            errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
             errorContainer.style.display = 'block';
             document.querySelector('#addProductOverlay > div').scrollTop = 0;
-            return;
-        }
+        }))
+        .catch(() => window.location.reload());
+}
 
-        errorContainer.style.display = 'none';
-        errorContainer.innerHTML = '';
-        document.getElementById('addProductConfirm').style.display = 'flex';
-    }
-    function closeAddProductModal() {
-        document.getElementById('addProductOverlay').style.display = 'none';
-        document.getElementById('addProductConfirm').style.display = 'none';
-        const err = document.getElementById('addProductErrors');
-        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
-    }
-
-    // ── UPDATE PRODUCT ──
-    function openUpdateProductModal(productId, name, type, cost, description, supplierId, stock, minQty) {
-        document.getElementById('upd_product_name').value  = name;
-        document.getElementById('upd_product_type').value  = type;
-        document.getElementById('upd_unit_cost').value     = cost;
-        document.getElementById('upd_description').value   = description;
-        document.getElementById('upd_stock').value         = stock;
-        document.getElementById('upd_min_qty').value       = minQty;
-
-        const supplierSel = document.getElementById('upd_supplier');
-        for (let opt of supplierSel.options) { opt.selected = opt.value == supplierId; }
-
-        document.getElementById('updateProductForm').action = '/products/' + productId + '/update/';
-        document.getElementById('deleteProductForm').action = '/products/' + productId + '/delete/';
-        document.getElementById('updateProductOverlay').style.display = 'flex';
-    }
-    function validateAndConfirmUpdateProduct() {
-        const errorContainer = document.getElementById('updateProductErrors');
-        const errors = [];
-
-        const name = document.getElementById('upd_product_name').value.trim();
-        const type = document.getElementById('upd_product_type').value.trim();
-        const cost = document.getElementById('upd_unit_cost').value;
-        const minQty = document.getElementById('upd_min_qty').value;
-        const supplier = document.getElementById('upd_supplier').value;
-        const description = document.getElementById('upd_description').value.trim();
-
-        if (!name) errors.push('Product Name is required.');
-        if (!type) errors.push('Product Type is required.');
-        if (cost === '' || cost < 0) errors.push('Unit Cost is required and must be 0 or more.');
-        if (!minQty || minQty < 1) errors.push('Quantity Minimum must be at least 1.');
-        if (!supplier) errors.push('Please select a supplier.');
-        if (!description) errors.push('Description is required.');
-
-        if (errors.length > 0) {
-            errorContainer.innerHTML = errors.map(e =>
-                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
-                    ${e}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>`
-            ).join('');
+function submitUpdateProduct() {
+    const form = document.getElementById('updateProductForm');
+    const errorContainer = document.getElementById('updateProductErrors');
+    const formData = new FormData(form);
+    fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => res.ok ? window.location.reload() : res.json().then(data => {
+            document.getElementById('updateProductConfirm').style.display = 'none';
+            errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
             errorContainer.style.display = 'block';
             document.querySelector('#updateProductOverlay > div').scrollTop = 0;
-            return;
-        }
+        }))
+        .catch(() => window.location.reload());
+}
 
-        errorContainer.style.display = 'none';
-        errorContainer.innerHTML = '';
-        document.getElementById('updateProductConfirm').style.display = 'flex';
-    }
-    function closeUpdateProductModal() {
-        document.getElementById('updateProductOverlay').style.display = 'none';
-        document.getElementById('updateProductConfirm').style.display = 'none';
-        const err = document.getElementById('updateProductErrors');
-        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
-    }
-
-    // ── DELETE PRODUCT ──
-    function openDeleteProductModal() {
-        document.getElementById('deleteProductConfirm').style.display = 'flex';
-    }
-
-    // ── CLOSE ON OUTSIDE CLICK ──
-    window.addEventListener('click', function(e) {
-        if (e.target === document.getElementById('addProductOverlay'))    closeAddProductModal();
-        if (e.target === document.getElementById('updateProductOverlay')) closeUpdateProductModal();
-    });
-
-    // ── RE-OPEN MODAL ON ERROR ──
-    window.addEventListener('DOMContentLoaded', function() {
-        const hasError = document.querySelector('.alert-danger') !== null;
-        if (hasError) {
-            const last = sessionStorage.getItem('lastProductModal');
-            if (last === 'add') openAddProductModal();
-            sessionStorage.removeItem('lastProductModal');
-        }
-    });
-    document.getElementById('addProductForm').addEventListener('submit', function() {
-        sessionStorage.setItem('lastProductModal', 'add');
-    });
-
-    // ADD TREATMENT
-    function openAddTreatmentModal() {
-        document.getElementById('addTreatmentOverlay').style.display = 'flex';
-    }
-    function validateAndConfirmAddTreatment() {
-        const errorContainer = document.getElementById('addTreatmentErrors');
-        const errors = [];
-
-        const name = document.querySelector('#addTreatmentForm [name=treatment_name]').value.trim();
-        const type = document.querySelector('#addTreatmentForm [name=treatment_type]').value.trim();
-        const cost = document.querySelector('#addTreatmentForm [name=treatment_cost]').value;
-        const desc = document.querySelector('#addTreatmentForm [name=description]').value.trim();
-        const branchChecked = document.querySelectorAll('#addTreatmentForm input[name=branch]:checked').length > 0;
-        if (!branchChecked) errors.push('Please select at least one branch.');
-
-        if (!name) errors.push('Treatment Name is required.');
-        if (!type) errors.push('Treatment Type is required.');
-        if (cost === '' || parseFloat(cost) < 0) errors.push('Treatment Cost is required and must be 0 or more.');
-        if (!desc) errors.push('Description is required.');
-        if (!branch) errors.push('Please select a branch.');
-
-        if (errors.length > 0) {
-            errorContainer.innerHTML = errors.map(e =>
-                `<div class="alert alert-danger alert-dismissible fade show py-1 px-2 mb-1 small" role="alert">
-                    ${e}
-                    <button type="button" class="btn-close py-1" data-bs-dismiss="alert"></button>
-                </div>`
-            ).join('');
+function submitAddTreatment() {
+    const form = document.getElementById('addTreatmentForm');
+    const errorContainer = document.getElementById('addTreatmentErrors');
+    const formData = new FormData(form);
+    fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => res.ok ? window.location.reload() : res.json().then(data => {
+            document.getElementById('addTreatmentConfirm').style.display = 'none';
+            errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
             errorContainer.style.display = 'block';
             document.querySelector('#addTreatmentOverlay > div').scrollTop = 0;
-            return;
-        }
+        }))
+        .catch(() => window.location.reload());
+}
 
-        errorContainer.style.display = 'none';
-        errorContainer.innerHTML = '';
-        document.getElementById('addTreatmentConfirm').style.display = 'flex';
-    }
-    function closeAddTreatmentModal() {
-        document.getElementById('addTreatmentOverlay').style.display = 'none';
-        const err = document.getElementById('addTreatmentErrors');
-        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
-    }
-
-    // UPDATE TREATMENT
-    function openUpdateTreatmentModal(id, name, type, cost, desc, branchId, status) {
-        document.getElementById('upd_treatment_name').value   = name;
-        document.getElementById('upd_treatment_type').value   = type;
-        document.getElementById('upd_treatment_cost').value   = cost;
-        document.getElementById('upd_treatment_desc').value   = desc;
-        document.getElementById('upd_treatment_status').checked = (status === 'true');
-
-        document.getElementById('updateTreatmentForm').action = '/treatments/' + id + '/update/';
-        document.getElementById('deleteTreatmentForm').action = '/treatments/' + id + '/delete/';
-        document.getElementById('updateTreatmentOverlay').style.display = 'flex';
-    }
-    function validateAndConfirmUpdateTreatment() {
-        const errorContainer = document.getElementById('updateTreatmentErrors');
-        const errors = [];
-
-        const name = document.getElementById('upd_treatment_name').value.trim();
-        const type = document.getElementById('upd_treatment_type').value.trim();
-        const cost = document.getElementById('upd_treatment_cost').value;
-
-        if (!name) errors.push('Treatment Name is required.');
-        if (!type) errors.push('Treatment Type is required.');
-        if (cost === '' || parseFloat(cost) < 0) errors.push('Treatment Cost is required and must be 0 or more.');
-
-        if (errors.length > 0) {
-            errorContainer.innerHTML = errors.map(e =>
-                `<div class="alert alert-danger alert-dismissible fade show py-1 px-2 mb-1 small" role="alert">
-                    ${e}
-                    <button type="button" class="btn-close py-1" data-bs-dismiss="alert"></button>
-                </div>`
-            ).join('');
+function submitUpdateTreatment() {
+    const form = document.getElementById('updateTreatmentForm');
+    const errorContainer = document.getElementById('updateTreatmentErrors');
+    const formData = new FormData(form);
+    fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => res.ok ? window.location.reload() : res.json().then(data => {
+            document.getElementById('updateTreatmentConfirm').style.display = 'none';
+            errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
             errorContainer.style.display = 'block';
             document.querySelector('#updateTreatmentOverlay > div').scrollTop = 0;
-            return;
-        }
+        }))
+        .catch(() => window.location.reload());
+}
 
-        errorContainer.style.display = 'none';
-        errorContainer.innerHTML = '';
-        document.getElementById('updateTreatmentConfirm').style.display = 'flex';
+// ── DELETE PRODUCT ──
+function openDeleteProductModal() {
+    document.getElementById('deleteProductConfirm').style.display = 'flex';
+}
+
+// ── ADD TREATMENT ──
+function openAddTreatmentModal() {
+    document.getElementById('addTreatmentOverlay').style.display = 'flex';
+}
+function validateAndConfirmAddTreatment() {
+    const errorContainer = document.getElementById('addTreatmentErrors');
+    const errors = [];
+
+    const name         = document.querySelector('#addTreatmentForm [name=treatment_name]').value.trim();
+    const type         = document.querySelector('#addTreatmentForm [name=treatment_type]').value.trim();
+    const cost         = document.querySelector('#addTreatmentForm [name=treatment_cost]').value;
+    const desc         = document.querySelector('#addTreatmentForm [name=description]').value.trim();
+    const branchChecked = document.querySelectorAll('#addTreatmentForm input[name=branch]:checked').length > 0;
+
+    if (!name)                              errors.push('Treatment Name is required.');
+    if (name.length > MAX_NAME_LENGTH)      errors.push(`Treatment Name must not exceed ${MAX_NAME_LENGTH} characters.`);
+    if (!type)                              errors.push('Treatment Type is required.');
+    if (cost === '' || parseFloat(cost) <= 0)  errors.push('Treatment Cost cannot be 0 or less.');
+    if (parseFloat(cost) > MAX_COST)        errors.push(`Treatment Cost cannot exceed ${MAX_COST.toLocaleString()}.`);
+    if (!desc)                              errors.push('Description is required.');
+    if (!branchChecked)                     errors.push('Please select at least one branch.');
+
+    if (errors.length > 0) {
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+        document.querySelector('#addTreatmentOverlay > div').scrollTop = 0;
+        return;
     }
-    function closeUpdateTreatmentModal() {
-        document.getElementById('updateTreatmentOverlay').style.display = 'none';
-        document.getElementById('updateTreatmentConfirm').style.display = 'none';
-        const err = document.getElementById('updateTreatmentErrors');
-        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
+    document.getElementById('addTreatmentConfirm').style.display = 'flex';
+}
+function closeAddTreatmentModal() {
+    document.getElementById('addTreatmentOverlay').style.display = 'none';
+    document.getElementById('addTreatmentConfirm').style.display = 'none';
+    const err = document.getElementById('addTreatmentErrors');
+    if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+}
+
+// ── UPDATE TREATMENT ──
+function openUpdateTreatmentModal(id, name, type, cost, desc, branchId, status) {
+    // Populate read-only ID display
+    document.getElementById('upd_treatment_id_display').value = id;
+
+    document.getElementById('upd_treatment_name').value    = name;
+    document.getElementById('upd_treatment_type').value    = type;
+    document.getElementById('upd_treatment_cost').value    = cost;
+    document.getElementById('upd_treatment_desc').value    = desc;
+    document.getElementById('upd_treatment_status').checked = (status === 'true');
+
+    document.getElementById('updateTreatmentForm').action = '/treatments/' + id + '/update/';
+    document.getElementById('deleteTreatmentForm').action = '/treatment/delete/' + id + '/';
+    document.getElementById('updateTreatmentOverlay').style.display = 'flex';
+}
+function validateAndConfirmUpdateTreatment() {
+    const errorContainer = document.getElementById('updateTreatmentErrors');
+    const errors = [];
+
+    const name = document.getElementById('upd_treatment_name').value.trim();
+    const type = document.getElementById('upd_treatment_type').value.trim();
+    const cost = document.getElementById('upd_treatment_cost').value;
+
+    if (!name)                              errors.push('Treatment Name is required.');
+    if (name.length > MAX_NAME_LENGTH)      errors.push(`Treatment Name must not exceed ${MAX_NAME_LENGTH} characters.`);
+    if (!type)                              errors.push('Treatment Type is required.');
+    if (cost === '' || parseFloat(cost) <= 0)  errors.push('Treatment Cost cannot be 0 or less.');
+    if (parseFloat(cost) > MAX_COST)        errors.push(`Treatment Cost cannot exceed ${MAX_COST.toLocaleString()}.`);
+
+    if (errors.length > 0) {
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+        document.querySelector('#updateTreatmentOverlay > div').scrollTop = 0;
+        return;
     }
 
-    // ── DELETE TREATMENT ──
-    function openDeleteTreatmentModal() {
-        document.getElementById('deleteTreatmentConfirm').style.display = 'flex';
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
+    document.getElementById('updateTreatmentConfirm').style.display = 'flex';
+}
+function closeUpdateTreatmentModal() {
+    document.getElementById('updateTreatmentOverlay').style.display = 'none';
+    document.getElementById('updateTreatmentConfirm').style.display = 'none';
+    const err = document.getElementById('updateTreatmentErrors');
+    if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+}
+
+// ── DELETE TREATMENT ──
+function openDeleteTreatmentModal() {
+    document.getElementById('deleteTreatmentConfirm').style.display = 'flex';
+}
+
+// ── CLOSE ON OUTSIDE CLICK ──
+window.addEventListener('click', function(e) {
+    if (e.target === document.getElementById('addProductOverlay'))    closeAddProductModal();
+    if (e.target === document.getElementById('updateProductOverlay')) closeUpdateProductModal();
+    if (e.target === document.getElementById('addTreatmentOverlay'))  closeAddTreatmentModal();
+    if (e.target === document.getElementById('updateTreatmentOverlay')) closeUpdateTreatmentModal();
+});
+
+// ── RE-OPEN MODAL ON ERROR ──
+window.addEventListener('DOMContentLoaded', function() {
+    const hasError = document.querySelector('.alert-danger') !== null;
+    if (hasError) {
+        const lastProduct   = sessionStorage.getItem('lastProductModal');
+        const lastTreatment = sessionStorage.getItem('lastTreatmentModal');
+        if (lastProduct === 'add')   openAddProductModal();
+        if (lastTreatment === 'add') openAddTreatmentModal();
+        sessionStorage.removeItem('lastProductModal');
+        sessionStorage.removeItem('lastTreatmentModal');
     }
-
-    // ── CLOSE ON OUTSIDE CLICK ──
-    window.addEventListener('click', function(e) {
-        if (e.target === document.getElementById('addTreatmentOverlay'))
-            closeAddTreatmentModal();
-
-        if (e.target === document.getElementById('updateTreatmentOverlay'))
-            closeUpdateTreatmentModal();
-    });
-
-    // ── REOPEN MODAL ON ERROR ──
-    window.addEventListener('DOMContentLoaded', function() {
-        const hasError = document.querySelector('.alert-danger') !== null;
-
-        if (hasError) {
-            const last = sessionStorage.getItem('lastTreatmentModal');
-
-            if (last === 'add') openAddTreatmentModal();
-            if (last === 'update') {
-                // ⚠️ optional: only reopen shell, data won't persist unless you store it
-                document.getElementById('updateTreatmentOverlay').style.display = 'flex';
-            }
-
-            sessionStorage.removeItem('lastTreatmentModal');
-        }
-    });
+});
+document.getElementById('addProductForm').addEventListener('submit', function() {
+    sessionStorage.setItem('lastProductModal', 'add');
+});
+document.getElementById('addTreatmentForm').addEventListener('submit', function() {
+    sessionStorage.setItem('lastTreatmentModal', 'add');
+});
 </script>
 
 {% endblock %}

@@ -12,6 +12,7 @@
     {% endfor %}
 </div>
 {% endif %}
+<div id="alert-container" class="mb-3"></div>
 
 <div class="mb-2">
     <a href="{% url 'inventory_db' %}" class="text-decoration-none text-muted">← Back</a>
@@ -19,12 +20,15 @@
 <div class="d-flex justify-content-between align-items-center mb-3 ml-2"> 
     <div class="d-flex align-items-center gap-2">
         <h2 class="mb-0 fw-bold" style="color: #CE548D;">Suppliers</h2>
-        <button type="button"
-                class="btn text-white ms-2"
-                style="background-color: #CE548D;"
-                onclick="openAddModal()">
-            + Add Supplier
-        </button>
+        {% if user_is_owner %}
+            <button type="button" class="btn text-white ms-2"
+                    style="background-color: #CE548D;"
+                    onclick="openAddModal()">+ Add Supplier</button>
+        {% else %}
+            <button type="button" class="btn text-white ms-2"
+                    style="background-color: #CE548D;"
+                    onclick="showAuthWarning()">+ Add Supplier</button>
+        {% endif %}
     </div>
     <div class="d-flex align-items-center gap-2">
         <form method="GET" class="patient-db-search-form d-flex align-items-center gap-2">
@@ -67,16 +71,19 @@
                 <div class="d-flex gap-2">
                     <a href="{% url 'supplier_details' supplier.supplier_id %}"
                        class="btn btn-info btn-sm text-white">Details</a>
-                    <button type="button" class="btn btn-warning btn-sm text-white"
-                            onclick="openUpdateModal(
-                                '{{ supplier.supplier_id }}',
-                                '{{ supplier.supplier_name|escapejs }}',
-                                '{{ supplier.contact_person|escapejs }}',
-                                '{{ supplier.supplier_contact_number|escapejs }}',
-                                '{{ supplier.supplier_address|default:""|escapejs }}'  
-                                
-                            )">Update</button>
-                            <!--  works but turns red idk why smthg to do with django daw  -->
+                    {% if user_is_owner %}
+                        <button type="button" class="btn btn-warning btn-sm text-white"
+                                onclick="openUpdateModal(
+                                    '{{ supplier.supplier_id }}',
+                                    '{{ supplier.supplier_name|escapejs }}',
+                                    '{{ supplier.contact_person|escapejs }}',
+                                    '{{ supplier.supplier_contact_number|escapejs }}',
+                                    '{{ supplier.supplier_address|default:""|escapejs }}'
+                                )">Update</button>
+                    {% else %}
+                        <button type="button" class="btn btn-warning btn-sm text-white"
+                                onclick="showAuthWarning()">Update</button>
+                    {% endif %}
                 </div>
             </td>
         </tr>
@@ -244,6 +251,16 @@
 </div>
 
 <script>
+function showAuthWarning() {
+    const alertContainer = document.getElementById('alert-container');
+    alertContainer.innerHTML = '';
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+    alertDiv.role = 'alert';
+    alertDiv.innerHTML = 'You are not authorized to access this page. <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+    alertContainer.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 5000);
+}
 function openAddModal() {
     document.getElementById('addSupplierOverlay').style.display = 'flex';
 }

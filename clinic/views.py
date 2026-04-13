@@ -1017,8 +1017,20 @@ def producttreatment_db(request):
     treatment_sort = request.GET.get("treatment_sort", "")
     product_type = request.GET.get("product_type", "")
     treatment_type = request.GET.get("treatment_type", "")
-    products = Product.objects.all()
-    treatments = Treatment.objects.all()
+
+    # ── Determine branch first ──
+    if is_owner(request.user):
+        selected_branch = request.session.get('selected_branch')
+        if selected_branch == 'all' or not selected_branch:
+            branch = None
+        else:
+            branch = ClinicBranch.objects.filter(pk=selected_branch).first()
+    else:
+        branch = get_user_branch(request)
+
+    # ── Now filter products/treatments by branch ──
+    products = Product.objects.filter(is_deleted=False)
+    treatments = Treatment.objects.filter(is_deleted=False)
 
     if product_query:
         products = products.filter(
@@ -1055,30 +1067,16 @@ def producttreatment_db(request):
     else:
         treatments = treatments.order_by('treatment_name')
 
-    product_types = Product.objects.values_list('product_type', flat=True).distinct()
-    treatment_types = Treatment.objects.values_list('treatment_type', flat=True).distinct()
-    if is_owner(request.user):
-            # Owners should look at the dropdown's session value
-            selected_branch = request.session.get('selected_branch')
-            
-            if selected_branch == 'all' or not selected_branch:
-                branch = None  # Triggers your "All Branches" stock sum logic
-            else:
-                # Get the specific branch from the dropdown (using its ID)
-                branch = ClinicBranch.objects.filter(pk=selected_branch).first()
-    else:
-        # Staff members just get their assigned branch
-        branch = get_user_branch(request)
-    # ── Stock map: always load ALL branch stocks ──
-    # If a specific branch is selected, show that branch's stock
-    # Otherwise aggregate across all branches
+    product_types = Product.objects.filter(is_deleted=False).values_list('product_type', flat=True).distinct()
+    treatment_types = Treatment.objects.filter(is_deleted=False).values_list('treatment_type', flat=True).distinct()
+
+    # ── Stock map ──
     if branch:
         branch_stock = BranchProduct.objects.filter(
             branch=branch
         ).values('product_id', 'stock_quantity', 'quantity_minimum', 'branch_id')
         stock_map = {bp['product_id']: bp for bp in branch_stock}
     else:
-        # Owner on All Branches: sum stock across all branches per product
         from django.db.models import Sum
         branch_stock = BranchProduct.objects.values('product_id').annotate(
             stock_quantity=Sum('stock_quantity'),
@@ -1104,7 +1102,6 @@ def producttreatment_db(request):
             ).values_list('treatment_id', flat=True)
         )
     else:
-        # Owner on All Branches: treatment is available if available in ANY branch
         available_treatment_ids = set(
             BranchTreatment.objects.filter(
                 availability_status=True
@@ -1126,10 +1123,13 @@ def producttreatment_db(request):
         'product_types': product_types,
         'treatment_types': treatment_types,
         'branch': branch,
-        'suppliers': Supplier.objects.all().order_by('supplier_name'),  
-        'branches': ClinicBranch.objects.all().order_by('branch_location'), 
-        'user_is_owner': is_owner(request.user), 
+        'suppliers': Supplier.objects.all().order_by('supplier_name'),
+        'branches': ClinicBranch.objects.all().order_by('branch_location'),
+        'user_is_owner': is_owner(request.user),
     })
+
+MAX_NAME_LENGTH = 100
+MAX_COST = 999999.99
 # ─────────────────────────────────────────────
 # PRODUCT VIEWS
 # ─────────────────────────────────────────────
@@ -1156,12 +1156,47 @@ def product_add(request):
             messages.error(request, 'All fields are required.')
             return redirect('producttreatment_db')
 
+        # Duplicate name check
+        if Product.objects.filter(product_name__iexact=name, is_deleted=False).exists():
+            return JsonResponse({'error': f'A product named "{name}" already exists.'}, status=400)
+
+        # Max length check
+        if len(name) > MAX_NAME_LENGTH:
+            messages.error(request, f'Product name must not exceed {MAX_NAME_LENGTH} characters.')
+            return redirect('producttreatment_db')
+
+        # Cost upper bound check
+        try:
+            cost_val = float(cost)
+        except ValueError:
+            messages.error(request, 'Invalid unit cost value.')
+            return redirect('producttreatment_db')
+
+        if cost_val <= 0:
+            messages.error(request, 'Unit cost cannot be negative.')
+            return redirect('producttreatment_db')
+
+        if cost_val > MAX_COST:
+            messages.error(request, f'Unit cost cannot exceed {MAX_COST:,.2f}.')
+            return redirect('producttreatment_db')
+
+        # Min quantity check
+        try:
+            min_qty_val = int(min_qty)
+        except ValueError:
+            messages.error(request, 'Invalid quantity minimum value.')
+            return redirect('producttreatment_db')
+
+        if min_qty_val < 1:
+            messages.error(request, 'Quantity minimum must be at least 1.')
+            return redirect('producttreatment_db')
+
         try:
             with transaction.atomic():
                 product = Product.objects.create(
                     product_name=name,
                     product_type=ptype,
-                    unit_cost=float(cost),
+                    unit_cost=cost_val,
                     description=desc,
                     supplier_id=supplier_id,
                 )
@@ -1170,7 +1205,7 @@ def product_add(request):
                         product=product,
                         branch_id=bid,
                         stock_quantity=int(stock),
-                        quantity_minimum=int(min_qty),
+                        quantity_minimum=min_qty_val,
                     )
             messages.success(request, f'Product "{name}" added successfully.')
         except Exception as e:
@@ -1182,7 +1217,7 @@ def product_add(request):
 @login_required(login_url='login')
 @role_required(['Owner', 'Aesthetician'])
 def product_update(request, product_id):
-    product = get_object_or_404(Product, product_id=product_id)
+    product = get_object_or_404(Product, product_id=product_id, is_deleted=False)
 
     if is_owner(request.user):
         branch = get_user_branch(request)
@@ -1210,21 +1245,56 @@ def product_update(request, product_id):
             messages.error(request, "All fields are required.")
             return redirect('producttreatment_db')
 
+        # Duplicate name check (exclude current product)
+        if Product.objects.filter(product_name__iexact=name, is_deleted=False).exclude(product_id=product_id).exists():
+            return JsonResponse({'error': f'A product named "{name}" already exists.'}, status=400)
+
+        # Max length check
+        if len(name) > MAX_NAME_LENGTH:
+            messages.error(request, f'Product name must not exceed {MAX_NAME_LENGTH} characters.')
+            return redirect('producttreatment_db')
+
+        # Cost validation
+        try:
+            cost_val = float(cost)
+        except ValueError:
+            messages.error(request, 'Invalid unit cost value.')
+            return redirect('producttreatment_db')
+
+        if cost_val <= 0:
+            messages.error(request, 'Unit cost cannot be negative.')
+            return redirect('producttreatment_db')
+
+        if cost_val > MAX_COST:
+            messages.error(request, f'Unit cost cannot exceed {MAX_COST:,.2f}.')
+            return redirect('producttreatment_db')
+
+        # Min quantity check
+        try:
+            min_qty_val = int(min_qty)
+        except ValueError:
+            messages.error(request, 'Invalid quantity minimum value.')
+            return redirect('producttreatment_db')
+
+        if min_qty_val < 1:
+            messages.error(request, 'Quantity minimum must be at least 1.')
+            return redirect('producttreatment_db')
+
         try:
             product.product_name = name
             product.product_type = ptype
             product.description  = desc
-            product.unit_cost    = float(cost)
+            product.unit_cost    = cost_val
             product.supplier_id  = supplier_id
             product.save()
 
             branch_product, created = BranchProduct.objects.get_or_create(
                 product=product,
                 branch=branch,
-                defaults={'stock_quantity': 0, 'quantity_minimum': int(min_qty)}
+                defaults={'stock_quantity': 0, 'quantity_minimum': min_qty_val}
             )
             if not created:
-                branch_product.quantity_minimum = int(min_qty)
+                branch_product.quantity_minimum = min_qty_val
                 branch_product.save()
 
             messages.success(request, "Product updated successfully.")
@@ -1238,7 +1308,7 @@ def product_update(request, product_id):
 @role_required(['Owner', 'Aesthetician', 'Sales'])
 def product_details(request, product_id):
     from .models import BranchProduct
-    product = get_object_or_404(Product, product_id=product_id)
+    product = get_object_or_404(Product, product_id=product_id, is_deleted=False)
     supplier = Supplier.objects.filter(supplier_id=product.supplier_id).first()
     query_string = request.GET.urlencode()
 
@@ -1264,7 +1334,8 @@ def product_details(request, product_id):
 @role_required(['Owner'])
 def product_delete(request, product_id):
     product = get_object_or_404(Product, product_id=product_id)
-    product.delete()
+    product.is_deleted = True
+    product.save()
     messages.success(request, "Product deleted successfully")
     return redirect('producttreatment_db')
 # ─────────────────────────────────────────────
@@ -1280,15 +1351,39 @@ def treatment_add(request):
         return redirect(referer if referer else 'producttreatment_db')
 
     if request.method == 'POST':
-        name      = request.POST.get('treatment_name', '').strip()
-        ttype     = request.POST.get('treatment_type', '').strip()
-        cost      = request.POST.get('treatment_cost', '').strip()
-        desc      = request.POST.get('description', '').strip()
+        name       = request.POST.get('treatment_name', '').strip()
+        ttype      = request.POST.get('treatment_type', '').strip()
+        cost       = request.POST.get('treatment_cost', '').strip()
+        desc       = request.POST.get('description', '').strip()
         branch_ids = request.POST.getlist('branch')
-        status = True
+        status     = True
 
         if not all([name, ttype, cost, desc, branch_ids]):
             messages.error(request, 'All fields are required.')
+            return redirect('producttreatment_db')
+
+        # Duplicate name check
+        if Treatment.objects.filter(treatment_name__iexact=name, treatment_type__iexact=ttype, is_deleted=False).exists():
+            return JsonResponse({'error': f'A treatment named "{name}" with type "{ttype}" already exists.'}, status=400)
+
+        # Max length check
+        if len(name) > MAX_NAME_LENGTH:
+            messages.error(request, f'Treatment name must not exceed {MAX_NAME_LENGTH} characters.')
+            return redirect('producttreatment_db')
+
+        # Cost validation
+        try:
+            cost_val = float(cost)
+        except ValueError:
+            messages.error(request, 'Invalid treatment cost value.')
+            return redirect('producttreatment_db')
+
+        if cost_val <= 0:
+            messages.error(request, 'Treatment cost cannot be negative.')
+            return redirect('producttreatment_db')
+
+        if cost_val > MAX_COST:
+            messages.error(request, f'Treatment cost cannot exceed {MAX_COST:,.2f}.')
             return redirect('producttreatment_db')
 
         try:
@@ -1296,7 +1391,7 @@ def treatment_add(request):
                 treatment = Treatment.objects.create(
                     treatment_name=name,
                     treatment_type=ttype,
-                    treatment_cost=float(cost),
+                    treatment_cost=cost_val,
                     description=desc,
                 )
                 for bid in branch_ids:
@@ -1311,11 +1406,12 @@ def treatment_add(request):
 
     return redirect('producttreatment_db')
 
+
 @never_cache
 @login_required(login_url='login')
 @role_required(['Owner', 'Aesthetician'])
 def treatment_update(request, treatment_id):
-    treatment = get_object_or_404(Treatment, treatment_id=treatment_id)
+    treatment = get_object_or_404(Treatment, treatment_id=treatment_id, is_deleted=False)
 
     if is_owner(request.user):
         branch = get_user_branch(request)
@@ -1348,10 +1444,34 @@ def treatment_update(request, treatment_id):
         if not all([name, ttype, cost, desc]):
             messages.error(request, "All fields required.")
         else:
+            # Duplicate name check (exclude current treatment)
+            if Treatment.objects.filter(treatment_name__iexact=name, treatment_type__iexact=ttype, is_deleted=False).exclude(treatment_id=treatment_id).exists():
+                return JsonResponse({'error': f'A treatment named "{name}" with type "{ttype}" already exists.'}, status=400)
+
+            # Max length check
+            if len(name) > MAX_NAME_LENGTH:
+                messages.error(request, f'Treatment name must not exceed {MAX_NAME_LENGTH} characters.')
+                return redirect('producttreatment_db')
+
+            # Cost validation
+            try:
+                cost_val = float(cost)
+            except ValueError:
+                messages.error(request, 'Invalid treatment cost value.')
+                return redirect('producttreatment_db')
+
+            if cost_val <= 0:
+                messages.error(request, 'Treatment cost cannot be negative.')
+                return redirect('producttreatment_db')
+
+            if cost_val > MAX_COST:
+                messages.error(request, f'Treatment cost cannot exceed {MAX_COST:,.2f}.')
+                return redirect('producttreatment_db')
+
             try:
                 treatment.treatment_name = name
                 treatment.treatment_type = ttype
-                treatment.treatment_cost = float(cost)
+                treatment.treatment_cost = cost_val
                 treatment.description    = desc
                 treatment.save()
 
@@ -1369,7 +1489,7 @@ def treatment_update(request, treatment_id):
 @role_required(['Owner', 'Aesthetician', 'Sales'])
 def treatment_details(request, treatment_id):
     from .models import BranchTreatment
-    treatment = get_object_or_404(Treatment, treatment_id=treatment_id)
+    treatment = get_object_or_404(Treatment, treatment_id=treatment_id, is_deleted=False)
     query_string = request.GET.urlencode()
     branch = get_user_branch(request)
 
@@ -1390,7 +1510,8 @@ def treatment_details(request, treatment_id):
 @role_required(['Owner'])
 def treatment_delete(request, treatment_id):
     treatment = get_object_or_404(Treatment, treatment_id=treatment_id)
-    treatment.delete()
+    treatment.is_deleted = True
+    treatment.save()
     messages.success(request, "Treatment deleted successfully")
     return redirect('producttreatment_db')
 # ─────────────────────────────────────────────
@@ -1414,6 +1535,9 @@ def check_supplier(request):
 def supplier_db(request):
     # ── 1. CATCH THE FORM DATA (POST REQUEST) ──
     if request.method == 'POST':
+        if not is_owner(request.user):
+            messages.error(request, "You are not authorized to access this page.")
+            return redirect('supplier_db')
         name = request.POST.get('supplier_name', '').strip()
         person = request.POST.get('contact_person', '').strip()
         number = request.POST.get('supplier_contact_number', '').strip()
@@ -1479,6 +1603,10 @@ def supplier_details(request, supplier_id):
 def supplier_update(request, supplier_id):
     # Find the specific supplier in the database
     supplier = get_object_or_404(Supplier, supplier_id=supplier_id)
+
+    if not is_owner(request.user):
+        messages.error(request, "You are not authorized to access this page.")
+        return redirect('supplier_db')
     
     if request.method == 'POST':
         # Grab the updated data from the modal
@@ -1965,8 +2093,6 @@ def export_sales_csv(request):
         ])
     return response
 
-
-# Helper to handle the common file reading logic
 # Helper to handle the common file reading logic
 def get_csv_reader(csv_file):
     data_set = csv_file.read().decode('utf-8-sig')
@@ -1981,37 +2107,37 @@ def import_inventory_csv(request):
         csv_file = request.FILES.get('csv_file')
         try:
             for row in get_csv_reader(csv_file):
-                # Skip empty rows
                 if not row or len(row) < 6:
-                    continue 
-                    
-                # row indexes: 0:ID, 1:Date, 2:Name, 3:Branch, 4:SupID, 5:SupName
-                branch, _ = ClinicBranch.objects.get_or_create(branch_location=row.strip())
-                
-                # Supplier needs contact info which isn't in CSV; using placeholders
+                    continue
+
+                # row: 0:Record ID, 1:Shipment Date, 2:Shipment Name,
+                #      3:Branch Location, 4:Supplier ID, 5:Supplier Name
+                branch, _ = ClinicBranch.objects.get_or_create(
+                    branch_location=row[3].strip()
+                )
+
                 supplier, _ = Supplier.objects.get_or_create(
-                    supplier_id=row.strip(),
+                    supplier_id=row[4].strip(),
                     defaults={
-                        'supplier_name': row.strip(), 
-                        'contact_person': 'N/A', 
+                        'supplier_name': row[5].strip(),
+                        'contact_person': 'N/A',
                         'supplier_contact_number': '000'
                     }
                 )
-                
-                # Handle Date
-                date_str = row.strip()
+
+                date_str = row[1].strip()
                 if date_str and date_str != '-':
                     try:
                         date_rcv = datetime.strptime(date_str, '%Y-%m-%d').date()
                     except ValueError:
-                        date_rcv = datetime.now().date() # Fallback if format is wrong
+                        date_rcv = datetime.now().date()
                 else:
                     date_rcv = datetime.now().date()
-                
+
                 InventoryShipment.objects.update_or_create(
-                    inventory_record_id=row.strip(),
+                    inventory_record_id=row[0].strip(),
                     defaults={
-                        'received_product_name': row.strip(),
+                        'received_product_name': row[2].strip(),
                         'date_received': date_rcv,
                         'branch': branch,
                         'supplier': supplier
@@ -2020,12 +2146,11 @@ def import_inventory_csv(request):
             messages.success(request, "Inventory imported successfully.")
         except Exception as e:
             import traceback
-            print("--- IMPORT INVENTORY ERROR ---")
             traceback.print_exc()
             messages.error(request, f"Error: {e}")
-            
-    # Assuming your inventory page URL name is 'inventory_list' - change if different!
-    return redirect('inventory_list') 
+
+    return redirect('inventory_list')
+
 
 @never_cache
 @login_required(login_url='login')
@@ -2034,52 +2159,111 @@ def import_patients_csv(request):
         csv_file = request.FILES.get('csv_file')
         try:
             for row in get_csv_reader(csv_file):
-                # Skip empty rows
                 if not row or len(row) < 6:
                     continue
-                    
-                # row indexes: 0:ID, 1:Full Name, 2:Contact, 3:Address, 4:Bday, 5:Sex, 6:Notes
-                full_name = row.strip()
-                
+
+                # row: 0:Patient ID, 1:Full Name, 2:Contact,
+                #      3:Address, 4:Birthday, 5:Sex, 6:Notes (optional)
+                full_name = row[1].strip()
+
                 if ',' in full_name:
-                    name_parts = full_name.split(',')
-                    last_name = name_parts.strip()
-                    other_names = name_parts.strip().split(' ')
-                    first_name = other_names if other_names else ""
+                    parts = full_name.split(',', 1)
+                    last_name = parts[0].strip()
+                    other_names = parts[1].strip().split()
+                    first_name = other_names[0] if other_names else ''
+                    middle_name = other_names[1] if len(other_names) > 1 else ''
+                    suffix = other_names[2] if len(other_names) > 2 else ''
                 else:
                     last_name = full_name
-                    first_name = ""
-                
-                # Handle Birthday Date
-                bday_str = row.strip()
+                    first_name = ''
+                    middle_name = ''
+                    suffix = ''
+
+                bday_str = row[4].strip()
                 if bday_str and bday_str != '-':
                     try:
                         bday_date = datetime.strptime(bday_str, '%Y-%m-%d').date()
                     except ValueError:
-                        bday_date = None # Fallback if date is formatted wrong
+                        bday_date = None
                 else:
                     bday_date = None
-                
+
                 Patient.objects.update_or_create(
-                    patient_id=row.strip(),
+                    patient_id=row[0].strip(),
                     defaults={
                         'last_name': last_name,
                         'first_name': first_name,
-                        'patient_contact_number': row.strip(),
-                        'patient_address': row.strip(),
+                        'middle_name': middle_name,
+                        'suffix': suffix,
+                        'patient_contact_number': row[2].strip(),
+                        'patient_address': row[3].strip(),
                         'birthday': bday_date,
-                        'sex': row.strip()
+                        'sex': row[5].strip(),
                     }
                 )
-            messages.success(request, "Patients updated/imported successfully.")
+            messages.success(request, "Patients imported successfully.")
         except Exception as e:
             import traceback
-            print("--- IMPORT PATIENTS ERROR ---")
             traceback.print_exc()
             messages.error(request, f"Error: {e}")
-            
-    # NOTE: Changed from render('import_form.html') to redirect back to your list page
+
     return redirect('patient_db')
+
+@never_cache
+@login_required(login_url='login')
+def import_sales_csv(request):
+    if request.method == 'POST':
+        csv_file = request.FILES.get('csv_file')
+        try:
+            for row in get_csv_reader(csv_file):
+                if not row or len(row) < 8:
+                    continue
+
+                # row: 0:Transaction ID, 1:Transaction Date, 2:Branch,
+                #      3:Patient ID, 4:Full Name, 5:Treatments, 6:Products,
+                #      7:Mode of Payment, 8:Total Amount
+
+                date_str = row[1].strip()
+                try:
+                    transaction_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    transaction_date = datetime.now().date()
+
+                branch = ClinicBranch.objects.filter(
+                    branch_location=row[2].strip()
+                ).first()
+
+                patient = Patient.objects.filter(
+                    patient_id=row[3].strip()
+                ).first()
+
+                if not patient:
+                    messages.warning(request, f"Patient ID {row[3].strip()} not found — row skipped.")
+                    continue
+
+                try:
+                    total_amount = float(row[8].strip())
+                except ValueError:
+                    total_amount = 0.00
+
+                SalesTransaction.objects.update_or_create(
+                    transaction_id=row[0].strip(),
+                    defaults={
+                        'transaction_date': transaction_date,
+                        'branch': branch,
+                        'patient': patient,
+                        'mode_of_payment': row[7].strip(),
+                        'total_amount': total_amount,
+                    }
+                )
+
+            messages.success(request, "Sales imported successfully.")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f"Error: {e}")
+
+    return redirect('sales_list')
 
 # ─────────────────────────────────────────────
 # LOW STOCK ALERTS

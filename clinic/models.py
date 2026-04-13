@@ -35,6 +35,7 @@ class Product(models.Model):
     description = models.CharField(max_length=500, blank=True, null=True)
     unit_cost = models.DecimalField(max_digits=8, decimal_places=2)
     supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE)
+    is_deleted = models.BooleanField(default=False)
 
     def __str__(self):
         return self.product_name
@@ -112,6 +113,7 @@ class Treatment(models.Model):
     treatment_type = models.CharField(max_length=30)
     treatment_cost = models.DecimalField(max_digits=8, decimal_places=2)
     description = models.CharField(max_length=500, blank=True, null=True)
+    is_deleted = models.BooleanField(default=False)
 
     def __str__(self):
         return self.treatment_name
