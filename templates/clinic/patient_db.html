@@ -1,5 +1,6 @@
 {% extends 'clinic/base.html' %}
 {% block content %}
+{% load static %}
 
 {% if messages %}
 <div class="mb-3">
@@ -23,15 +24,18 @@
             </svg>
         </button> -->
 
-        <button type="button" onclick="openImportModal()" class="btn btn-outline-secondary text-nowrap">
+        <!-- <button type="button" onclick="openImportModal()" class="btn btn-outline-secondary text-nowrap">
             <i class="fas fa-upload"></i> Import CSV
-        </button>
+        </button> -->
+        <!-- <a href="#" onclick="openImportModal(); return false;" class="import-link">
+            <img src="{% static 'images/Import4.png' %}" 
+                data-hover="{% static 'images/Import_Hover4.png' %}" 
+                alt="Import CSV"
+                class="export-icon"
+                style="width: 40px; height: auto;">
+        </a> -->
 
-        <a href="{% url 'export_patients_csv' %}?{{ request.GET.urlencode }}"
-        class="btn btn-secondary ms-auto"
-        style="white-space:nowrap;">
-            Export
-        </a>
+
 
         <form method="GET" class="patient-db-search-form">
             <span class="patient-db-search-icon" aria-hidden="true">
@@ -51,6 +55,35 @@
                 class="btn btn-dark">
             Search
         </button>
+
+
+        
+        <a href="#" onclick="openImportModal(); return false;" class="import-link">
+            <img src="{% static 'images/Import4.png' %}" 
+                data-hover="{% static 'images/Import_Hover4.png' %}" 
+                alt="Import CSV"
+                class="export-icon"
+                style="width: 40px; height: auto;">
+        </a>
+
+
+
+        <!-- <a href="{% url 'export_patients_csv' %}?{{ request.GET.urlencode }}"
+            class="btn btn-secondary ms-auto"
+            style="white-space:nowrap;">
+            Export
+        </a> -->
+        <a href="{% url 'export_patients_csv' %}?{{ request.GET.urlencode }}" class="ms-auto export-link">
+            <img src="{% static 'images/Export4.png' %}" 
+                data-hover="{% static 'images/Export_Hover4.png' %}" 
+                alt="Export Patients"
+                class="export-icon"
+                style="width: 40px; height: auto;">
+
+        </a>
+
+
+
     </div>
 </div>
 

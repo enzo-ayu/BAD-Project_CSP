@@ -9,8 +9,12 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     
-    <style>
+<style>
         /* Global Modal Styling to match your aesthetic */
+        /* Force the nav to take up the whole sidebar so Flexbox works */
+        #sidebar nav {
+            height: 100%;
+        }
         .custom-confirm-modal {
             border-radius: 15px;
             border: none;
@@ -34,12 +38,23 @@
             background-color: #CE548D !important;
             border-color: #CE548D !important;
         }
-        #low-stock-icon-wrap {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+        
+        /* --- LOW STOCK SIDEBAR BUTTON FIXES --- */
+        
+        /* 1. Push it to the bottom of the sidebar */
+        #sidebar li#low-stock-nav-item {
+            margin-top: auto; 
+            margin-bottom: 10px; /* Optional spacing at the bottom */
         }
+
+        /* 2. Remove the pink background on hover */
+        #sidebar li#low-stock-nav-item a:hover {
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #CE548D !important; 
+        }
+
+        /* 3. Badge styling */
         #low-stock-badge {
             display: none;
             position: absolute;
@@ -56,6 +71,13 @@
             text-align: center;
             padding: 0 4px;
         }
+
+        /* Make ONLY the Low Stock image bigger */
+        #sidebar li#low-stock-nav-item img {
+            width: 45px !important;  /* Change this number to go bigger/smaller */
+            height: 50px !important; /* Keep it the same as width to prevent stretching */
+            left: 19px; /* You might need to adjust this to keep it centered since it's wider now */
+}
     </style>
 </head>
 <!--
@@ -213,28 +235,17 @@
                 {% endfor %}
 
                 <!-- low stock notif addition -->
-            <li id="low-stock-nav-item">
-                <a href="#" id="low-stock-btn" onclick="openLowStockModal(); return false;">
-                    
-                    <!-- Icon (NOW MATCHES YOUR OTHER SIDEBAR ITEMS) -->
-                    <span id="low-stock-icon-wrap"></span>
-                        <img src="{% static 'images/Warning_Icon.png' %}"  
-                            alt="Low Stock"
-                            width="32" height="32"
-                            class="hover-icon">
+                    <li id="low-stock-nav-item">
+                        <a href="#" id="low-stock-btn" onclick="openLowStockModal(); return false;" style="position: relative;">
+                            
+                            <img src="{% static 'images/Notif2.png' %}" 
+                                data-hover="{% static 'images/Notif_Hover2.png' %}" 
+                                alt="Low Stock">
 
-                        <!-- Badge -->
-                        <span id="low-stock-badge"
-                            style="display:none; position:absolute; top:-6px; right:-8px;
-                                    background:#dc3545; color:#fff; border-radius:50%;
-                                    font-size:10px; font-weight:700; min-width:16px; height:16px;
-                                    line-height:16px; text-align:center; padding:0 3px;">
-                        </span>
-                    </span>
-
-                    <span class="sidebar-text" style="display:none !important;"></span>
-                </a>
-            </li>
+                            <span class="sidebar-text">Low Stock</span>
+                            
+                        </a>
+                    </li>
             </ul>
         </nav>
     </aside>

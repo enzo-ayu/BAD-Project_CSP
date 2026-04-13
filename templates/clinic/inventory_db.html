@@ -1,5 +1,7 @@
 {% extends 'clinic/base.html' %}
 {% block content %}
+{% load static %}
+
 
 <!-- Flatpickr CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -43,16 +45,15 @@
         + Add Shipment
     </button>
 
-    <button type="button" onclick="openImportModal()" class="btn btn-outline-secondary text-nowrap">
-        <i class="fas fa-upload"></i> Import CSV
-    </button>
+    <a href="#" onclick="openImportModal(); return false;" class="import-link">
+        <img src="{% static 'images/Import4.png' %}" 
+            data-hover="{% static 'images/Import_Hover4.png' %}" 
+            alt="Import CSV"
+            class="export-icon"
+            style="width: 40px; height: auto;">
+    </a>
 
     <form method="GET" class="d-flex gap-2 align-items-center ms-auto">
-        <a href="{% url 'export_inventory_csv' %}?{{ request.GET.urlencode }}"
-        class="btn btn-secondary ms-auto"
-        style="white-space:nowrap;">
-            Export
-        </a>
         <input type="text" id="datePicker" name="date" value="{{ date_filter }}"
                class="form-control" placeholder="Select date or range"
                style="width:300px; height:40px;">
@@ -64,6 +65,14 @@
         <a href="{% url 'inventory_db' %}" class="btn btn-outline-secondary">Reset</a>
         {% endif %}
         <a href="{% url 'supplier_db' %}" class="btn text-white" style="font-weight: bold; background-color:#CE548D;">Suppliers</a>
+        <a href="{% url 'export_inventory_csv' %}?{{ request.GET.urlencode }}" class="ms-auto export-link">
+            <img src="{% static 'images/Export4.png' %}" 
+                data-hover="{% static 'images/Export_Hover4.png' %}" 
+                alt="Export Patients"
+                class="export-icon"
+                style="width: 40px; height: auto;">
+
+        </a>
     </form>
 </div>
 

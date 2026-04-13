@@ -118,6 +118,18 @@ body.sb-expanded .sidebar-text {
     transform: translateY(-50%) scale(1.05); /* keeps vertical centering */
 }
 
+/* Push Low Stock to the bottom */
+#sidebar li#low-stock-nav-item {
+    margin-top: auto; 
+    margin-bottom: 20px; /* Optional: gives it a little breathing room at the very bottom */
+}
+
+/* Disable the background hover effect ONLY for the Low Stock notification */
+#sidebar li#low-stock-nav-item a:hover {
+    background: transparent !important; 
+    color: #CE548D !important; 
+}
+
 /* ----------------------------- */
 /* Main content */
 /* ----------------------------- */
@@ -417,4 +429,14 @@ table.treatment-db-table > thead > tr > th {
 
 .quick-ranges .quick-item:hover { 
     background: #f1f1f1; 
+}
+
+.export-icon {
+    width: 24px; /* Lower this number to make them smaller (e.g., 80px, 75px) */
+    height: auto; 
+    transition: transform 0.2s ease; /* Keeps that nice hover pop */
+}
+
+.export-icon:hover {
+    transform: scale(1.05); 
 }
