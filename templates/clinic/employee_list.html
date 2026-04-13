@@ -154,6 +154,7 @@
         </div>
 
         <h3 class="mb-4">Add New Employee</h3>
+        <div id="addEmployeeErrors" class="mb-3" style="display:none;"></div>
         
         <form action="{% url 'add_employee' %}" method="POST" id="addEmployeeForm">
             {% csrf_token %}
@@ -230,7 +231,8 @@
             </div>
 
             <div class="d-flex justify-content-end mt-4 pt-3">
-                <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;" onclick="document.getElementById('addConfirmModal').style.display='flex'">Save</button>                            
+                <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;"
+                        onclick="validateAndConfirmAddEmployee()">Save</button>                      
             </div>
         </form>
     </div>
@@ -246,6 +248,7 @@
         </div>
 
         <h3 class="mb-4">Update Employee</h3>
+        <div id="updateEmployeeErrors" class="mb-3" style="display:none;"></div>
         
         <form action="" method="POST" id="updateEmployeeForm">
             {% csrf_token %}
@@ -313,7 +316,8 @@
                 </div>
                 
                 <div class="col-md-6 d-flex justify-content-md-end mt-3 mt-md-0">
-                    <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;" onclick="document.getElementById('updateConfirmModal').style.display='flex'">Save</button>         
+                    <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;"
+                            onclick="validateAndConfirmUpdateEmployee()">Save</button>  
                 </div>
             </div>
         </form>
@@ -389,8 +393,49 @@
     function openModal() {
         document.getElementById('employeeModal').style.display = 'flex';
     }
+    async function validateAndConfirmAddEmployee() {
+        const errorContainer = document.getElementById('addEmployeeErrors');
+        const errors = [];
+
+        const role = document.querySelector('#addEmployeeForm select[name="role"]').value;
+        const fullName = document.querySelector('#addEmployeeForm [name=full_name]').value.trim();
+        const username = document.querySelector('#addEmployeeForm [name=username]').value.trim();
+        const password = document.querySelector('#addEmployeeForm [name=password]').value;
+        const allBranches = document.getElementById('addBranchesCheckbox').checked;
+        const branch = document.getElementById('branchSelect').value;
+
+        if (!role || role === 'Select Role') errors.push('Account Type is required.');
+        if (!fullName) errors.push('Account Name is required.');
+        if (!username) errors.push('Username is required.');
+        if (!password) errors.push('Password is required.');
+        if (!allBranches && !branch) errors.push('Please select a branch or check All Branches.');
+
+        if (username) {
+            const res = await fetch(`/check-username/?username=${encodeURIComponent(username)}`);
+            const data = await res.json();
+            if (data.taken) errors.push(`The username "${username}" is already taken.`);
+        }
+
+        if (errors.length > 0) {
+            errorContainer.innerHTML = errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#employeeModal .modal-card').scrollTop = 0;
+            return;
+        }
+
+        errorContainer.style.display = 'none';
+        errorContainer.innerHTML = '';
+        document.getElementById('addConfirmModal').style.display = 'flex';
+    }
     function closeModal() {
         document.getElementById('employeeModal').style.display = 'none';
+        const err = document.getElementById('addEmployeeErrors');
+        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
     }
 
     // --- UPDATE MODAL ---
@@ -431,9 +476,51 @@
         document.getElementById('updateEmployeeForm').action = `/employees/${empId}/update/`;
         document.getElementById('updateEmployeeModal').style.display = 'flex';
     }
+    async function validateAndConfirmUpdateEmployee() {
+        const errorContainer = document.getElementById('updateEmployeeErrors');
+        const errors = [];
 
+        const empId = document.getElementById('update_acct_id').value;
+        const fullName = document.getElementById('update_full_name').value.trim();
+        const role = document.getElementById('update_role').value;
+        const username = document.getElementById('update_username').value.trim();
+        const allBranches = document.getElementById('updateBranchesCheckbox').checked;
+        const branch = document.getElementById('update_branch').value;
+        const newPassword = document.querySelector('#updateEmployeeForm [name=new_password]').value;
+        const confirmPassword = document.querySelector('#updateEmployeeForm [name=confirm_password]').value;
+
+        if (!fullName) errors.push('Account Name is required.');
+        if (!role) errors.push('Account Type is required.');
+        if (!username) errors.push('Username is required.');
+        if (!allBranches && !branch) errors.push('Please select a branch or check All Branches.');
+        if (newPassword && newPassword !== confirmPassword) errors.push('New passwords do not match.');
+
+        if (username) {
+            const res = await fetch(`/check-username/?username=${encodeURIComponent(username)}&exclude_id=${empId}`);
+            const data = await res.json();
+            if (data.taken) errors.push(`The username "${username}" is already taken.`);
+        }
+
+        if (errors.length > 0) {
+            errorContainer.innerHTML = errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#updateEmployeeModal .modal-card').scrollTop = 0;
+            return;
+        }
+
+        errorContainer.style.display = 'none';
+        errorContainer.innerHTML = '';
+        document.getElementById('updateConfirmModal').style.display = 'flex';
+    }
     function closeUpdateModal() {
         document.getElementById('updateEmployeeModal').style.display = 'none';
+        const err = document.getElementById('updateEmployeeErrors');
+        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
     }
 
     // --- CLOSE ON OUTSIDE CLICK ---

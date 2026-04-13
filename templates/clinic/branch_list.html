@@ -62,6 +62,7 @@
             <a href="javascript:void(0)" onclick="closeModal()" class="text-decoration-none text-muted fs-5">&larr; Back</a>
         </div>
         <h3 class="mb-4">Add New Branch</h3>
+        <div id="addBranchErrors" class="mb-3" style="display:none;"></div>
         
         <form action="{% url 'add_branch' %}" method="POST" id="addBranchForm">
             {% csrf_token %}
@@ -80,7 +81,8 @@
                 <textarea name="branch_address" class="form-control" rows="2" placeholder="Complete physical address" maxlength="255" required></textarea>
             </div>
             <div class="d-flex justify-content-end mt-4 pt-3">
-                <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;" onclick="document.getElementById('addConfirmModal').style.display='flex'">Save</button>
+                <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;"
+                        onclick="validateAndConfirmAddBranch()">Save</button>
             </div>
         </form>
     </div>
@@ -92,6 +94,7 @@
             <a href="javascript:void(0)" onclick="closeUpdateModal()" class="text-decoration-none text-muted fs-5">&larr; Back</a>
         </div>
         <h3 class="mb-4">Update Branch</h3>
+        <div id="updateBranchErrors" class="mb-3" style="display:none;"></div>
         
         <form action="" method="POST" id="updateBranchForm">
             {% csrf_token %}
@@ -112,7 +115,8 @@
 
             <div class="d-flex justify-content-between align-items-center mt-4 pt-3">
                 <button type="button" class="btn btn-danger px-3 py-2" onclick="openDeleteConfirm()">Delete</button>
-                <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;" onclick="document.getElementById('updateConfirmModal').style.display='flex'">Save</button>
+                <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;"
+                        onclick="validateAndConfirmUpdateBranch()">Save</button>
             </div>
         </form>
 
@@ -187,8 +191,36 @@
     function openModal() {
         document.getElementById('branchModal').style.display = 'flex';
     }
+    function validateAndConfirmAddBranch() {
+        const errorContainer = document.getElementById('addBranchErrors');
+        const errors = [];
+
+        const location = document.querySelector('#addBranchForm [name=branch_location]').value.trim();
+        const address = document.querySelector('#addBranchForm [name=branch_address]').value.trim();
+
+        if (!location) errors.push('Branch Location is required.');
+        if (!address) errors.push('Branch Address is required.');
+
+        if (errors.length > 0) {
+            errorContainer.innerHTML = errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#branchModal .modal-card').scrollTop = 0;
+            return;
+        }
+
+        errorContainer.style.display = 'none';
+        errorContainer.innerHTML = '';
+        document.getElementById('addConfirmModal').style.display = 'flex';
+    }
     function closeModal() {
         document.getElementById('branchModal').style.display = 'none';
+        const err = document.getElementById('addBranchErrors');
+        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
     }
 
     // --- UPDATE MODAL ---
@@ -206,8 +238,36 @@
 
         document.getElementById('updateBranchModal').style.display = 'flex';
     }
+    function validateAndConfirmUpdateBranch() {
+        const errorContainer = document.getElementById('updateBranchErrors');
+        const errors = [];
+
+        const location = document.getElementById('update_branch_location').value.trim();
+        const address = document.getElementById('update_branch_address').value.trim();
+
+        if (!location) errors.push('Branch Location is required.');
+        if (!address) errors.push('Branch Address is required.');
+
+        if (errors.length > 0) {
+            errorContainer.innerHTML = errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#updateBranchModal .modal-card').scrollTop = 0;
+            return;
+        }
+
+        errorContainer.style.display = 'none';
+        errorContainer.innerHTML = '';
+        document.getElementById('updateConfirmModal').style.display = 'flex';
+    }
     function closeUpdateModal() {
         document.getElementById('updateBranchModal').style.display = 'none';
+        const err = document.getElementById('updateBranchErrors');
+        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
     }
 
     // --- DELETE ---

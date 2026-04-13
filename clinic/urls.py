@@ -24,6 +24,7 @@ urlpatterns = [
     path('employees/<int:employee_id>/update/', views.update_employee, name='update_employee'),
     path('employees/<int:id>/', views.employee_details, name='employee_details'),
     path('my-profile/', views.my_profile, name='my_profile'),
+    path('check-username/', views.check_username, name='check_username'),
     
     # ── Chargeslip ──
     path('chargeslip/', views.chargeslip, name='chargeslip'),
@@ -67,6 +68,7 @@ urlpatterns = [
     path('suppliers/<int:supplier_id>/', views.supplier_details, name='supplier_details'),
     path('suppliers/<int:supplier_id>/update/', views.supplier_update, name='supplier_update'), 
     path('suppliers/<int:supplier_id>/delete/', views.supplier_delete, name='supplier_delete'),
+    path('check-supplier/', views.check_supplier, name='check_supplier'),
     
     # ── Branches ──
     path('branches/', views.branch_list, name='branch_list'),

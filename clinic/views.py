@@ -447,13 +447,17 @@ def patient_add(request):
         first = request.POST.get('first_name', '').strip()
         birthday = request.POST.get('birthday', '').strip()
 
-        if not errors and Patient.objects.filter(last_name__iexact=last, first_name__iexact=first, birthday=birthday).exists():
+        if not errors and Patient.objects.filter(
+            last_name__iexact=last, 
+            first_name__iexact=first, 
+            birthday=birthday
+        ).exists():
             errors.append(f'A patient named {first} {last} with the same birthday already exists.')
 
         if errors:
             for error in errors:
                 messages.error(request, error)
-            return render(request, 'clinic/patient_add.html', {'form_data': request.POST})
+            return redirect('patient_db')
 
         Patient.objects.create(
             last_name=last,
@@ -465,10 +469,11 @@ def patient_add(request):
             birthday=birthday,
             sex=request.POST.get('sex', '').strip(),
         )
+
         messages.success(request, f'Patient {first} {last} added successfully.')
         return redirect('patient_db')
 
-    return render(request, 'clinic/patient_add.html', {'form_data': {}})
+    return redirect('patient_db')
 
 @never_cache
 @login_required(login_url='login')
@@ -477,34 +482,33 @@ def patient_update(request, patient_id):
     patient = get_object_or_404(Patient, patient_id=patient_id)
 
     if request.method != 'POST':
-        return redirect('patient_db')
+        return redirect('patient_db') 
 
-    if request.method == 'POST':
-        required_fields = {
-            'last_name': 'Last Name', 'first_name': 'First Name',
-            'patient_address': 'Address', 'patient_contact_number': 'Contact Number',
-            'birthday': 'Birthday', 'sex': 'Sex'
-        }
-        
-        errors = [f'{label} is required.' for field, label in required_fields.items() if not request.POST.get(field, '').strip()]
+    required_fields = {
+        'last_name': 'Last Name', 'first_name': 'First Name',
+        'patient_address': 'Address', 'patient_contact_number': 'Contact Number',
+        'birthday': 'Birthday', 'sex': 'Sex'
+    }
+    
+    errors = [f'{label} is required.' for field, label in required_fields.items() if not request.POST.get(field, '').strip()]
 
-        if errors:
-            for error in errors:
-                messages.error(request, error)
-            return render(request, 'clinic/patient_update.html', {'patient': patient})
+    if errors:
+        for error in errors:
+            messages.error(request, error)
+        return redirect('patient_db') 
 
-        patient.last_name = request.POST.get('last_name', '').strip()
-        patient.first_name = request.POST.get('first_name', '').strip()
-        patient.middle_name = request.POST.get('middle_name', '').strip()
-        patient.suffix = request.POST.get('suffix', '').strip() or ""
-        patient.patient_address = request.POST.get('patient_address', '').strip()
-        patient.patient_contact_number = request.POST.get('patient_contact_number', '').strip()
-        patient.birthday = request.POST.get('birthday', '').strip()
-        patient.sex = request.POST.get('sex', '').strip()
-        patient.save()
+    patient.last_name = request.POST.get('last_name', '').strip()
+    patient.first_name = request.POST.get('first_name', '').strip()
+    patient.middle_name = request.POST.get('middle_name', '').strip()
+    patient.suffix = request.POST.get('suffix', '').strip() or ""
+    patient.patient_address = request.POST.get('patient_address', '').strip()
+    patient.patient_contact_number = request.POST.get('patient_contact_number', '').strip()
+    patient.birthday = request.POST.get('birthday', '').strip()
+    patient.sex = request.POST.get('sex', '').strip()
+    patient.save()
 
-        messages.success(request, f'Patient {patient.first_name} {patient.last_name} updated successfully.')
-        return redirect('patient_db')
+    messages.success(request, f'Patient {patient.first_name} {patient.last_name} updated successfully.')
+    return redirect('patient_db')
 
 @never_cache
 @login_required(login_url='login')
@@ -1087,6 +1091,7 @@ def producttreatment_db(request):
         product.branch_stock    = bp['stock_quantity'] if bp else 0
         product.branch_minimum  = bp['quantity_minimum'] if bp else 0
         product.branch_id_val = bp.get('branch_id') if (bp and 'branch_id' in bp) else None
+        product.branch_location_val = branch.branch_location if branch else ''
         product.is_out_of_stock = product.branch_stock == 0
         product.is_low_stock    = product.branch_stock <= product.branch_minimum
 
@@ -1145,28 +1150,32 @@ def product_add(request):
         stock       = request.POST.get('stock_quantity', '').strip()
         min_qty     = request.POST.get('quantity_minimum', '').strip()
         supplier_id = request.POST.get('supplier')
-        branch_id   = request.POST.get('branch')
+        branch_ids  = request.POST.getlist('branch')
 
-        if not all([name, ptype, desc, cost, min_qty, supplier_id, branch_id]):
-            messages.error(request, "All fields are required.")
-        else:
-            try:
+        if not all([name, ptype, cost, supplier_id, branch_ids]):
+            messages.error(request, 'All fields are required.')
+            return redirect('producttreatment_db')
+
+        try:
+            with transaction.atomic():
                 product = Product.objects.create(
                     product_name=name,
                     product_type=ptype,
-                    description=desc,
                     unit_cost=float(cost),
+                    description=desc,
                     supplier_id=supplier_id,
                 )
-                BranchProduct.objects.create(
-                    product=product,
-                    branch_id=branch_id,
-                    stock_quantity=int(stock),
-                    quantity_minimum=int(min_qty),
-                )
-                messages.success(request, "Product added successfully.")
-            except Exception as e:
-                messages.error(request, f"Error: {str(e)}")
+                for bid in branch_ids:
+                    BranchProduct.objects.create(
+                        product=product,
+                        branch_id=bid,
+                        stock_quantity=int(stock),
+                        quantity_minimum=int(min_qty),
+                    )
+            messages.success(request, f'Product "{name}" added successfully.')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+
     return redirect('producttreatment_db')
 
 @never_cache
@@ -1196,33 +1205,32 @@ def product_update(request, product_id):
         cost        = request.POST.get('unit_cost', '').strip()
         min_qty     = request.POST.get('quantity_minimum', '').strip()
         supplier_id = request.POST.get('supplier')
-        selected_branch_id = request.POST.get('branch')
 
         if not all([name, ptype, desc, cost, min_qty, supplier_id]):
             messages.error(request, "All fields are required.")
-            if str(branch.branch_id) != str(selected_branch_id):
-                messages.error(request, "Invalid branch selection.")
-                return redirect('producttreatment_db')
-        else:
-            try:
-                product.product_name = name
-                product.product_type = ptype
-                product.description  = desc
-                product.unit_cost    = float(cost)
-                product.supplier_id  = supplier_id
-                product.save()
+            return redirect('producttreatment_db')
 
-                branch_product, created = BranchProduct.objects.get_or_create(
-                    product=product,
-                    branch=branch,
-                    defaults={'stock_quantity': 0, 'quantity_minimum': int(min_qty)}
-                )
-                if not created:
-                    branch_product.quantity_minimum = int(min_qty)
-                    branch_product.save()
-                messages.success(request, "Product updated successfully.")
-            except Exception as e:
-                messages.error(request, f"Error: {str(e)}")
+        try:
+            product.product_name = name
+            product.product_type = ptype
+            product.description  = desc
+            product.unit_cost    = float(cost)
+            product.supplier_id  = supplier_id
+            product.save()
+
+            branch_product, created = BranchProduct.objects.get_or_create(
+                product=product,
+                branch=branch,
+                defaults={'stock_quantity': 0, 'quantity_minimum': int(min_qty)}
+            )
+            if not created:
+                branch_product.quantity_minimum = int(min_qty)
+                branch_product.save()
+
+            messages.success(request, "Product updated successfully.")
+        except Exception as e:
+            messages.error(request, f"Error: {str(e)}")
+
     return redirect('producttreatment_db')
 
 @never_cache
@@ -1276,28 +1284,30 @@ def treatment_add(request):
         ttype     = request.POST.get('treatment_type', '').strip()
         cost      = request.POST.get('treatment_cost', '').strip()
         desc      = request.POST.get('description', '').strip()
-        branch_id = request.POST.get('branch')
-        status    = request.POST.get('availability_status') == 'on'
+        branch_ids = request.POST.getlist('branch')
+        status = True
 
-        if not all([name, ttype, cost, desc, branch_id]):
-            messages.error(request, "All fields required.")
-        else:
-            try:
+        if not all([name, ttype, cost, desc, branch_ids]):
+            messages.error(request, 'All fields are required.')
+            return redirect('producttreatment_db')
+
+        try:
+            with transaction.atomic():
                 treatment = Treatment.objects.create(
                     treatment_name=name,
                     treatment_type=ttype,
                     treatment_cost=float(cost),
                     description=desc,
                 )
-                BranchTreatment.objects.create(
-                    treatment=treatment,
-                    branch_id=branch_id,
-                    availability_status=status
-                )
-
-                messages.success(request, "Treatment added successfully.")
-            except Exception as e:
-                messages.error(request, f"Error: {str(e)}")
+                for bid in branch_ids:
+                    BranchTreatment.objects.create(
+                        treatment=treatment,
+                        branch_id=bid,
+                        availability_status=status,
+                    )
+            messages.success(request, 'Treatment added successfully.')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
 
     return redirect('producttreatment_db')
 
@@ -1386,6 +1396,18 @@ def treatment_delete(request, treatment_id):
 # ─────────────────────────────────────────────
 # SUPPLIER VIEWS
 # ─────────────────────────────────────────────
+@never_cache
+@login_required(login_url='login')
+def check_supplier(request):
+    name = request.GET.get('name', '').strip()
+    exclude_id = request.GET.get('exclude_id')
+
+    qs = Supplier.objects.filter(supplier_name__iexact=name)
+    if exclude_id:
+        qs = qs.exclude(supplier_id=exclude_id)
+
+    return JsonResponse({'taken': qs.exists()})
+
 @never_cache
 @login_required(login_url='login')
 @role_required(['Owner', 'Aesthetician'])
@@ -1527,11 +1549,14 @@ def employee_list(request):
     # Start with all users
     employees = User.objects.all().order_by('username')
     
-    # ─── NEW: Apply Branch Filter from Session ───
+    # ─── FIXED: Apply Branch Filter from Session ───
     selected_branch = request.session.get('selected_branch')
-    if selected_branch:
-        employees = employees.filter(branch_id=selected_branch)
-    # ─────────────────────────────────────────────
+
+    profile = getattr(request.user, 'employeeprofile', None)
+
+    if selected_branch and profile and profile.all_branches == False:
+        employees = employees.filter(employeeprofile__branch_id=selected_branch)
+    # ───────────────────────────────────────────────
     
     query = request.GET.get('q', '').strip()
     status_filter = request.GET.get('status', '')
@@ -1556,6 +1581,18 @@ def employee_list(request):
     }
     
     return render(request, 'clinic/employee_list.html', context)
+
+@never_cache
+@login_required(login_url='login')
+def check_username(request):
+    username = request.GET.get('username', '').strip()
+    exclude_id = request.GET.get('exclude_id')
+    
+    qs = User.objects.filter(username__iexact=username)
+    if exclude_id:
+        qs = qs.exclude(id=exclude_id)
+    
+    return JsonResponse({'taken': qs.exists()})
 
 @never_cache
 @login_required(login_url='login')
@@ -2069,7 +2106,6 @@ def low_stock_alerts(request):
         'count': low_stock_items.count(),
         'items': [
             {
-                'product_id':    item.product.product_id,
                 'product_name':  item.product.product_name,
                 'branch':        item.branch.branch_location,
                 'stock':         item.stock_quantity,

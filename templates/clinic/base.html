@@ -163,14 +163,16 @@
                     </a>
                 </li>
 
+                {% for group in request.user.groups.all %}{% if group.name != 'Sales' %}
                 <li>
                     <a href="{% url 'patient_db' %}">
                         <img src="{% static 'images/Patient_Database_SB2.png' %}" 
-                             data-hover="{% static 'images/Patient_Data_SB_Hover2.png' %}" 
-                             alt="Patient Database">
+                            data-hover="{% static 'images/Patient_Data_SB_Hover2.png' %}" 
+                            alt="Patient Database">
                         <span class="sidebar-text">Patient List</span>
                     </a>
                 </li>
+                {% endif %}{% endfor %}
 
                 <li>
                     <a href="{% url 'sales_db' %}">
@@ -197,14 +199,18 @@
                     </a>
                 </li>
 
+                {% for group in request.user.groups.all %}{% if group.name != 'Aesthetician' %}
                 <li>
-                    <a href="{% url 'dashboard' %}">   <img src="{% static 'images/Dashboard_SB2.png' %}" 
+                    <a href="{% url 'dashboard' %}">
+                        <img src="{% static 'images/Dashboard_SB2.png' %}" 
                             data-hover="{% static 'images/Dashboard_SB_Hover2.png' %}" 
                             alt="Dashboard">
                         <span class="sidebar-text">Dashboard</span>
                     </a>
                 </li>
+                {% endif %}{% endfor %}
 
+                {% for group in request.user.groups.all %}{% if group.name != 'Sales' %}
                 <li>
                     <a href="{% url 'chargeslip' %}">
                         <img src="{% static 'images/New_Chargeslip_SB2.png' %}" 
@@ -213,6 +219,8 @@
                         <span class="sidebar-text">Charge Slip</span>
                     </a>
                 </li>
+                {% endif %}{% endfor %}
+
                 {% for group in request.user.groups.all %}
                     {% if group.name == 'Owner' %}
                         <li>
@@ -409,7 +417,6 @@
                     <table class="table table-hover table-bordered align-middle" style="font-size:0.9rem;">
                         <thead style="background-color:#CE548D; color:white;">
                             <tr>
-                                <th>Product ID</th>
                                 <th>Product Name</th>
                                 <th>Branch</th>
                                 <th>Current Stock</th>
@@ -424,7 +431,6 @@
                     const rowClass = item.stock === 0 ? 'table-danger' : 'table-warning';
                     html += `
                         <tr class="${rowClass}">
-                            <td>${item.product_id}</td>
                             <td>${item.product_name}</td>
                             <td>${item.branch}</td>
                             <td><strong>${item.stock}</strong></td>
