@@ -2304,7 +2304,6 @@ def low_stock_alerts(request):
 # ─────────────────────────────────────────────
 # DASHBOARD
 # ─────────────────────────────────────────────
-
 @never_cache
 @login_required(login_url='login')
 @role_required(['Owner', 'Sales']) 
@@ -2315,30 +2314,51 @@ def dashboard_view(request):
         branch = None
     
     sales_qs = SalesTransaction.objects.all()
-    stock_qs = BranchProduct.objects.select_related('product', 'branch', 'product__supplier')
     items_qs = TransactionItem.objects.select_related('product')
+
+    received_qs = ReceivedProduct.objects.select_related('product', 'inventory_record')
 
     if branch:
         sales_qs = sales_qs.filter(branch=branch)
-        stock_qs = stock_qs.filter(branch=branch)
         items_qs = items_qs.filter(transaction__branch=branch)
+        received_qs = received_qs.filter(branch=branch)
 
-    # DATE FILTER LOGIC 
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
+    # --- FLATPICKR DATE FILTER LOGIC ---
+    date_filter = request.GET.get('date', '').strip()
 
-    if start_date and end_date:
-        # Filter sales and items by the selected date range
-        sales_qs = sales_qs.filter(transaction_date__range=[start_date, end_date])
-        items_qs = items_qs.filter(transaction__transaction_date__range=[start_date, end_date])
+    if date_filter:
+        try:
+            if " to " in date_filter:
+                start_str, end_str = date_filter.split(" to ")
+                start_date = datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
+                end_date = datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+                
+                sales_qs = sales_qs.filter(transaction_date__range=[start_date, end_date])
+                items_qs = items_qs.filter(transaction__transaction_date__range=[start_date, end_date])
+                received_qs = received_qs.filter(inventory_record__date_received__range=[start_date, end_date])
+            else:
+                single_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
+                
+                sales_qs = sales_qs.filter(transaction_date=single_date)
+                items_qs = items_qs.filter(transaction__transaction_date=single_date)
+                received_qs = received_qs.filter(inventory_record__date_received=single_date)
+        except ValueError:
+            pass 
+    # --- END FLATPICKR DATE FILTER LOGIC ---
 
-    # Top Cards
-    total_sales = sales_qs.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    # Top Cards 
     total_transactions = sales_qs.count()
     products_sold = items_qs.filter(product__isnull=False).aggregate(Sum('quantity_purchased'))['quantity_purchased__sum'] or 0
+
+    #Treatments Administered 
+    treatments_administered = items_qs.filter(treatment__isnull=False).aggregate(Sum('quantity_purchased'))['quantity_purchased__sum'] or 0
+
+    # Products Restocked Metric
+    products_restocked = received_qs.aggregate(Sum('quantity_received'))['quantity_received__sum'] or 0
+
     
-    low_stock_items = stock_qs.filter(stock_quantity__lte=F('quantity_minimum'), quantity_minimum__gt=0)
-    low_stock_count = low_stock_items.count()
+    # Total Sales (Moved to Revenue Breakdown)
+    total_sales = sales_qs.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
 
     # CHART DATA CALCULATIONS 
     
@@ -2346,7 +2366,7 @@ def dashboard_view(request):
     revenue_products = sales_qs.aggregate(Sum('total_price_of_products'))['total_price_of_products__sum'] or 0
     revenue_treatments = sales_qs.aggregate(Sum('total_price_of_treatments'))['total_price_of_treatments__sum'] or 0
 
-    #Top Moving Inventory
+    # Top Moving Inventory
     top_products = items_qs.filter(product__isnull=False) \
         .values('product__product_name') \
         .annotate(total_sold=Sum('quantity_purchased')) \
@@ -2355,30 +2375,38 @@ def dashboard_view(request):
     top_product_names = [p['product__product_name'] for p in top_products]
     top_product_sales = [p['total_sold'] for p in top_products]
 
-    #Sales Trend 
+    # NEW Most Restocked Products (Replaces Low Stock Table)
+    most_restocked = received_qs.values('product__product_name') \
+        .annotate(total_restocked=Sum('quantity_received')) \
+        .order_by('-total_restocked')[:5]
+        
+    restocked_names = [p['product__product_name'] for p in most_restocked]
+    restocked_counts = [p['total_restocked'] for p in most_restocked]
+
+    # Sales Trend
     thirty_days_ago = timezone.now().date() - timedelta(days=30)
     trend_data = sales_qs.filter(transaction_date__gte=thirty_days_ago) \
         .values('transaction_date') \
         .annotate(daily_sales=Sum('total_amount')) \
         .order_by('transaction_date')
 
-    trend_dates = [t['transaction_date'].strftime('%b %d') for t in trend_data]
+    trend_dates = [t['transaction_date'].strftime('%d %b %y') for t in trend_data]
     trend_sales = [float(t['daily_sales']) for t in trend_data]
 
     context = {
-        'total_sales': total_sales,
+        'total_sales': total_sales, 
         'total_transactions': total_transactions,
         'products_sold': products_sold,
-        'low_stock_count': low_stock_count,
-        'low_stock_items': low_stock_items[:5],
-        
-        # Pass Chart Data as JSON to the template
+        'products_restocked': products_restocked,
+        'treatments_administered': treatments_administered,
         'revenue_products': float(revenue_products),
         'revenue_treatments': float(revenue_treatments),
         'top_product_names': json.dumps(top_product_names),
         'top_product_sales': json.dumps(top_product_sales),
         'trend_dates': json.dumps(trend_dates),
         'trend_sales': json.dumps(trend_sales),
+        'restocked_names': json.dumps(restocked_names),
+        'restocked_counts': json.dumps(restocked_counts),
     }
 
     return render(request, 'clinic/dashboard.html', context)
