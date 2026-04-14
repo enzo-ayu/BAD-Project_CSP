@@ -1,0 +1,64 @@
+{% extends 'clinic/base.html' %}
+{% block content %}
+
+<div class="container-fluid d-flex justify-content-center flex-column align-items-center">
+
+    <div class="card shadow-sm p-4 w-100" style="max-width:900px; border-radius:12px; border:none;">
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
+            <div>
+                <a href="{% url 'inventory_db' %}" class="text-decoration-none text-muted mb-1 d-inline-block">← Back</a>
+                <h3 class="fw-bold mb-1" style="color:#CE548D;">Shipment #{{ shipment.inventory_record_id }}</h3>
+                <span class="text-muted">{{ shipment.date_received }}</span>
+            </div>
+        </div>
+
+        <!-- Top Info -->
+        <div class="row g-4 mb-4">
+
+            <div class="col-md-6">
+                <div class="border-bottom pb-2">
+                    <div class="text-muted small">Branch</div>
+                    <div class="fw-semibold text-dark">{{ shipment.branch.branch_location }}</div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="border-bottom pb-2">
+                    <div class="text-muted small">Supplier</div>
+                    <div class="fw-semibold text-dark">{{ shipment.supplier.supplier_name }}</div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Items Table -->
+        {% if received_products %}
+        <div class="table-responsive">
+            <table class="table table-borderless mb-0 inventory-db-table" style="background:white;">
+                <thead>
+                    <tr style="border-bottom:1px solid #ddd6db;">
+                        <th class="py-3 px-4 text-start" style="color:#495057;">Product</th>
+                        <th class="py-3 px-4 text-start" style="color:#495057;">Quantity Received</th>
+                        <th class="py-3 px-4 text-start" style="color:#495057;">Expiration Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rp in received_products %}
+                    <tr style="border-bottom:1px solid #f0edf0;">
+                        <td class="py-3 px-4 align-middle fw-medium text-dark">{{ rp.product.product_name }}</td>
+                        <td class="py-3 px-4 align-middle text-dark">{{ rp.quantity_received }}</td>
+                        <td class="py-3 px-4 align-middle text-dark">{{ rp.expiration_date }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}

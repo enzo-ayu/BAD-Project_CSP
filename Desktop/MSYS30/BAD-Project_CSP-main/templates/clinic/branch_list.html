@@ -1,0 +1,290 @@
+{% extends 'clinic/base.html' %}
+{% block content %}
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="d-flex align-items-center mb-3 gap-4">
+    <div class="d-flex align-items-center gap-3 flex-shrink-0">
+        <h2 class="mb-0 fw-bold text-nowrap" style="color: #CE548D;">Branch List</h2>
+        <button type="button" onclick="openModal()" class="btn text-white text-nowrap" style="background-color: #CE548D;">
+            + Add Branch
+        </button>
+    </div>
+</div>
+
+<table class="table table-bordered bg-white sales-db-table">
+    <thead>
+        <tr>
+            <th>Branch ID</th>
+            <th>Branch Location</th>
+            <th>Branch Address</th>
+            <th></th> 
+        </tr>
+    </thead>
+    <tbody>
+        {% for branch in branches %}
+        <tr>
+            <td class="align-middle">{{ branch.branch_id }}</td>
+            <td class="align-middle">{{ branch.branch_location }}</td>
+            <td class="align-middle">{{ branch.branch_address|default_if_none:'-' }}</td>
+            <td>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-warning btn-sm text-white px-3"
+                        data-id="{{ branch.branch_id }}"
+                        data-location="{{ branch.branch_location }}"
+                        data-address="{{ branch.branch_address|default_if_none:'' }}"
+                        onclick="openUpdateModal(this)">
+                        Update
+                    </button>
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center py-4 text-muted fst-italic">No branches found.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div id="branchModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 650px;">
+        <div class="mb-3">
+            <a href="javascript:void(0)" onclick="closeModal()" class="text-decoration-none text-muted fs-5">&larr; Back</a>
+        </div>
+        <h3 class="mb-4">Add New Branch</h3>
+        <div id="addBranchErrors" class="mb-3" style="display:none;"></div>
+        
+        <form action="{% url 'add_branch' %}" method="POST" id="addBranchForm">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="small fw-bold text-secondary mb-1">Branch ID</label>
+                    <input type="text" class="form-control bg-light text-muted" value="{{ next_branch_id }}" disabled>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="small fw-bold text-secondary mb-1">Branch Location <span class="text-danger">*</span></label>
+                    <input type="text" name="branch_location" class="form-control" placeholder="e.g. Quezon City Branch" maxlength="100" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="small fw-bold text-secondary mb-1">Branch Address <span class="text-danger">*</span></label>
+                <textarea name="branch_address" class="form-control" rows="2" placeholder="Complete physical address" maxlength="255" required></textarea>
+            </div>
+            <div class="d-flex justify-content-end mt-4 pt-3">
+                <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;"
+                        onclick="validateAndConfirmAddBranch()">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="updateBranchModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 650px;">
+        <div class="mb-3">
+            <a href="javascript:void(0)" onclick="closeUpdateModal()" class="text-decoration-none text-muted fs-5">&larr; Back</a>
+        </div>
+        <h3 class="mb-4">Update Branch</h3>
+        <div id="updateBranchErrors" class="mb-3" style="display:none;"></div>
+        
+        <form action="" method="POST" id="updateBranchForm">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="small fw-bold text-secondary mb-1">Branch ID</label>
+                    <input type="text" id="update_branch_id" class="form-control bg-light text-muted" disabled>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="small fw-bold text-secondary mb-1">Branch Location <span class="text-danger">*</span></label>
+                    <input type="text" name="branch_location" id="update_branch_location" class="form-control" maxlength="100" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="small fw-bold text-secondary mb-1">Branch Address <span class="text-danger">*</span></label>
+                <textarea name="branch_address" id="update_branch_address" class="form-control" rows="2" maxlength="255" required></textarea>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-4 pt-3">
+                <button type="button" class="btn btn-danger px-3 py-2" onclick="openDeleteConfirm()">Delete</button>
+                <button type="button" class="btn text-white px-3 py-2" style="background-color: #CE548D; border-radius: 8px;"
+                        onclick="validateAndConfirmUpdateBranch()">Save</button>
+            </div>
+        </form>
+
+        <form action="" method="POST" id="deleteBranchForm">
+            {% csrf_token %}
+        </form>
+    </div>
+</div>
+
+<div id="addConfirmModal" class="modal-overlay" style="z-index:10000;">
+    <div class="card border-0 p-4 shadow-lg" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm Action</h5>
+        <p class="mb-4 text-muted">Are you sure you want to create a new branch?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-light border" onclick="document.getElementById('addConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn text-white px-4" style="background-color:#CE548D;" onclick="document.getElementById('addBranchForm').submit()">Yes</button>
+        </div>
+    </div>
+</div>
+
+<div id="updateConfirmModal" class="modal-overlay" style="z-index:10000;">
+    <div class="card border-0 p-4 shadow-lg" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm Update</h5>
+        <p class="mb-4 text-muted">Are you sure you want to update account?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-light border" onclick="document.getElementById('updateConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn text-white px-4" style="background-color:#CE548D;" onclick="document.getElementById('updateBranchForm').submit()">Yes</button>
+        </div>
+    </div>
+</div>
+
+<div id="deleteConfirmModal" class="modal-overlay" style="z-index:10000;">
+    <div class="card border-0 p-4 shadow-lg" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2 text-danger">Confirm Delete</h5>
+        <p class="mb-4 text-muted">Are you sure you want to delete branch?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-light border" onclick="document.getElementById('deleteConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn btn-danger px-4" onclick="executeDelete()">Yes, Delete</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .modal-overlay {
+        display: none; 
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.6); 
+        z-index: 9999; 
+        align-items: center; 
+        justify-content: center;
+        padding: 20px;
+    }
+    .modal-card {
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 12px;
+        width: 100%;
+        max-height: 90vh; 
+        overflow-y: auto; 
+        box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+        animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<script>
+    // --- ADD MODAL ---
+    function openModal() {
+        document.getElementById('branchModal').style.display = 'flex';
+    }
+    function validateAndConfirmAddBranch() {
+        const errorContainer = document.getElementById('addBranchErrors');
+        const errors = [];
+
+        const location = document.querySelector('#addBranchForm [name=branch_location]').value.trim();
+        const address = document.querySelector('#addBranchForm [name=branch_address]').value.trim();
+
+        if (!location) errors.push('Branch Location is required.');
+        if (!address) errors.push('Branch Address is required.');
+
+        if (errors.length > 0) {
+            errorContainer.innerHTML = errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#branchModal .modal-card').scrollTop = 0;
+            return;
+        }
+
+        errorContainer.style.display = 'none';
+        errorContainer.innerHTML = '';
+        document.getElementById('addConfirmModal').style.display = 'flex';
+    }
+    function closeModal() {
+        document.getElementById('branchModal').style.display = 'none';
+        const err = document.getElementById('addBranchErrors');
+        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+    }
+
+    // --- UPDATE MODAL ---
+    function openUpdateModal(buttonElement) {
+        const branchId = buttonElement.getAttribute('data-id');
+        const branchLocation = buttonElement.getAttribute('data-location');
+        const branchAddress = buttonElement.getAttribute('data-address');
+
+        document.getElementById('update_branch_id').value = branchId;
+        document.getElementById('update_branch_location').value = branchLocation;
+        document.getElementById('update_branch_address').value = branchAddress;
+
+        document.getElementById('updateBranchForm').action = `/branches/${branchId}/update/`;
+        document.getElementById('deleteBranchForm').action = `/branches/${branchId}/delete/`;
+
+        document.getElementById('updateBranchModal').style.display = 'flex';
+    }
+    function validateAndConfirmUpdateBranch() {
+        const errorContainer = document.getElementById('updateBranchErrors');
+        const errors = [];
+
+        const location = document.getElementById('update_branch_location').value.trim();
+        const address = document.getElementById('update_branch_address').value.trim();
+
+        if (!location) errors.push('Branch Location is required.');
+        if (!address) errors.push('Branch Address is required.');
+
+        if (errors.length > 0) {
+            errorContainer.innerHTML = errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#updateBranchModal .modal-card').scrollTop = 0;
+            return;
+        }
+
+        errorContainer.style.display = 'none';
+        errorContainer.innerHTML = '';
+        document.getElementById('updateConfirmModal').style.display = 'flex';
+    }
+    function closeUpdateModal() {
+        document.getElementById('updateBranchModal').style.display = 'none';
+        const err = document.getElementById('updateBranchErrors');
+        if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+    }
+
+    // --- DELETE ---
+    function openDeleteConfirm() {
+        document.getElementById('deleteConfirmModal').style.display = 'flex';
+    }
+    function executeDelete() {
+        document.getElementById('deleteBranchForm').submit();
+    }
+
+    // --- CLOSE MODALS ON OUTSIDE CLICK ---
+    window.onclick = function(event) {
+        const addOverlay = document.getElementById('branchModal');
+        const updateOverlay = document.getElementById('updateBranchModal');
+        if (event.target === addOverlay) closeModal();
+        else if (event.target === updateOverlay) closeUpdateModal();
+    }
+</script>
+
+{% endblock %}

@@ -1,0 +1,440 @@
+{% extends 'clinic/base.html' %}
+
+{% block content %}
+<style>
+    #treatmentTotal,
+    #productTotal,
+    #grandTotal,
+    .price-input[readonly] {
+        background-color: #f0f0f0;  
+        color: #000000 !important; 
+        font-weight: normal;       
+    }
+    .select2-container .select2-selection--single {
+        height: 38px !important;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+    }
+
+    .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 36px !important;
+        padding-left: 10px;
+    }
+
+    .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 38px !important;
+    }
+
+    .select2-container--default .select2-selection--single {
+        height: 38px !important;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px !important;
+        padding-left: 10px;
+        color: #212529;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 38px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__placeholder {
+        color: #6c757d;
+    }
+</style>
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<div class="container mt-4">
+    <div class="mb-4">
+        <h1 class="fw-bolder" style="color: #CE548D;">Chargeslip</h1>
+    </div>
+
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <form method="POST" id="chargeslipForm">
+                {% csrf_token %}
+                <input type="hidden" name="is_new_patient" id="isNewPatientInput" value="false">
+
+                <div class="mb-3">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="newPatient">
+                        <label class="form-check-label fw-bold">New Patient</label>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-md-12">
+                            <select name="patient" class="form-select" id="existingPatient">
+                                <option value="" selected disabled>Choose existing patient name...</option>
+                                {% for p in patients %}
+                                <option value="{{ p.patient_id }}"
+                                        data-last="{{ p.last_name }}"
+                                        data-first="{{ p.first_name }}"
+                                        data-middle="{{ p.middle_name }}"
+                                        data-suffix="{{ p.suffix }}"
+                                        data-address="{{ p.patient_address }}"
+                                        data-contact="{{ p.patient_contact_number }}"
+                                        data-birthday="{{ p.birthday|date:'Y-m-d' }}"
+                                        data-sex="{{ p.sex }}">
+                                    {{ p.last_name }}, {{ p.first_name }} {{p.middle_name}}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <hr>
+
+                    <div class="row mb-2">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold text-secondary">Last Name</label>
+                            <input type="text" class="form-control patient-field" name="last_name" placeholder="Last Name *" maxlength="50" disabled>
+                            <br>
+                            <label class="form-label small fw-semibold text-secondary mt-2">Address</label>
+                            <input type="text" class="form-control patient-field" name="address" placeholder="Address *" maxlength="300" disabled>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold text-secondary">First Name</label>
+                            <input type="text" class="form-control patient-field" name="first_name" placeholder="First Name *" maxlength="50" disabled>
+                            <br>
+                            <label class="form-label small fw-semibold text-secondary mt-2">Contact No.</label>
+                            <input type="text" class="form-control patient-field" name="contact" placeholder="Contact No. *" 
+                                maxlength="11"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '')" disabled>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold text-secondary">Middle Name</label>
+                            <input type="text" class="form-control patient-field" name="middle_name" placeholder="Middle Name" maxlength="50" disabled>
+                            <br>
+                            <label class="form-label small fw-semibold text-secondary mt-2">Birthday</label>
+                                <input type="date" name="birthday"
+                                    value="{{ patient.birthday|date:'Y-m-d' }}"
+                                    class="form-control patient-field"
+                                    disabled
+                                    required
+                                    min="1900-01-01"
+                                    max="2026-12-31">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold text-secondary">Suffix</label>
+                            <input type="text" class="form-control patient-field" name="suffix" placeholder="Suffix" maxlength="10" disabled>
+                            <br>
+                            <label class="form-label small fw-semibold text-secondary mt-2">Sex</label>
+                            <select class="form-select patient-field" name="sex" disabled>
+                                <option disabled selected>Sex *</option>
+                                <option>M</option>
+                                <option>F</option>
+                                <option>O</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row">
+                    <div class="col-md-6">
+
+                        <h6 class="fw-semibold">Treatments to avail
+                            <button type="button" class="btn btn-sm btn-outline-success ms-2" onclick="addTreatment()">+</button>
+                        </h6>
+
+                        <!-- Labels for the inputs -->
+                        <div class="row fw-semibold text-muted mb-1">
+                            <div class="col-md-5">Treatments</div>
+                            <div class="col-md-3">Qty.</div>
+                            <div class="col-md-2">Cost</div>
+                            <div class="col-md-2"></div> <!-- For the remove button -->
+                        </div>
+
+                        <div id="treatmentContainer"></div>
+
+                    </div>
+
+                    <div class="col-md-6">
+                        <h6 class="fw-semibold">Products to avail
+                            <button type="button" class="btn btn-sm btn-outline-success ms-2" onclick="addProduct()">+</button>
+                        </h6>
+
+                        <!-- Labels for the inputs -->
+                        <div class="row fw-semibold text-muted mb-1">
+                            <div class="col-md-5">Products</div>
+                            <div class="col-md-3">Qty.</div>
+                            <div class="col-md-2">Cost</div>
+                            <div class="col-md-2"></div> <!-- For the remove button -->
+                        </div>
+
+                        <div id="productContainer"></div>
+                    </div>
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-md-6">
+                        <input type="text" id="treatmentTotal" class="form-control text-end" placeholder="Treatment Total" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" id="productTotal" class="form-control text-end" placeholder="Product Total" readonly>
+                    </div>
+                </div>
+                <hr>        
+
+                <div class="row mb-3 align-items-end">
+                    <div class="col-md-6">
+                        <label class="fw-bold">Mode of Payment <span class="text-danger">*</span></label>
+                        <select name="mode_of_payment" class="form-select" id="modeOfPayment">
+                            <option value="" disabled selected>Select Mode</option>
+                            <option>Cash</option>
+                            <option>GCash</option>
+                            <option>Card</option>
+                            <option>Bank Transfer</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3"></div>
+                    <div class="col-md-3">
+                        <label class="fw-bold">Total</label>
+                        <input type="text" id="grandTotal" class="form-control fw-bold" readonly>
+                        <input type="hidden" name="grandTotal" id="grandTotalInput">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="fw-bold">Patient Notes</label>
+                    <textarea name="notes" class="form-control" rows="2"></textarea>
+                </div>
+
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary px-5 rounded-3">Confirm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('chargeslipForm');
+    
+    // 1. Validation on submit
+    form.addEventListener('submit', function(e) {
+        if (!validateInputs()) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return;
+        }
+    });
+
+    // 2. Initialize Select2 on existing patient dropdown with fill logic bound
+    $('#existingPatient').select2({
+        placeholder: 'Choose existing patient name...',
+        allowClear: true,
+        width: '100%'
+    }).on('change', function() {
+        const sel = document.getElementById('existingPatient');
+        const s = sel.options[sel.selectedIndex];
+        if (!s || !s.value) return;
+        document.querySelector("input[name='last_name']").value    = s.dataset.last     || "";
+        document.querySelector("input[name='first_name']").value   = s.dataset.first    || "";
+        document.querySelector("input[name='middle_name']").value  = s.dataset.middle   || "";
+        document.querySelector("input[name='address']").value      = s.dataset.address  || "";
+        document.querySelector("input[name='contact']").value      = s.dataset.contact  || "";
+        document.querySelector("input[name='birthday']").value     = s.dataset.birthday || "";
+        document.querySelector("select[name='sex']").value         = s.dataset.sex      || "";
+    });
+
+    // 3. Global confirmation modal
+    setupGlobalConfirmation(
+        'chargeslipForm', 
+        'Confirm Charge Slip', 
+        'Are you sure you want to save this charge slip? This will record the transaction and update the patient records.'
+    );
+});
+
+function validateInputs() {
+    const isNew = document.getElementById('newPatient').checked;
+    const existingPatient = document.getElementById('existingPatient').value;
+
+    if (isNew) {
+        const last = document.querySelector("input[name='last_name']").value.trim();
+        const first = document.querySelector("input[name='first_name']").value.trim();
+        if (!last || !first) { alert('Please fill in required patient names.'); return false; }
+    } else if (!existingPatient) {
+        alert('Please select a patient.'); return false;
+    }
+
+    if (!document.getElementById('modeOfPayment').value) {
+        alert('Please select a mode of payment.'); return false;
+    }
+
+    if (document.querySelectorAll('.product-row').length === 0 && document.querySelectorAll('.treatment-row').length === 0) {
+        alert('Please add at least one item.'); return false;
+    }
+    return true;
+}
+
+// ================= PATIENT TOGGLE =================
+document.getElementById("newPatient").addEventListener("change", function () {
+    const fields = document.querySelectorAll(".patient-field");
+    const existingSelect = document.getElementById("existingPatient");
+    if (this.checked) {
+        fields.forEach(f => { f.disabled = false; f.value = ""; });
+        existingSelect.disabled = true;
+        $('#existingPatient').val(null).trigger('change');  // ← clears Select2
+        document.getElementById("isNewPatientInput").value = "true";
+    } else {
+        fields.forEach(f => f.disabled = true);
+        existingSelect.disabled = false;
+        document.getElementById("isNewPatientInput").value = "false";
+    }
+});
+
+// ================= DYNAMIC ITEMS =================
+function addTreatment() {
+    const html = `
+        <div class="row mb-2 treatment-row">
+            <div class="col-md-5">
+                <select class="form-select treatment-select" name="treatment_selects">
+                    <option disabled selected value="">Select Treatment</option>
+                    {% for t in treatments %}
+                    <option value="{{ t.treatment_cost }}" data-id="{{ t.treatment_id }}">
+                        [{{ t.treatment_type }}] {{ t.treatment_name }} (₱{{ t.treatment_cost }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <input type="hidden" name="actual_treatment_ids" class="id-input">
+            </div>
+            <div class="col-md-3"><input type="number" name="treatment_qtys" min="1" value="1" class="form-control qty-input" oninput="calculateTotals()"></div>
+            <div class="col-md-3"><input type="number" class="form-control price-input" readonly></div>
+            <div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.row').remove(); calculateTotals();">✕</button></div>
+        </div>`;
+    document.getElementById("treatmentContainer").insertAdjacentHTML("beforeend", html);
+    const newRow = document.getElementById("treatmentContainer").lastElementChild;
+    $(newRow).find('.treatment-select').select2({
+        placeholder: 'Select Treatment',
+        allowClear: false,
+        width: '100%'
+    }).on('change', function() {
+        setPrice(this);
+    });
+}
+
+function addProduct() {
+    const html = `
+        <div class="row mb-2 product-row">
+            <div class="col-md-5">
+                <select class="form-select product-select" name="product_selects">
+                    <option disabled selected value="">Select Product</option>
+                    {% for p in products %}
+                    <option value="{{ p.unit_cost }}" data-id="{{ p.product_id }}">
+                        [{{ p.product_type }}] {{ p.product_name }} (₱{{ p.unit_cost }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <input type="hidden" name="actual_product_ids" class="id-input">
+            </div>
+            <div class="col-md-3"><input type="number" name="product_qtys" min="1" value="1" class="form-control qty-input" oninput="calculateTotals()"></div>
+            <div class="col-md-3"><input type="number" class="form-control price-input" readonly></div>
+            <div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.row').remove(); calculateTotals();">✕</button></div>
+        </div>`;
+    document.getElementById("productContainer").insertAdjacentHTML("beforeend", html);
+    const newRow = document.getElementById("productContainer").lastElementChild;
+    $(newRow).find('.product-select').select2({
+        placeholder: 'Select Product',
+        allowClear: false,
+        width: '100%'
+    }).on('change', function() {
+        setPrice(this);
+    });
+}
+
+function removeRow(button) {
+    const row = button.closest('.row');
+    const select = row.querySelector('select');
+    if (select && $(select).data('select2')) {
+        $(select).select2('destroy');
+    }
+    row.remove();
+    calculateTotals();
+}
+
+// ================= CALCULATIONS =================
+window.setPrice = function(selectElement) {
+    let row = selectElement.closest(".row");
+    let selectedOption = selectElement.options[selectElement.selectedIndex];
+
+    if (!selectedOption) return;
+
+    const selectedId = selectedOption.getAttribute("data-id");
+    const selectedPrice = parseFloat(selectElement.value || 0);
+
+    const container = row.closest("#treatmentContainer, #productContainer");
+
+    // ===== MERGE DUPLICATES =====
+    const rows = container.querySelectorAll(".row");
+
+    for (let r of rows) {
+        if (r === row) continue;
+
+        const otherSelect = r.querySelector("select");
+        const otherOption = otherSelect?.options[otherSelect.selectedIndex];
+
+        if (!otherOption) continue;
+
+        const otherId = otherOption.getAttribute("data-id");
+
+        if (otherId === selectedId) {
+            const qty1 = parseInt(r.querySelector(".qty-input").value) || 0;
+            const qty2 = parseInt(row.querySelector(".qty-input").value) || 0;
+
+            // ✅ Merge quantities
+            r.querySelector(".qty-input").value = qty1 + qty2;
+
+            // ❗ IMPORTANT: Update price again
+            r.querySelector(".price-input").value = selectedPrice.toFixed(2);
+
+            // Remove duplicate row
+            row.remove();
+
+            calculateTotals();
+            return;
+        }
+    }
+
+    // ===== NORMAL SET =====
+    row.querySelector(".id-input").value = selectedId;
+    row.querySelector(".price-input").value = selectedPrice.toFixed(2);
+
+    calculateTotals();
+};
+
+window.calculateTotals = function() {
+    let tTotal = 0, pTotal = 0;
+    document.querySelectorAll(".treatment-row").forEach(r => {
+        let q = parseFloat(r.querySelector(".qty-input").value) || 0;
+        let p = parseFloat(r.querySelector(".price-input").value) || 0;
+        tTotal += q * p;
+    });
+    document.querySelectorAll(".product-row").forEach(r => {
+        let q = parseFloat(r.querySelector(".qty-input").value) || 0;
+        let p = parseFloat(r.querySelector(".price-input").value) || 0;
+        pTotal += q * p;
+    });
+    document.getElementById("treatmentTotal").value = tTotal.toFixed(2);
+    document.getElementById("productTotal").value = pTotal.toFixed(2);
+    const grand = tTotal + pTotal;
+    document.getElementById("grandTotal").value = grand.toFixed(2);
+    document.getElementById("grandTotalInput").value = grand.toFixed(2);
+};
+</script>
+{% endblock %}
