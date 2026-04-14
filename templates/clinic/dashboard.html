@@ -4,39 +4,23 @@
 {% block content %}
 <div class="container-fluid mt-3">
     
-    <div class="row mb-4">
-        <div class="col-12 d-flex justify-content-between align-items-center">
-            <h1 class="fw-bold m-0" style="color: #CE548D;">Dashboard</h1>
-            
-            <form method="GET" class="d-flex gap-2 align-items-center m-0">
-                <span class="text-muted small fw-bold">Filter:</span>
-                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ request.GET.start_date }}" required>
-                <span class="text-muted small">to</span>
-                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ request.GET.end_date }}" required>
-                
-                <button type="submit" class="btn btn-sm px-3" style="background-color: #CE548D; color: white;">Apply</button>
-                <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
-            </form>
-        </div>
-    </div>
-
-    <div class="row mb-4">
+   <div class="row mb-4">
         <div class="col-md-3">
             <div class="card p-3 shadow-sm border-0 rounded-4">
-                <h6 class="text-muted mb-2">Total Sales</h6>
-                <h3 class="fw-bold m-0" style="color: #333;">PHP {{ total_sales|floatformat:2 }}</h3>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card p-3 shadow-sm border-0 rounded-4">
-                <h6 class="text-muted mb-2">Low Stock Alerts <span class="badge bg-danger ms-1">!</span></h6>
-                <h3 class="fw-bold m-0 text-danger">{{ low_stock_count }} Items</h3>
+                <h6 class="text-muted mb-2">Products Restocked</h6>
+                <h3 class="fw-bold m-0" style="color: #333;">{{ products_restocked }} units</h3>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card p-3 shadow-sm border-0 rounded-4">
                 <h6 class="text-muted mb-2">Products Sold</h6>
                 <h3 class="fw-bold m-0" style="color: #333;">{{ products_sold }} units</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 rounded-4">
+                <h6 class="text-muted mb-2">Treatments Done</h6>
+                <h3 class="fw-bold m-0" style="color: #333;">{{ treatments_administered }}</h3>
             </div>
         </div>
         <div class="col-md-3">
@@ -55,9 +39,10 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card p-4 shadow-sm border-0 rounded-4 h-100">
-                <h6 class="text-muted mb-3">Revenue Breakdown</h6>
-                <canvas id="revenueChart" style="max-height: 250px;"></canvas>
+            <div class="card p-4 shadow-sm border-0 rounded-4 h-100 position-relative">
+                <h6 class="text-muted mb-2">Revenue Breakdown</h6>
+                <h4 class="fw-bold text-center mb-3" style="color: #CE548D;">PHP {{ total_sales|floatformat:2 }}</h4>
+                <canvas id="revenueChart" style="max-height: 200px;"></canvas>
             </div>
         </div>
     </div>
@@ -65,35 +50,8 @@
     <div class="row mb-4">
         <div class="col-md-7">
             <div class="card p-4 shadow-sm border-0 rounded-4 h-100">
-                <h6 class="text-danger fw-bold mb-3">Low Stock Alerts (Action Required)</h6>
-                <div class="table-responsive">
-                    <table class="table table-borderless align-middle">
-                        <thead class="text-muted border-bottom">
-                            <tr>
-                                <th>Product Name</th>
-                                <th>Branch</th>
-                                <th>Current Stock</th>
-                                <th>PQM</th>
-                                <th>Supplier</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in low_stock_items %}
-                            <tr>
-                                <td>{{ item.product.product_name }}</td>
-                                <td>{{ item.branch.branch_location }}</td>
-                                <td class="text-danger fw-bold">{{ item.stock_quantity }}</td>
-                                <td>{{ item.quantity_minimum }}</td>
-                                <td>{{ item.product.supplier.supplier_name }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-3">All stocks are healthy!</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <h6 class="text-muted mb-3">Most Restocked Products</h6>
+                <canvas id="mostRestockedChart" style="max-height: 250px;"></canvas>
             </div>
         </div>
         
@@ -139,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    //Revenue Breakdown Doughnut Chart
+   // Revenue Breakdown Doughnut Chart
     const revProducts = {{ revenue_products|default:0 }};
     const revTreatments = {{ revenue_treatments|default:0 }};
     
@@ -154,11 +112,32 @@ document.addEventListener('DOMContentLoaded', function() {
                     borderWidth: 0
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                // Get the current value and the total of both slices
+                                let value = context.raw || 0;
+                                let total = context.chart._metasets[context.datasetIndex].total;
+                                
+                                // Calculate the percentage
+                                let percentage = total > 0 ? Math.round((value / total) * 100) + '%' : '0%';
+                                
+                                // Percentage and formatted value
+                                let formattedValue = value.toLocaleString('en-PH', {minimumFractionDigits: 2});
+                                return `${context.label}: PHP ${formattedValue} (${percentage})`;
+                            }
+                        }
+                    }
+                }
+            }
         });
     }
 
-    //Top Moving Inventory Bar Chart
+    // Top Moving Inventory Bar Chart
     const topNames = {{ top_product_names|safe }};
     const topSales = {{ top_product_sales|safe }};
     
@@ -181,6 +160,77 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // NEW: Most Restocked Products Bar Chart
+    const restockedNames = {{ restocked_names|safe }};
+    const restockedCounts = {{ restocked_counts|safe }};
+    
+    if (restockedNames.length > 0) {
+        new Chart(document.getElementById('mostRestockedChart'), {
+            type: 'bar',
+            data: {
+                labels: restockedNames,
+                datasets: [{
+                    label: 'Units Restocked',
+                    data: restockedCounts,
+                    backgroundColor: pinkMain, // Uses the darker pink for contrast
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false 
+            }
+        });
+    }
+});
+</script>
+
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+    function addDays(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
+
+    flatpickr("#datePicker", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        minDate: "2014-01-01",
+        maxDate: "2030-12-31",
+        allowInput: true,
+        onReady: function(selectedDates, dateStr, instance) {
+            const panel = document.createElement("div");
+            panel.className = "quick-ranges";
+            panel.innerHTML = `
+                <div class="quick-item" data-range="today">Today</div>
+                <div class="quick-item" data-range="yesterday">Yesterday</div>
+                <div class="quick-item" data-range="lastweek">Last week</div>
+                <div class="quick-item" data-range="lastmonth">Last month</div>
+                <div class="quick-item" data-range="lastquarter">Last quarter</div>
+            `;
+            instance.calendarContainer.style.display = "flex";
+            instance.calendarContainer.insertBefore(panel, instance.calendarContainer.firstChild);
+            
+            panel.addEventListener("click", function(e) {
+                if (!e.target.classList.contains("quick-item")) return;
+                const type = e.target.dataset.range;
+                const today = startOfDay(new Date());
+                let start, end;
+                
+                if (type === "today") { start = end = today; }
+                else if (type === "yesterday") { start = end = addDays(today, -1); }
+                else if (type === "lastweek") { start = addDays(today, -6); end = today; }
+                else if (type === "lastmonth") { start = addDays(today, -29); end = today; }
+                else if (type === "lastquarter") { start = addDays(today, -89); end = today; }
+                
+                instance.setDate([start, end], true);
+                instance.close();
+            });
+        }
+    });
 });
 </script>
 {% endblock %}
