@@ -280,6 +280,19 @@ function validateInputs() {
     if (document.querySelectorAll('.product-row').length === 0 && document.querySelectorAll('.treatment-row').length === 0) {
         alert('Please add at least one item.'); return false;
     }
+
+    // ── Final cap check on submit ──
+    let tQtyTotal = 0, pQtyTotal = 0;
+    document.querySelectorAll('.treatment-row .qty-input').forEach(i => tQtyTotal += parseInt(i.value) || 0);
+    document.querySelectorAll('.product-row .qty-input').forEach(i => pQtyTotal += parseInt(i.value) || 0);
+
+    if (tQtyTotal > 10) {
+        alert('Total treatment quantity cannot exceed 10 per chargeslip.'); return false;
+    }
+    if (pQtyTotal > 20) {
+        alert('Total product quantity cannot exceed 20 per chargeslip.'); return false;
+    }
+
     return true;
 }
 
@@ -420,21 +433,152 @@ window.setPrice = function(selectElement) {
 
 window.calculateTotals = function() {
     let tTotal = 0, pTotal = 0;
+    let tQtyTotal = 0, pQtyTotal = 0;
+
     document.querySelectorAll(".treatment-row").forEach(r => {
         let q = parseFloat(r.querySelector(".qty-input").value) || 0;
         let p = parseFloat(r.querySelector(".price-input").value) || 0;
         tTotal += q * p;
+        tQtyTotal += q;
     });
+
     document.querySelectorAll(".product-row").forEach(r => {
         let q = parseFloat(r.querySelector(".qty-input").value) || 0;
         let p = parseFloat(r.querySelector(".price-input").value) || 0;
         pTotal += q * p;
+        pQtyTotal += q;
     });
+
+    // ── Enforce treatment qty cap of 10 ──
+    if (tQtyTotal > 10) {
+        showChargeslipError('Total treatment quantity cannot exceed 10 per chargeslip.');
+        // Revert the last changed qty input to bring total back to 10
+        const lastTreatmentQty = document.querySelector('.treatment-row:last-child .qty-input');
+        if (lastTreatmentQty) {
+            const excess = tQtyTotal - 10;
+            lastTreatmentQty.value = Math.max(1, parseInt(lastTreatmentQty.value) - excess);
+        }
+        return calculateTotals(); // Recalculate with corrected value
+    }
+
+    // ── Enforce product qty cap of 20 ──
+    if (pQtyTotal > 20) {
+        showChargeslipError('Total product quantity cannot exceed 20 per chargeslip.');
+        const lastProductQty = document.querySelector('.product-row:last-child .qty-input');
+        if (lastProductQty) {
+            const excess = pQtyTotal - 20;
+            lastProductQty.value = Math.max(1, parseInt(lastProductQty.value) - excess);
+        }
+        return calculateTotals();
+    }
+
+    clearChargeslipError();
+
     document.getElementById("treatmentTotal").value = tTotal.toFixed(2);
     document.getElementById("productTotal").value = pTotal.toFixed(2);
     const grand = tTotal + pTotal;
     document.getElementById("grandTotal").value = grand.toFixed(2);
     document.getElementById("grandTotalInput").value = grand.toFixed(2);
 };
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Restore patient fields ──
+    const rawPatient = '{{ submitted_patient|default:"{}"|escapejs }}';
+    try {
+        const sp = JSON.parse(rawPatient);
+        if (sp && (sp.is_new || sp.patient_id)) {
+            if (sp.is_new) {
+                document.getElementById('newPatient').checked = true;
+                document.getElementById('newPatient').dispatchEvent(new Event('change'));
+                document.querySelector("input[name='last_name']").value   = sp.last_name   || '';
+                document.querySelector("input[name='first_name']").value  = sp.first_name  || '';
+                document.querySelector("input[name='middle_name']").value = sp.middle_name || '';
+                document.querySelector("input[name='suffix']").value      = sp.suffix      || '';
+                document.querySelector("input[name='address']").value     = sp.address     || '';
+                document.querySelector("input[name='contact']").value     = sp.contact     || '';
+                document.querySelector("input[name='birthday']").value    = sp.birthday    || '';
+                document.querySelector("select[name='sex']").value        = sp.sex         || '';
+            } else if (sp.patient_id) {
+                $('#existingPatient').val(sp.patient_id).trigger('change');
+            }
+            document.getElementById('isNewPatientInput').value = sp.is_new ? 'true' : 'false';
+        }
+    } catch(e) {}
+
+    const mop = '{{ mode_of_payment|default:""|escapejs }}';
+    if (mop) document.getElementById('modeOfPayment').value = mop;
+
+    const notes = '{{ notes|default:""|escapejs }}';
+    if (notes) document.querySelector("textarea[name='notes']").value = notes;
+
+    const rawProducts = '{{ submitted_products|default:"[]"|escapejs }}';
+    try {
+        const prods = JSON.parse(rawProducts);
+        prods.forEach(function(p) {
+            addProduct();
+            const rows = document.querySelectorAll('.product-row');
+            const lastRow = rows[rows.length - 1];
+            const sel = lastRow.querySelector('.product-select');
+            $(sel).val(null); 
+            for (let opt of sel.options) {
+                if (opt.getAttribute('data-id') === String(p.id)) {
+                    opt.selected = true;
+                    break;
+                }
+            }
+            $(sel).trigger('change');
+            lastRow.querySelector('.qty-input').value = p.qty;
+            // Manually set the hidden id-input and price
+            lastRow.querySelector('.id-input').value = p.id;
+            const selectedOpt = Array.from(sel.options).find(o => o.getAttribute('data-id') === String(p.id));
+            if (selectedOpt) lastRow.querySelector('.price-input').value = parseFloat(selectedOpt.value).toFixed(2);
+        });
+    } catch(e) {}
+
+    const rawTreatments = '{{ submitted_treatments|default:"[]"|escapejs }}';
+    try {
+        const treats = JSON.parse(rawTreatments);
+        treats.forEach(function(t) {
+            addTreatment();
+            const rows = document.querySelectorAll('.treatment-row');
+            const lastRow = rows[rows.length - 1];
+            const sel = lastRow.querySelector('.treatment-select');
+            for (let opt of sel.options) {
+                if (opt.getAttribute('data-id') === String(t.id)) {
+                    opt.selected = true;
+                    break;
+                }
+            }
+            $(sel).trigger('change');
+            lastRow.querySelector('.qty-input').value = t.qty;
+            lastRow.querySelector('.id-input').value = t.id;
+            const selectedOpt = Array.from(sel.options).find(o => o.getAttribute('data-id') === String(t.id));
+            if (selectedOpt) lastRow.querySelector('.price-input').value = parseFloat(selectedOpt.value).toFixed(2);
+        });
+    } catch(e) {}
+
+    calculateTotals();
+});
+
+function showChargeslipError(msg) {
+    let box = document.getElementById('chargeslipCapError');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'chargeslipCapError';
+        box.className = 'alert alert-danger alert-dismissible fade show mt-2';
+        box.role = 'alert';
+        // Insert it above the treatments/products section
+        const hr = document.querySelector('.card-body hr');
+        if (hr) hr.insertAdjacentElement('afterend', box);
+    }
+    box.innerHTML = `${msg} <button type="button" class="btn-close" data-bs-dismiss="alert" onclick="clearChargeslipError()"></button>`;
+    box.style.display = 'block';
+}
+
+function clearChargeslipError() {
+    const box = document.getElementById('chargeslipCapError');
+    if (box) box.style.display = 'none';
+}
 </script>
 {% endblock %}

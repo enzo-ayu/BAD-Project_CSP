@@ -237,7 +237,7 @@
             <button class="btn btn-secondary"
                     onclick="document.getElementById('updatePatientConfirm').style.display='none'">Cancel</button>
             <button class="btn text-white px-4" style="background-color:#CE548D;"
-                    onclick="document.getElementById('updatePatientModalForm').submit()">Yes</button>
+                    onclick="submitPatientUpdateAjax()">Yes</button>
         </div>
     </div>
 </div>
@@ -297,7 +297,7 @@ function openUpdatePatientModal(id, lastName, firstName, middleName, suffix, add
     document.getElementById('updatePatientConfirmMsg').innerText =
         `Are you sure you want to save changes to ${firstName} ${lastName}'s record?`;
     document.getElementById('deletePatientConfirmMsg').innerText =
-        `Are you sure you want to delete ${firstName} ${lastName}? This will permanently remove all their transactions and records.`;
+        `Are you sure you want to delete ${firstName} ${lastName}?`;
 
     document.getElementById('updatePatientModalForm').action = '/patients/' + id + '/update/';
     document.getElementById('deletePatientModalForm').action = '/patients/' + id + '/delete/';
@@ -312,7 +312,24 @@ function validateAndConfirmUpdatePatient() {
     if (!document.getElementById('upd_first_name').value.trim()) errors.push('First Name is required.');
     if (!document.getElementById('upd_address').value.trim()) errors.push('Address is required.');
     if (!document.getElementById('upd_contact').value.trim()) errors.push('Contact Number is required.');
-    if (!document.getElementById('upd_birthday').value.trim()) errors.push('Birthday is required.');
+    if (document.getElementById('upd_contact').value.trim() && document.getElementById('upd_contact').value.trim().length !== 11) {
+        errors.push('Invalid contact number length.');
+    }
+    const birthdayInput = document.getElementById('upd_birthday').value;
+
+    if (!birthdayInput.trim()) {
+        errors.push('Birthday is required.');
+    } else {
+        const selectedDate = new Date(birthdayInput);
+        const minDate = new Date('1900-01-01');
+        const maxDate = new Date('2026-12-31');
+
+        if (selectedDate < minDate) {
+            errors.push('Value must be 01/01/1900 or later');
+        } else if (selectedDate > maxDate) {
+            errors.push('Value must be 12/31/2026 or earlier');
+        }
+    }
     if (!document.getElementById('upd_sex').value.trim()) errors.push('Sex is required.');
 
     if (errors.length > 0) {
@@ -337,6 +354,38 @@ function closeUpdatePatientModal() {
     document.getElementById('updatePatientConfirm').style.display = 'none';
     const err = document.getElementById('updatePatientErrors');
     if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+}
+
+function submitPatientUpdateAjax() {
+    const form = document.getElementById('updatePatientModalForm');
+    const formData = new FormData(form);
+    fetch(form.action, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('updatePatientConfirm').style.display = 'none';
+        if (data.success) {
+            closeUpdatePatientModal();
+            // Show success message and reload table
+            location.reload();
+        } else {
+            const errorContainer = document.getElementById('updatePatientErrors');
+            errorContainer.innerHTML = data.errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#updatePatientOverlay > div').scrollTop = 0;
+        }
+    })
+    .catch(() => {
+        alert('An unexpected error occurred. Please try again.');
+    });
 }
 
 function openDeletePatientModal() {

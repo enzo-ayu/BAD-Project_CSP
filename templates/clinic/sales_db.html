@@ -294,7 +294,7 @@ flatpickr("#datePicker", {
             <button class="btn btn-secondary"
                     onclick="document.getElementById('updateSaleConfirm').style.display='none'">Cancel</button>
             <button class="btn text-white px-4" style="background-color:#CE548D;"
-                    onclick="document.getElementById('updateSaleForm').submit()">Yes</button>
+                    onclick="submitSaleUpdateAjax()">Yes</button>
         </div>
     </div>
 </div>
@@ -553,6 +553,24 @@ function validateAndConfirmSale() {
         errors.push('Invalid Quantity Value: all quantities must be at least 1.');
     }
 
+    // Total product quantity across all product rows
+    let totalProductQty = 0;
+    productRows.forEach(row => {
+        totalProductQty += parseInt(row.querySelector('.upd-product-qty').value) || 0;
+    });
+    if (totalProductQty > 20) {
+        errors.push(`Total product quantity cannot exceed 20 per chargeslip (current total: ${totalProductQty}).`);
+    }
+
+    // Total treatment quantity across all treatment rows
+    let totalTreatmentQty = 0;
+    treatmentRows.forEach(row => {
+        totalTreatmentQty += parseInt(row.querySelector('.upd-treatment-qty').value) || 0;
+    });
+    if (totalTreatmentQty > 10) {
+        errors.push(`Total treatment quantity cannot exceed 10 per chargeslip (current total: ${totalTreatmentQty}).`);
+    }
+
     if (errors.length > 0) {
         errorContainer.innerHTML = errors.map(e =>
             `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
@@ -578,6 +596,37 @@ function closeUpdateSaleModal() {
         errorContainer.style.display = 'none';
         errorContainer.innerHTML = '';
     }
+}
+
+function submitSaleUpdateAjax() {
+    const form = document.getElementById('updateSaleForm');
+    const formData = new FormData(form);
+    fetch(form.action, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('updateSaleConfirm').style.display = 'none';
+        if (data.success) {
+            closeUpdateSaleModal();
+            location.reload();
+        } else {
+            const errorContainer = document.getElementById('saleModalErrors');
+            errorContainer.innerHTML = data.errors.map(e =>
+                `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                    ${e}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`
+            ).join('');
+            errorContainer.style.display = 'block';
+            document.querySelector('#updateSaleOverlay > div').scrollTop = 0;
+        }
+    })
+    .catch(() => {
+        alert('An unexpected error occurred. Please try again.');
+    });
 }
 
 function openDeleteSaleModal() {

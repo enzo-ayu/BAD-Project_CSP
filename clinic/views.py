@@ -211,14 +211,13 @@ def custom_logout_view(request):
 # ─────────────────────────────────────────────
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician']) 
+@role_required(['Owner', 'Aesthetician'])
 def chargeslip(request):
     if request.method == 'POST':
         errors = []
         is_new_patient = request.POST.get('is_new_patient') == 'true'
         notes = request.POST.get('notes', '').strip()
 
-        # ── Validate Patient ──
         if is_new_patient:
             required_new = {
                 'last_name': 'Last Name', 'first_name': 'First Name',
@@ -232,7 +231,6 @@ def chargeslip(request):
             if not request.POST.get('patient', '').strip():
                 errors.append('Please select an existing patient or register a new one.')
 
-        # ── Validate Payment & Items ──
         if not request.POST.get('mode_of_payment', '').strip():
             errors.append('Please select a mode of payment.')
 
@@ -242,7 +240,6 @@ def chargeslip(request):
         if not product_ids and not treatment_ids:
             errors.append('Please add at least one product or treatment.')
 
-        # ── Validate Quantities ──
         for qty in request.POST.getlist('product_qtys') + request.POST.getlist('treatment_qtys'):
             try:
                 if int(qty) < 1:
@@ -252,14 +249,48 @@ def chargeslip(request):
                 errors.append('Invalid quantity entered.')
                 break
 
-        # ── Handle Validation Errors ──
         if errors:
             for error in errors:
                 messages.error(request, error)
+
+            # ── Rebuild submitted state to re-hydrate the form ──
+            product_qtys = request.POST.getlist('product_qtys')
+            treatment_qtys = request.POST.getlist('treatment_qtys')
+
+            submitted_products = [
+                {'id': pid, 'qty': qty}
+                for pid, qty in zip(product_ids, product_qtys)
+                if pid
+            ]
+            submitted_treatments = [
+                {'id': tid, 'qty': qty}
+                for tid, qty in zip(treatment_ids, treatment_qtys)
+                if tid
+            ]
+
+            # Preserve patient field values
+            submitted_patient = {
+                'is_new': is_new_patient,
+                'patient_id': request.POST.get('patient', ''),
+                'last_name': request.POST.get('last_name', ''),
+                'first_name': request.POST.get('first_name', ''),
+                'middle_name': request.POST.get('middle_name', ''),
+                'suffix': request.POST.get('suffix', ''),
+                'address': request.POST.get('address', ''),
+                'contact': request.POST.get('contact', ''),
+                'birthday': request.POST.get('birthday', ''),
+                'sex': request.POST.get('sex', ''),
+            }
+
             return render(request, 'clinic/chargeslip.html', {
-                'patients': Patient.objects.all().order_by('last_name'),
-                'products': Product.objects.all().order_by('product_name'),
-                'treatments': Treatment.objects.all().order_by('treatment_name'),
+                'patients': Patient.objects.filter(is_deleted=False).order_by('last_name'),
+                'products': Product.objects.all().order_by('product_type', 'product_name'),
+                'treatments': Treatment.objects.all().order_by('treatment_type', 'treatment_name'),
+                'submitted_products': json.dumps(submitted_products),
+                'submitted_treatments': json.dumps(submitted_treatments),
+                'submitted_patient': json.dumps(submitted_patient),
+                'mode_of_payment': request.POST.get('mode_of_payment', ''),
+                'notes': notes,
             })
 
         # ─────────────────────────────────────────
@@ -276,23 +307,55 @@ def chargeslip(request):
                 if is_new_patient:
                     last = request.POST.get('last_name').strip()
                     first = request.POST.get('first_name').strip()
+                    middle = request.POST.get('middle_name', '').strip()
                     bday = request.POST.get('birthday').strip()
 
                     if Patient.objects.filter(
                         last_name__iexact=last,
                         first_name__iexact=first,
+                        middle_name__iexact=middle,
                         birthday=bday
                     ).exists():
+                        # Re-hydrate form with duplicate patient error
+                        product_qtys = request.POST.getlist('product_qtys')
+                        treatment_qtys = request.POST.getlist('treatment_qtys')
+                        submitted_patient = {
+                            'is_new': is_new_patient,
+                            'patient_id': '',
+                            'last_name': last,
+                            'first_name': first,
+                            'middle_name': middle,
+                            'suffix': request.POST.get('suffix', '').strip(),
+                            'address': request.POST.get('address', '').strip(),
+                            'contact': request.POST.get('contact', '').strip(),
+                            'birthday': bday,
+                            'sex': request.POST.get('sex', ''),
+                        }
                         messages.error(
                             request,
-                            f'A patient named {first} {last} with the same birthday already exists.'
+                            f'A patient named {first} {middle} {last} with the same birthday already exists.'
                         )
-                        return redirect('chargeslip')
+                        return render(request, 'clinic/chargeslip.html', {
+                            'patients': Patient.objects.filter(is_deleted=False).order_by('last_name'),
+                            'products': Product.objects.all().order_by('product_type', 'product_name'),
+                            'treatments': Treatment.objects.all().order_by('treatment_type', 'treatment_name'),
+                            'submitted_products': json.dumps([
+                                {'id': pid, 'qty': qty}
+                                for pid, qty in zip(product_ids, product_qtys) if pid
+                            ]),
+                            'submitted_treatments': json.dumps([
+                                {'id': tid, 'qty': qty}
+                                for tid, qty in zip(treatment_ids, treatment_qtys) if tid
+                            ]),
+                            'submitted_patient': json.dumps(submitted_patient),
+                            'mode_of_payment': request.POST.get('mode_of_payment', ''),
+                            'notes': notes,
+                        })
 
                     patient = Patient.objects.create(
                         last_name=last,
                         first_name=first,
-                        middle_name=request.POST.get('middle_name', '').strip(),
+                        middle_name=middle,
                         suffix=request.POST.get('suffix', '').strip() or "",
                         patient_contact_number=request.POST.get('contact', '').strip(),
                         patient_address=request.POST.get('address', '').strip(),
@@ -300,7 +363,7 @@ def chargeslip(request):
                         sex=request.POST.get('sex'),
                     )
                 else:
-                    patient = Patient.objects.get(pk=request.POST.get('patient'))
+                    patient = Patient.objects.get(pk=request.POST.get('patient'), is_deleted=False)
 
                 # ── Initialize Totals ──
                 total_products = 0.0
@@ -312,7 +375,7 @@ def chargeslip(request):
                 # ── Create Sale ──
                 sale = SalesTransaction.objects.create(
                     patient=patient,
-                    branch=employee_branch,  # ✅ IMPORTANT (RBAC)
+                    branch=employee_branch,
                     total_price_of_products=0,
                     total_price_of_treatments=0,
                     total_amount=0,
@@ -376,11 +439,42 @@ def chargeslip(request):
             return redirect('sales_db')
 
         except Exception as e:
+            # Re-hydrate the form with all submitted data so nothing is lost
+            product_qtys = request.POST.getlist('product_qtys')
+            treatment_qtys = request.POST.getlist('treatment_qtys')
+            submitted_patient = {
+                'is_new': is_new_patient,
+                'patient_id': request.POST.get('patient', ''),
+                'last_name': request.POST.get('last_name', ''),
+                'first_name': request.POST.get('first_name', ''),
+                'middle_name': request.POST.get('middle_name', ''),
+                'suffix': request.POST.get('suffix', ''),
+                'address': request.POST.get('address', ''),
+                'contact': request.POST.get('contact', ''),
+                'birthday': request.POST.get('birthday', ''),
+                'sex': request.POST.get('sex', ''),
+            }
             messages.error(request, f'An error occurred while saving: {str(e)}')
+            return render(request, 'clinic/chargeslip.html', {
+                'patients': Patient.objects.filter(is_deleted=False).order_by('last_name'),
+                'products': Product.objects.all().order_by('product_type', 'product_name'),
+                'treatments': Treatment.objects.all().order_by('treatment_type', 'treatment_name'),
+                'submitted_products': json.dumps([
+                    {'id': pid, 'qty': qty}
+                    for pid, qty in zip(product_ids, product_qtys) if pid
+                ]),
+                'submitted_treatments': json.dumps([
+                    {'id': tid, 'qty': qty}
+                    for tid, qty in zip(treatment_ids, treatment_qtys) if tid
+                ]),
+                'submitted_patient': json.dumps(submitted_patient),
+                'mode_of_payment': request.POST.get('mode_of_payment', ''),
+                'notes': notes,
+            })
 
     # ── GET Request ──
     return render(request, 'clinic/chargeslip.html', {
-        'patients': Patient.objects.all().order_by('last_name'),
+        'patients': Patient.objects.filter(is_deleted=False).order_by('last_name'),
         'products': Product.objects.all().order_by('product_type', 'product_name'),
         'treatments': Treatment.objects.all().order_by('treatment_type', 'treatment_name'),
     })
@@ -393,7 +487,7 @@ def chargeslip(request):
 @role_required(['Owner', 'Aesthetician']) 
 def patient_db(request):
     query = request.GET.get("q", "").strip()
-    patients = Patient.objects.all()
+    patients = Patient.objects.filter(is_deleted=False)
     
     if query:
         patients = patients.filter(
@@ -445,14 +539,16 @@ def patient_add(request):
         
         last = request.POST.get('last_name', '').strip()
         first = request.POST.get('first_name', '').strip()
+        middle = request.POST.get('middle_name', '').strip()
         birthday = request.POST.get('birthday', '').strip()
 
         if not errors and Patient.objects.filter(
             last_name__iexact=last, 
             first_name__iexact=first, 
+            middle_name__iexact=middle,
             birthday=birthday
         ).exists():
-            errors.append(f'A patient named {first} {last} with the same birthday already exists.')
+            errors.append(f'A patient named {first} {middle} {last} with the same birthday already exists.')
 
         if errors:
             for error in errors:
@@ -477,35 +573,59 @@ def patient_add(request):
 
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician']) 
+@role_required(['Owner', 'Aesthetician'])
 def patient_update(request, patient_id):
     patient = get_object_or_404(Patient, patient_id=patient_id)
 
     if request.method != 'POST':
-        return redirect('patient_db') 
+        return redirect('patient_db')
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     required_fields = {
         'last_name': 'Last Name', 'first_name': 'First Name',
         'patient_address': 'Address', 'patient_contact_number': 'Contact Number',
         'birthday': 'Birthday', 'sex': 'Sex'
     }
-    
-    errors = [f'{label} is required.' for field, label in required_fields.items() if not request.POST.get(field, '').strip()]
+
+    errors = [
+        f'{label} is required.'
+        for field, label in required_fields.items()
+        if not request.POST.get(field, '').strip()
+    ]
+
+    last = request.POST.get('last_name', '').strip()
+    first = request.POST.get('first_name', '').strip()
+    middle = request.POST.get('middle_name', '').strip()
+    birthday = request.POST.get('birthday', '').strip()
+
+    if not errors and Patient.objects.filter(
+        last_name__iexact=last,
+        first_name__iexact=first,
+        middle_name__iexact=middle,
+        birthday=birthday
+    ).exclude(patient_id=patient_id).exists():
+        errors.append(f'A patient named {first} {middle} {last} with the same birthday already exists.')
 
     if errors:
+        if is_ajax:
+            return JsonResponse({'success': False, 'errors': errors})
         for error in errors:
             messages.error(request, error)
-        return redirect('patient_db') 
+        return redirect('patient_db')
 
-    patient.last_name = request.POST.get('last_name', '').strip()
-    patient.first_name = request.POST.get('first_name', '').strip()
-    patient.middle_name = request.POST.get('middle_name', '').strip()
+    patient.last_name = last
+    patient.first_name = first
+    patient.middle_name = middle
     patient.suffix = request.POST.get('suffix', '').strip() or ""
     patient.patient_address = request.POST.get('patient_address', '').strip()
     patient.patient_contact_number = request.POST.get('patient_contact_number', '').strip()
-    patient.birthday = request.POST.get('birthday', '').strip()
+    patient.birthday = birthday
     patient.sex = request.POST.get('sex', '').strip()
     patient.save()
+
+    if is_ajax:
+        return JsonResponse({'success': True, 'message': f'Patient {patient.first_name} {patient.last_name} updated successfully.'})
 
     messages.success(request, f'Patient {patient.first_name} {patient.last_name} updated successfully.')
     return redirect('patient_db')
@@ -517,7 +637,8 @@ def patient_delete(request, patient_id):
     patient = get_object_or_404(Patient, patient_id=patient_id)
     if request.method == 'POST':
         name = f'{patient.first_name} {patient.last_name}'
-        patient.delete()
+        patient.is_deleted = True
+        patient.save()
         messages.success(request, f'Patient {name} has been deleted.')
         return redirect('patient_db')
     return redirect('patient_update', patient_id=patient_id)
@@ -603,13 +724,16 @@ def sales_update(request, transaction_id):
     sale = get_object_or_404(SalesTransaction, transaction_id=transaction_id)
 
     if not is_owner(request.user):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'errors': ['You are not authorized to access this page.']})
         messages.error(request, "You are not authorized to access this page.")
         referer = request.META.get('HTTP_REFERER')
         return redirect(referer if referer else 'sales_db')
 
-    # GET requests have nothing to render — the modal is in sales_db.html
     if request.method != 'POST':
         return redirect('sales_db')
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     errors = []
     transaction_date = request.POST.get('transaction_date', '').strip()
@@ -636,6 +760,8 @@ def sales_update(request, transaction_id):
             break
 
     if errors:
+        if is_ajax:
+            return JsonResponse({'success': False, 'errors': errors})
         for error in errors:
             messages.error(request, error)
         request.session['reopen_sale_modal'] = str(transaction_id)
@@ -713,9 +839,14 @@ def sales_update(request, transaction_id):
             sale.total_amount = total_products + total_treatments
             sale.save()
 
+        if is_ajax:
+            return JsonResponse({'success': True, 'message': f'Sale #{sale.transaction_id} updated successfully.'})
+
         messages.success(request, f'Sale #{sale.transaction_id} updated successfully.')
 
     except Exception as e:
+        if is_ajax:
+            return JsonResponse({'success': False, 'errors': [f'An error occurred while saving: {str(e)}']})
         messages.error(request, f'An error occurred while saving: {str(e)}')
         request.session['reopen_sale_modal'] = str(transaction_id)
 
