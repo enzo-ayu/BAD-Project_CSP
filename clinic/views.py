@@ -286,8 +286,8 @@ def chargeslip(request):
 
             return render(request, 'clinic/chargeslip.html', {
                 'patients': Patient.objects.filter(is_deleted=False).order_by('last_name'),
-                'products': Product.objects.all().order_by('product_type', 'product_name'),
-                'treatments': Treatment.objects.all().order_by('treatment_type', 'treatment_name'),
+                'products': Product.objects.filter(is_deleted=False).order_by('product_type', 'product_name'),
+                'treatments': Treatment.objects.filter(is_deleted=False).order_by('treatment_type', 'treatment_name'),
                 'submitted_products': json.dumps(submitted_products),
                 'submitted_treatments': json.dumps(submitted_treatments),
                 'submitted_patient': json.dumps(submitted_patient),
@@ -339,8 +339,8 @@ def chargeslip(request):
                         )
                         return render(request, 'clinic/chargeslip.html', {
                             'patients': Patient.objects.filter(is_deleted=False).order_by('last_name'),
-                            'products': Product.objects.all().order_by('product_type', 'product_name'),
-                            'treatments': Treatment.objects.all().order_by('treatment_type', 'treatment_name'),
+                            'products': Product.objects.filter(is_deleted=False).order_by('product_type', 'product_name'),
+                            'treatments': Treatment.objects.filter(is_deleted=False).order_by('treatment_type', 'treatment_name'),
                             'submitted_products': json.dumps([
                                 {'id': pid, 'qty': qty}
                                 for pid, qty in zip(product_ids, product_qtys) if pid
@@ -459,8 +459,8 @@ def chargeslip(request):
             messages.error(request, f'An error occurred while saving: {str(e)}')
             return render(request, 'clinic/chargeslip.html', {
                 'patients': Patient.objects.filter(is_deleted=False).order_by('last_name'),
-                'products': Product.objects.all().order_by('product_type', 'product_name'),
-                'treatments': Treatment.objects.all().order_by('treatment_type', 'treatment_name'),
+                'products': Product.objects.filter(is_deleted=False).order_by('product_type', 'product_name'),
+                'treatments': Treatment.objects.filter(is_deleted=False).order_by('treatment_type', 'treatment_name'),
                 'submitted_products': json.dumps([
                     {'id': pid, 'qty': qty}
                     for pid, qty in zip(product_ids, product_qtys) if pid
@@ -477,8 +477,8 @@ def chargeslip(request):
     # ── GET Request ──
     return render(request, 'clinic/chargeslip.html', {
         'patients': Patient.objects.filter(is_deleted=False).order_by('last_name'),
-        'products': Product.objects.all().order_by('product_type', 'product_name'),
-        'treatments': Treatment.objects.all().order_by('treatment_type', 'treatment_name'),
+        'products': Product.objects.filter(is_deleted=False).order_by('product_type', 'product_name'),
+        'treatments': Treatment.objects.filter(is_deleted=False).order_by('treatment_type', 'treatment_name'),
     })
 
 # ─────────────────────────────────────────────
@@ -935,7 +935,7 @@ def inventory_db(request):
 
     return render(request, 'clinic/inventory_db.html', {
         'shipments': shipments.order_by('-date_received'),
-        'products': Product.objects.all().order_by('product_name'),
+        'products': Product.objects.filter(is_deleted=False).order_by('product_name'),
         'suppliers': Supplier.objects.all().order_by('supplier_name'),
         'branches': ClinicBranch.objects.all().order_by('branch_location'),
         'query': query,
@@ -952,7 +952,7 @@ def inventory_add(request):
         try:
             from .models import BranchProduct
             product_id = request.POST.get('product')
-            product = Product.objects.get(pk=product_id)
+            product = Product.objects.get(pk=product_id, is_deleted=False)
             quantity_received = int(request.POST.get('quantity_received'))
             if quantity_received < 1:
                 raise Exception("Quantity received must be at least 1.")
@@ -1018,7 +1018,7 @@ def inventory_update(request, record_id):
 
         try:
             product_id = request.POST.get('product')
-            product = Product.objects.get(pk=product_id)
+            product = Product.objects.get(pk=product_id, is_deleted=False)
             new_qty = int(request.POST.get('quantity_received'))
             if new_qty < 1:
                 raise Exception("Quantity received must be at least 1.")
@@ -1325,6 +1325,16 @@ def product_add(request):
             return redirect('producttreatment_db')
 
         try:
+            stock_val = int(stock)
+        except ValueError:
+            messages.error(request, 'Invalid stock quantity value.')
+            return redirect('producttreatment_db')
+
+        if stock_val < 1:
+            messages.error(request, 'Stock quantity must be at least 1.')
+            return redirect('producttreatment_db')
+
+        try:
             with transaction.atomic():
                 product = Product.objects.create(
                     product_name=name,
@@ -1337,10 +1347,12 @@ def product_add(request):
                     BranchProduct.objects.create(
                         product=product,
                         branch_id=bid,
-                        stock_quantity=int(stock),
+                        stock_quantity=stock_val,
                         quantity_minimum=min_qty_val,
                     )
             messages.success(request, f'Product "{name}" added successfully.')
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
         except Exception as e:
             messages.error(request, f'Error: {str(e)}')
 
@@ -1431,6 +1443,8 @@ def product_update(request, product_id):
                 branch_product.save()
 
             messages.success(request, "Product updated successfully.")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
         except Exception as e:
             messages.error(request, f"Error: {str(e)}")
 
@@ -1466,10 +1480,11 @@ def product_details(request, product_id):
 @login_required(login_url='login')
 @role_required(['Owner'])
 def product_delete(request, product_id):
-    product = get_object_or_404(Product, product_id=product_id)
-    product.is_deleted = True
-    product.save()
-    messages.success(request, "Product deleted successfully")
+    product = get_object_or_404(Product, product_id=product_id, is_deleted=False)
+    if request.method == 'POST':
+        product.is_deleted = True
+        product.save()
+        messages.success(request, f'Product "{product.product_name}" deleted successfully.')
     return redirect('producttreatment_db')
 # ─────────────────────────────────────────────
 # TREATMENT VIEWS
@@ -1534,6 +1549,8 @@ def treatment_add(request):
                         availability_status=status,
                     )
             messages.success(request, 'Treatment added successfully.')
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
         except Exception as e:
             messages.error(request, f'Error: {str(e)}')
 
@@ -1612,6 +1629,8 @@ def treatment_update(request, treatment_id):
                 branch_treatment.save()
 
                 messages.success(request, "Treatment updated successfully.")
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': True})
             except Exception as e:
                 messages.error(request, f"Error: {str(e)}")
 
@@ -1642,10 +1661,11 @@ def treatment_details(request, treatment_id):
 @login_required(login_url='login')
 @role_required(['Owner'])
 def treatment_delete(request, treatment_id):
-    treatment = get_object_or_404(Treatment, treatment_id=treatment_id)
-    treatment.is_deleted = True
-    treatment.save()
-    messages.success(request, "Treatment deleted successfully")
+    treatment = get_object_or_404(Treatment, treatment_id=treatment_id, is_deleted=False)
+    if request.method == 'POST':
+        treatment.is_deleted = True
+        treatment.save()
+        messages.success(request, f'Treatment "{treatment.treatment_name}" deleted successfully.')
     return redirect('producttreatment_db')
 # ─────────────────────────────────────────────
 # SUPPLIER VIEWS
