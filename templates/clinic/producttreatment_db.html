@@ -259,7 +259,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Stock Quantity <span class="text-danger">*</span></label>
-                        <input type="number" name="stock_quantity" class="form-control" min="0" required>
+                        <input type="number" name="stock_quantity" class="form-control" min="1" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Quantity Minimum <span class="text-danger">*</span></label>
@@ -419,7 +419,7 @@
             <button class="btn btn-secondary"
                     onclick="document.getElementById('updateProductConfirm').style.display='none'">Cancel</button>
             <button class="btn text-white" style="background-color:#CE548D;"
-                    onclick="submitUpdateTreatment()">Yes</button>
+                    onclick="submitUpdateProduct()">Yes</button>
         </div>
     </div>
 </div>
@@ -519,7 +519,7 @@
             <button class="btn btn-secondary"
                     onclick="document.getElementById('addTreatmentConfirm').style.display='none'">Cancel</button>
             <button class="btn text-white" style="background-color:#CE548D;"
-                    onclick="document.getElementById('addTreatmentForm').submit()">Yes</button>
+                    onclick="submitAddTreatment()">Yes</button>
         </div>
     </div>
 </div>
@@ -602,7 +602,7 @@
             <button class="btn btn-secondary"
                     onclick="document.getElementById('updateTreatmentConfirm').style.display='none'">Cancel</button>
             <button class="btn text-white" style="background-color:#CE548D;"
-                    onclick="document.getElementById('updateTreatmentForm').submit()">Yes</button>
+                    onclick="submitUpdateTreatment()">Yes</button>
         </div>
     </div>
 </div>
@@ -620,7 +620,7 @@
 
         <div class="d-flex justify-content-end gap-2">
             <button class="btn btn-secondary"
-                    onclick="document.getElementById('deleteTreatmentConfirm').style.display='none'">
+                    onclick="document.getElementById('deleteTreatmentConfirm').style.display='none'; document.getElementById('updateTreatmentOverlay').style.display='flex';">
                 Cancel
             </button>
             <button class="btn btn-danger"
@@ -676,7 +676,7 @@ function validateAndConfirmAddProduct() {
     if (!type)                              errors.push('Product Type is required.');
     if (cost === '' || parseFloat(cost) <= 0)  errors.push('Unit Cost cannot be 0 or less.');
     if (parseFloat(cost) > MAX_COST)        errors.push(`Unit Cost cannot exceed ${MAX_COST.toLocaleString()}.`);
-    if (stock === '')                       errors.push('Stock Quantity is required.');
+    if (stock === '' || parseInt(stock) < 1)   errors.push('Stock Quantity must be at least 1.');
     if (!minQty || parseInt(minQty) < 1)   errors.push('Quantity Minimum must be at least 1.');
     if (!supplier)                          errors.push('Please select a supplier.');
     if (!branchChecked)                     errors.push('Please select at least one branch.');
@@ -703,6 +703,7 @@ function closeAddProductModal() {
     document.getElementById('addProductConfirm').style.display = 'none';
     const err = document.getElementById('addProductErrors');
     if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+    document.getElementById('addProductForm').reset();
 }
 
 // ── UPDATE PRODUCT ──
@@ -771,14 +772,21 @@ function submitAddProduct() {
     const form = document.getElementById('addProductForm');
     const errorContainer = document.getElementById('addProductErrors');
     const formData = new FormData(form);
+    document.getElementById('addProductConfirm').style.display = 'none';
+
     fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(res => res.ok ? window.location.reload() : res.json().then(data => {
-            document.getElementById('addProductConfirm').style.display = 'none';
-            errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
-                ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
-            errorContainer.style.display = 'block';
-            document.querySelector('#addProductOverlay > div').scrollTop = 0;
-        }))
+        .then(res => {
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                return res.json().then(data => {
+                    errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                        ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+                    errorContainer.style.display = 'block';
+                    document.querySelector('#addProductOverlay > div').scrollTop = 0;
+                });
+            }
+        })
         .catch(() => window.location.reload());
 }
 
@@ -786,44 +794,21 @@ function submitUpdateProduct() {
     const form = document.getElementById('updateProductForm');
     const errorContainer = document.getElementById('updateProductErrors');
     const formData = new FormData(form);
-    fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(res => res.ok ? window.location.reload() : res.json().then(data => {
-            document.getElementById('updateProductConfirm').style.display = 'none';
-            errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
-                ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
-            errorContainer.style.display = 'block';
-            document.querySelector('#updateProductOverlay > div').scrollTop = 0;
-        }))
-        .catch(() => window.location.reload());
-}
+    document.getElementById('updateProductConfirm').style.display = 'none';
 
-function submitAddTreatment() {
-    const form = document.getElementById('addTreatmentForm');
-    const errorContainer = document.getElementById('addTreatmentErrors');
-    const formData = new FormData(form);
     fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(res => res.ok ? window.location.reload() : res.json().then(data => {
-            document.getElementById('addTreatmentConfirm').style.display = 'none';
-            errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
-                ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
-            errorContainer.style.display = 'block';
-            document.querySelector('#addTreatmentOverlay > div').scrollTop = 0;
-        }))
-        .catch(() => window.location.reload());
-}
-
-function submitUpdateTreatment() {
-    const form = document.getElementById('updateTreatmentForm');
-    const errorContainer = document.getElementById('updateTreatmentErrors');
-    const formData = new FormData(form);
-    fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(res => res.ok ? window.location.reload() : res.json().then(data => {
-            document.getElementById('updateTreatmentConfirm').style.display = 'none';
-            errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
-                ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
-            errorContainer.style.display = 'block';
-            document.querySelector('#updateTreatmentOverlay > div').scrollTop = 0;
-        }))
+        .then(res => {
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                return res.json().then(data => {
+                    errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                        ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+                    errorContainer.style.display = 'block';
+                    document.querySelector('#updateProductOverlay > div').scrollTop = 0;
+                });
+            }
+        })
         .catch(() => window.location.reload());
 }
 
@@ -922,11 +907,69 @@ function validateAndConfirmUpdateTreatment() {
     errorContainer.innerHTML = '';
     document.getElementById('updateTreatmentConfirm').style.display = 'flex';
 }
+function closeAddTreatmentModal() {
+    document.getElementById('addTreatmentOverlay').style.display = 'none';
+    document.getElementById('addTreatmentConfirm').style.display = 'none';
+    const err = document.getElementById('addTreatmentErrors');
+    if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+    document.getElementById('addTreatmentForm').reset();
+}
+
+function submitAddTreatment() {
+    const form = document.getElementById('addTreatmentForm');
+    const errorContainer = document.getElementById('addTreatmentErrors');
+    const formData = new FormData(form);
+    document.getElementById('addTreatmentConfirm').style.display = 'none';
+
+    fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => {
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                return res.json().then(data => {
+                    errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                        ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+                    errorContainer.style.display = 'block';
+                    document.querySelector('#addTreatmentOverlay > div').scrollTop = 0;
+                });
+            }
+        })
+        .catch(() => window.location.reload());
+}
+
+function submitUpdateTreatment() {
+    const form = document.getElementById('updateTreatmentForm');
+    const errorContainer = document.getElementById('updateTreatmentErrors');
+    const formData = new FormData(form);
+    document.getElementById('updateTreatmentConfirm').style.display = 'none';
+
+    fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => {
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                return res.json().then(data => {
+                    errorContainer.innerHTML = `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                        ${data.error}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+                    errorContainer.style.display = 'block';
+                    document.querySelector('#updateTreatmentOverlay > div').scrollTop = 0;
+                });
+            }
+        })
+        .catch(() => window.location.reload());
+}
+
 function closeUpdateTreatmentModal() {
     document.getElementById('updateTreatmentOverlay').style.display = 'none';
     document.getElementById('updateTreatmentConfirm').style.display = 'none';
+    document.getElementById('deleteTreatmentConfirm').style.display = 'none';
     const err = document.getElementById('updateTreatmentErrors');
     if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+}
+
+function openDeleteTreatmentModal() {
+    document.getElementById('updateTreatmentOverlay').style.display = 'none';
+    document.getElementById('deleteTreatmentConfirm').style.display = 'flex';
 }
 
 // ── DELETE TREATMENT ──
