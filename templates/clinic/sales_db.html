@@ -367,7 +367,7 @@ flatpickr("#datePicker", {
         
         <h3 class="mb-4">Import Sales CSV</h3>
         
-        <form action="{% url 'import_patients_csv' %}" method="POST" enctype="multipart/form-data">
+        <form action="{% url 'import_sales_csv' %}" method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="mb-4">
                 <label class="small fw-bold text-secondary mb-2">Select CSV File <span class="text-danger">*</span></label>

@@ -4,6 +4,8 @@ import io
 import json
 from datetime import date, datetime, timedelta
 from functools import wraps
+import re
+from django.http import HttpResponse
 
 # 2. Django Core & Third-Party Imports
 from django.db.models import Sum, Count, F
@@ -2098,122 +2100,121 @@ def my_profile(request):
     return render(request, 'clinic/my_profile.html', {
         'employee': user
     })
-# ─────────────────────────────────────────────
-# EXPORTS
-# ─────────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════════
+# EXPORT FUNCTIONS (CORRECTED)
+# ═══════════════════════════════════════════════════════════════
+
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician', 'Sales'])
 def export_inventory_csv(request):
-    import csv
-    from django.http import HttpResponse
-    from .models import InventoryShipment, Supplier, ClinicBranch
-
+    """Export inventory shipments to CSV."""
     response = HttpResponse(content_type='text/csv')
-    response.write('\ufeff')  
+    response.write('\ufeff')  # BOM for Excel
     response['Content-Disposition'] = f'attachment; filename="inventory_{date.today()}.csv"'
     
     writer = csv.writer(response)
     writer.writerow([
-        'Record ID', 'Shipment Date', 'Shipment Name', 
+        'Record ID', 'Shipment Date (DD-MM-YYYY)', 'Shipment Name (Product)', 
         'Branch Location', 'Supplier ID', 'Supplier Name'
     ])
 
     for s in InventoryShipment.objects.select_related('branch', 'supplier'):
-        shipment_date = s.date_received.strftime('%Y-%m-%d') if s.date_received else '-'
+        shipment_date = s.date_received.strftime('%d-%m-%Y') if s.date_received else '-'
         writer.writerow([
             s.inventory_record_id,
             shipment_date,
             s.received_product_name,
-            s.branch.branch_location,
-            s.supplier.supplier_id,
-            s.supplier.supplier_name
+            s.branch.branch_location if s.branch else "-",
+            s.supplier.supplier_id if s.supplier else "-",
+            s.supplier.supplier_name if s.supplier else "-"
         ])
 
     return response
 
+
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician', 'Sales'])
 def export_patients_csv(request):
-    import csv
-    from django.http import HttpResponse
-    from .models import Patient, SalesTransaction
-
+    """Export patients to CSV."""
     response = HttpResponse(content_type='text/csv')
-    response.write('\ufeff')
-    response['Content-Disposition'] = f'attachment; filename="patients_{date.today()}.csv"'
+    response.write('\ufeff')  # BOM for Excel
+    response['Content-Disposition'] = f'attachment; filename="patient_{date.today()}.csv"'
 
     writer = csv.writer(response)
     writer.writerow([
-        'Patient ID', 'Full Name', 'Contact',
-        'Address', 'Birthday', 'Sex', 'Notes'
+        'Patient ID', 'Full Name (Last, First Middle)', 'Contact Number',
+        'Address', 'Birthday (MM-DD-YYYY)', 'Sex', 'Notes (consolidated in one cell)'
     ])
 
     patients = Patient.objects.all()
 
     for p in patients:
-        full_name = f"{p.last_name}, {p.first_name} {p.middle_name or ''} {p.suffix or ''}".strip()
-
+        full_name = " ".join(
+            filter(None, [f"{p.last_name},", p.first_name, p.middle_name, p.suffix])
+        )
+                # Consolidate notes from sales transactions
         notes = SalesTransaction.objects.filter(patient=p).order_by('transaction_date')
         notes_str = " | ".join([
             f"#{n.transaction_id} ({n.transaction_date.strftime('%b %d, %Y')}): {n.notes}"
-            for n in notes
+            for n in notes if n.notes
         ])
+
+        bday_str = p.birthday.strftime('%m-%d-%Y') if p.birthday else '-'
 
         writer.writerow([
             p.patient_id,
             full_name,
             p.patient_contact_number,
             p.patient_address,
-            p.birthday,
+            bday_str,
             p.sex,
             notes_str
         ])
+    
     return response
+
 
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician', 'Sales'])
 def export_sales_csv(request):
-    import csv
-    from django.http import HttpResponse
-    from .models import SalesTransaction, Patient
-
+    """Export sales transactions to CSV."""
     response = HttpResponse(content_type='text/csv')
-    response.write('\ufeff')
+    response.write('\ufeff')  # BOM for Excel
     response['Content-Disposition'] = f'attachment; filename="sales_{date.today()}.csv"'
 
     writer = csv.writer(response)
     writer.writerow([
-        'Transaction ID', 'Transaction Date', 'Branch',
-        'Patient ID', 'Full Name',
-        'Treatments', 'Products',
+        'Transaction ID', 'Transaction Date (DD-MM-YYYY)', 'Branch Name',
+        'Patient ID', 'Full Name (Last, First Middle)',
+        'Treatments (Qty: x - Price)', 'Products (Qty: x - Price)',
         'Mode of Payment', 'Total Amount'
     ])
 
-    transactions = SalesTransaction.objects.select_related('patient', 'branch')
+    transactions = SalesTransaction.objects.select_related('patient', 'branch').prefetch_related('transactionitem_set')
 
     for t in transactions:
         p = t.patient
 
-        full_name = f"{p.last_name}, {p.first_name} {p.middle_name or ''} {p.suffix or ''}".strip()
+        full_name = " ".join(
+            filter(None, [f"{p.last_name},", p.first_name, p.middle_name, p.suffix])
+        )
 
         treatments = [i for i in t.transactionitem_set.all() if i.treatment is not None]
         treatments_str = " | ".join([
-            f"{i.treatment.treatment_name} (Qty:{i.quantity_purchased} - {i.subtotal})"
+            f"{i.treatment.treatment_name} (Qty: {i.quantity_purchased} - {i.subtotal})"
             for i in treatments
         ])
 
         products = [i for i in t.transactionitem_set.all() if i.product is not None]
         products_str = " | ".join([
-            f"{i.product.product_name} (Qty:{i.quantity_purchased} - {i.subtotal})"
+            f"{i.product.product_name} (Qty: {i.quantity_purchased} - {i.subtotal})"
             for i in products
         ])
 
         writer.writerow([
             t.transaction_id,
-            t.transaction_date.strftime('%Y-%m-%d'),
+            t.transaction_date.strftime('%d-%m-%Y'),
             t.branch.branch_location if t.branch else "-",
             p.patient_id,
             full_name,
@@ -2222,180 +2223,434 @@ def export_sales_csv(request):
             t.mode_of_payment,
             f"{t.total_amount:.2f}"
         ])
+    
     return response
 
-# Helper to handle the common file reading logic
-def get_csv_reader(csv_file):
-    data_set = csv_file.read().decode('utf-8-sig')
-    io_string = io.StringIO(data_set)
-    next(io_string) # Skip Header
-    return csv.reader(io_string)
+
+# ═══════════════════════════════════════════════════════════════
+# HELPER FUNCTIONS FOR IMPORTS
+# ═══════════════════════════════════════════════════════════════
+
+def parse_csv_file(csv_file):
+    """Safely parse CSV file with UTF-8-sig encoding."""
+    try:
+        data_set = csv_file.read().decode('utf-8-sig')
+        io_string = io.StringIO(data_set)
+        reader = csv.reader(io_string)
+        next(reader)  # Skip header row
+        return reader
+    except Exception as e:
+        return None
+
+
+def parse_date(date_str, date_format, field_name="Date"):
+    """Parse date string with validation."""
+    if not date_str or date_str.strip() in ['-', '', 'N/A']:
+        return None, f"{field_name} is missing"
+    
+    try:
+        parsed_date = datetime.strptime(date_str.strip(), date_format).date()
+        
+        # Validate date range
+        if parsed_date.year < 1900:
+            return None, f"{field_name} must be 01/01/1900 or later"
+        if parsed_date.year > 2030:
+            return None, f"{field_name} must be 12/31/2030 or earlier"
+            
+        return parsed_date, None
+    except ValueError:
+        return None, f"Invalid {field_name} format (expected {date_format})"
+
+
+def validate_row_length(row, expected_length, row_num):
+    """Check if row has expected number of columns."""
+    if len(row) < expected_length:
+        return False, f"Row {row_num}: Expected {expected_length} columns, got {len(row)}"
+    return True, None
+
+
+def parse_item_string(item_str):
+    """Parse item string in format: 'Name (Qty: X - Price)'."""
+    if not item_str or item_str.strip() in ['-', '']:
+        return []
+    
+    items = []
+    pattern = re.compile(r'^(.*?)\s*\(Qty:\s*(\d+)\s*-\s*([\d.]+)\)$')
+    
+    for item_text in item_str.split(' | '):
+        item_text = item_text.strip()
+        if not item_text:
+            continue
+            
+        match = pattern.match(item_text)
+        if match:
+            name = match.group(1).strip()
+            qty = int(match.group(2))
+            subtotal = float(match.group(3))
+            items.append((name, qty, subtotal))
+    
+    return items
+
+
+# ═══════════════════════════════════════════════════════════════
+# IMPORT FUNCTIONS (IMPROVED)
+# ═══════════════════════════════════════════════════════════════
 
 @never_cache
 @login_required(login_url='login')
 def import_inventory_csv(request):
-    if request.method == 'POST':
-        csv_file = request.FILES.get('csv_file')
-        try:
-            for row in get_csv_reader(csv_file):
-                if not row or len(row) < 6:
+    """Import inventory shipments from CSV."""
+    if request.method != 'POST':
+        return redirect('inventory_db')
+    
+    csv_file = request.FILES.get('csv_file')
+    if not csv_file:
+        messages.error(request, "No file uploaded.")
+        return redirect('inventory_db')
+    
+    reader = parse_csv_file(csv_file)
+    if reader is None:
+        messages.error(request, "Failed to read CSV file. Ensure it's UTF-8 encoded.")
+        return redirect('inventory_db')
+    
+    imported_count = 0
+    skipped_count = 0
+    errors = []
+    
+    try:
+        with transaction.atomic():
+            for row_num, row in enumerate(reader, start=2):
+                if not row or all(cell.strip() == '' for cell in row):
                     continue
-
-                # row: 0:Record ID, 1:Shipment Date, 2:Shipment Name,
-                #      3:Branch Location, 4:Supplier ID, 5:Supplier Name
-                branch, _ = ClinicBranch.objects.get_or_create(
-                    branch_location=row[3].strip()
+                
+                valid, error = validate_row_length(row, 6, row_num)
+                if not valid:
+                    errors.append(error)
+                    skipped_count += 1
+                    continue
+                
+                record_id = row[0].strip()
+                date_str = row[1].strip()
+                product_name = row[2].strip()
+                branch_location = row[3].strip()
+                supplier_id = row[4].strip()
+                supplier_name = row[5].strip()
+                
+                if not all([record_id, product_name, branch_location, supplier_id, supplier_name]):
+                    errors.append(f"Row {row_num}: Missing required fields")
+                    skipped_count += 1
+                    continue
+                
+                date_received, date_error = parse_date(date_str, '%d-%m-%Y', 'Shipment Date')
+                if date_error:
+                    date_received = datetime.now().date()
+                    errors.append(f"Row {row_num}: {date_error} - using current date")
+                
+                branch, created = ClinicBranch.objects.get_or_create(
+                    branch_location=branch_location
                 )
-
-                supplier, _ = Supplier.objects.get_or_create(
-                    supplier_id=row[4].strip(),
+                
+                supplier, created = Supplier.objects.get_or_create(
+                    supplier_id=supplier_id,
                     defaults={
-                        'supplier_name': row[5].strip(),
+                        'supplier_name': supplier_name,
                         'contact_person': 'N/A',
-                        'supplier_contact_number': '000'
+                        'supplier_contact_number': '00000000000'
                     }
                 )
-
-                date_str = row[1].strip()
-                if date_str and date_str != '-':
-                    try:
-                        date_rcv = datetime.strptime(date_str, '%Y-%m-%d').date()
-                    except ValueError:
-                        date_rcv = datetime.now().date()
-                else:
-                    date_rcv = datetime.now().date()
-
+                
                 InventoryShipment.objects.update_or_create(
-                    inventory_record_id=row[0].strip(),
+                    inventory_record_id=record_id,
                     defaults={
-                        'received_product_name': row[2].strip(),
-                        'date_received': date_rcv,
+                        'received_product_name': product_name,
+                        'date_received': date_received,
                         'branch': branch,
                         'supplier': supplier
                     }
                 )
-            messages.success(request, "Inventory imported successfully.")
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            messages.error(request, f"Error: {e}")
-
-    return redirect('inventory_list')
+                
+                imported_count += 1
+            
+            if errors:
+                messages.warning(
+                    request,
+                    f"Inventory import completed with warnings. "
+                    f"Imported: {imported_count}, Skipped: {skipped_count}. "
+                    f"First error: {errors[0]}"
+                )
+            else:
+                messages.success(
+                    request,
+                    f"Inventory imported successfully. {imported_count} records imported."
+                )
+    
+    except Exception as e:
+        messages.error(request, f"Import failed: {str(e)}")
+    
+    return redirect('inventory_db')
 
 
 @never_cache
 @login_required(login_url='login')
 def import_patients_csv(request):
-    if request.method == 'POST':
-        csv_file = request.FILES.get('csv_file')
-        try:
-            for row in get_csv_reader(csv_file):
-                if not row or len(row) < 6:
+    """Import patients from CSV."""
+    if request.method != 'POST':
+        return redirect('patient_db')
+    
+    csv_file = request.FILES.get('csv_file')
+    if not csv_file:
+        messages.error(request, "No file uploaded.")
+        return redirect('patient_db')
+    
+    reader = parse_csv_file(csv_file)
+    if reader is None:
+        messages.error(request, "Failed to read CSV file. Ensure it's UTF-8 encoded.")
+        return redirect('patient_db')
+    
+    imported_count = 0
+    skipped_count = 0
+    errors = []
+    
+    try:
+        with transaction.atomic():
+            for row_num, row in enumerate(reader, start=2):
+                if not row or all(cell.strip() == '' for cell in row):
                     continue
-
-                # row: 0:Patient ID, 1:Full Name, 2:Contact,
-                #      3:Address, 4:Birthday, 5:Sex, 6:Notes (optional)
+                
+                valid, error = validate_row_length(row, 7, row_num)
+                if not valid:
+                    errors.append(error)
+                    skipped_count += 1
+                    continue
+                
+                patient_id = row[0].strip()
                 full_name = row[1].strip()
-
+                contact = row[2].strip()
+                address = row[3].strip()
+                birthday_str = row[4].strip()
+                sex = row[5].strip()
+                notes = row[6].strip()
+                
+                if not all([patient_id, full_name, contact, address, birthday_str, sex]):
+                    errors.append(f"Row {row_num}: Missing required fields")
+                    skipped_count += 1
+                    continue
+                
+                # Parse name
+                last_name = ''
+                first_name = ''
+                middle_name = ''
+                suffix = ''
+                
                 if ',' in full_name:
                     parts = full_name.split(',', 1)
                     last_name = parts[0].strip()
-                    other_names = parts[1].strip().split()
-                    first_name = other_names[0] if other_names else ''
-                    middle_name = other_names[1] if len(other_names) > 1 else ''
-                    suffix = other_names[2] if len(other_names) > 2 else ''
+                    
+                    if len(parts) > 1:
+                        other_parts = parts[1].strip().split()
+                        if len(other_parts) >= 1:
+                            first_name = other_parts[0]
+                        if len(other_parts) >= 2:
+                            middle_name = other_parts[1]
+                        if len(other_parts) >= 3:
+                            suffix = ' '.join(other_parts[2:])
                 else:
                     last_name = full_name
-                    first_name = ''
-                    middle_name = ''
-                    suffix = ''
-
-                bday_str = row[4].strip()
-                if bday_str and bday_str != '-':
-                    try:
-                        bday_date = datetime.strptime(bday_str, '%Y-%m-%d').date()
-                    except ValueError:
-                        bday_date = None
-                else:
-                    bday_date = None
-
+                
+                # Validate contact (11 digits)
+                if len(contact) != 11 or not contact.isdigit():
+                    errors.append(f"Row {row_num}: Invalid contact number (must be 11 digits)")
+                    skipped_count += 1
+                    continue
+                
+                # Validate birthday
+                birthday, date_error = parse_date(birthday_str, '%m-%d-%Y', 'Birthday')
+                if date_error:
+                    errors.append(f"Row {row_num}: {date_error}")
+                    skipped_count += 1
+                    continue
+                
+                # Validate sex
+                if sex not in ['M', 'F', 'O']:
+                    errors.append(f"Row {row_num}: Invalid sex (must be M, F, or O)")
+                    skipped_count += 1
+                    continue
+                
+                # Save/update patient
                 Patient.objects.update_or_create(
-                    patient_id=row[0].strip(),
+                    patient_id=patient_id,
                     defaults={
                         'last_name': last_name,
                         'first_name': first_name,
                         'middle_name': middle_name,
                         'suffix': suffix,
-                        'patient_contact_number': row[2].strip(),
-                        'patient_address': row[3].strip(),
-                        'birthday': bday_date,
-                        'sex': row[5].strip(),
+                        'patient_contact_number': contact,
+                        'patient_address': address,
+                        'birthday': birthday,
+                        'sex': sex,
+                        'notes': notes,
+                        'is_deleted': False
                     }
                 )
-            messages.success(request, "Patients imported successfully.")
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            messages.error(request, f"Error: {e}")
-
+                
+                imported_count += 1
+            
+            # ✅ SIMPLE SUCCESS/FAIL MESSAGE (as requested)
+            if imported_count > 0:
+                messages.success(
+                    request,
+                    f"Patients imported successfully. {imported_count} records imported."
+                )
+            else:
+                messages.error(request, "Failed to import patients.")
+    
+    except Exception as e:
+        messages.error(request, f"Import failed: {str(e)}")
+    
     return redirect('patient_db')
 
 @never_cache
 @login_required(login_url='login')
 def import_sales_csv(request):
-    if request.method == 'POST':
-        csv_file = request.FILES.get('csv_file')
-        try:
-            for row in get_csv_reader(csv_file):
-                if not row or len(row) < 8:
+    """Import sales transactions from CSV."""
+    if request.method != 'POST':
+        return redirect('sales_db')
+    
+    csv_file = request.FILES.get('csv_file')
+    if not csv_file:
+        messages.error(request, "No file uploaded.")
+        return redirect('sales_db')
+    
+    reader = parse_csv_file(csv_file)
+    if reader is None:
+        messages.error(request, "Failed to read CSV file. Ensure it's UTF-8 encoded.")
+        return redirect('sales_db')
+    
+    imported_count = 0
+    skipped_count = 0
+    errors = []
+    
+    try:
+        with transaction.atomic():
+            for row_num, row in enumerate(reader, start=2):
+                if not row or all(cell.strip() == '' for cell in row):
                     continue
-
-                # row: 0:Transaction ID, 1:Transaction Date, 2:Branch,
-                #      3:Patient ID, 4:Full Name, 5:Treatments, 6:Products,
-                #      7:Mode of Payment, 8:Total Amount
-
+                
+                valid, error = validate_row_length(row, 9, row_num)
+                if not valid:
+                    errors.append(error)
+                    skipped_count += 1
+                    continue
+                
+                transaction_id = row[0].strip()
                 date_str = row[1].strip()
-                try:
-                    transaction_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                except ValueError:
-                    transaction_date = datetime.now().date()
-
-                branch = ClinicBranch.objects.filter(
-                    branch_location=row[2].strip()
-                ).first()
-
-                patient = Patient.objects.filter(
-                    patient_id=row[3].strip()
-                ).first()
-
-                if not patient:
-                    messages.warning(request, f"Patient ID {row[3].strip()} not found — row skipped.")
+                branch_name = row[2].strip()
+                patient_id = row[3].strip()
+                full_name = row[4].strip()
+                treatments_str = row[5].strip()
+                products_str = row[6].strip()
+                payment_mode = row[7].strip()
+                total_amount_str = row[8].strip()
+                
+                if not all([transaction_id, date_str, patient_id, payment_mode, total_amount_str]):
+                    errors.append(f"Row {row_num}: Missing required fields")
+                    skipped_count += 1
                     continue
-
+                
+                transaction_date, date_error = parse_date(date_str, '%d-%m-%Y', 'Transaction Date')
+                if date_error:
+                    errors.append(f"Row {row_num}: {date_error}")
+                    skipped_count += 1
+                    continue
+                
+                branch = None
+                if branch_name:
+                    branch = ClinicBranch.objects.filter(branch_location=branch_name).first()
+                
+                patient = Patient.objects.filter(patient_id=patient_id).first()
+                if not patient:
+                    errors.append(f"Row {row_num}: Patient ID {patient_id} not found")
+                    skipped_count += 1
+                    continue
+                
                 try:
-                    total_amount = float(row[8].strip())
+                    total_amount = float(total_amount_str)
                 except ValueError:
-                    total_amount = 0.00
-
-                SalesTransaction.objects.update_or_create(
-                    transaction_id=row[0].strip(),
+                    errors.append(f"Row {row_num}: Invalid total amount")
+                    skipped_count += 1
+                    continue
+                
+                valid_payment_modes = ['Cash', 'Card', 'GCash', 'Bank Transfer']
+                if payment_mode not in valid_payment_modes:
+                    errors.append(f"Row {row_num}: Invalid payment mode '{payment_mode}'")
+                    skipped_count += 1
+                    continue
+                
+                transaction_obj, created = SalesTransaction.objects.update_or_create(
+                    transaction_id=transaction_id,
                     defaults={
                         'transaction_date': transaction_date,
                         'branch': branch,
                         'patient': patient,
-                        'mode_of_payment': row[7].strip(),
-                        'total_amount': total_amount,
+                        'mode_of_payment': payment_mode,
+                        'total_amount': total_amount
                     }
                 )
-
-            messages.success(request, "Sales imported successfully.")
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            messages.error(request, f"Error: {e}")
-
-    return redirect('sales_list')
-
+                
+                if not created:
+                    transaction_obj.transactionitem_set.all().delete()
+                
+                # Create treatment items
+                treatment_items = parse_item_string(treatments_str)
+                for name, qty, subtotal in treatment_items:
+                    treatment = Treatment.objects.filter(treatment_name__iexact=name).first()
+                    if treatment:
+                        TransactionItem.objects.create(
+                            transaction=transaction_obj,
+                            treatment=treatment,
+                            quantity_purchased=qty,
+                            subtotal=subtotal
+                        )
+                    else:
+                        errors.append(f"Row {row_num}: Treatment '{name}' not found")
+                
+                # Create product items
+                product_items = parse_item_string(products_str)
+                for name, qty, subtotal in product_items:
+                    product = Product.objects.filter(product_name__iexact=name).first()
+                    if product:
+                        TransactionItem.objects.create(
+                            transaction=transaction_obj,
+                            product=product,
+                            quantity_purchased=qty,
+                            subtotal=subtotal
+                        )
+                    else:
+                        errors.append(f"Row {row_num}: Product '{name}' not found")
+                
+                imported_count += 1
+            
+            if errors:
+                error_summary = '; '.join(errors[:5])
+                if len(errors) > 5:
+                    error_summary += f" ... and {len(errors) - 5} more"
+                
+                messages.warning(
+                    request,
+                    f"Sales import completed with warnings. "
+                    f"Imported: {imported_count}, Skipped: {skipped_count}. "
+                    f"Errors: {error_summary}"
+                )
+            else:
+                messages.success(
+                    request,
+                    f"Sales imported successfully. {imported_count} transactions imported."
+                )
+    
+    except Exception as e:
+        messages.error(request, f"Import failed: {str(e)}")
+    
+    return redirect('sales_db')
 # ─────────────────────────────────────────────
 # LOW STOCK ALERTS
 # ─────────────────────────────────────────────

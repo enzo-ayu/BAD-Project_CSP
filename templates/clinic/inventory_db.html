@@ -45,13 +45,13 @@
         + Add Shipment
     </button>
 
-    <a href="#" onclick="openImportModal(); return false;" class="import-link">
-        <img src="{% static 'images/Import4.png' %}" 
-            data-hover="{% static 'images/Import_Hover4.png' %}" 
-            alt="Import CSV"
-            class="export-icon"
-            style="width: 40px; height: auto;">
-    </a>
+        <a href="#" onclick="openImportModal(); return false;" class="import-link">
+            <img src="{% static 'images/Import4.png' %}" 
+                data-hover="{% static 'images/Import_Hover4.png' %}" 
+                alt="Import CSV"
+                class="export-icon"
+                style="width: 40px; height: auto;">
+        </a>
 
     <form method="GET" class="d-flex gap-2 align-items-center ms-auto">
         <input type="text" id="datePicker" name="date" value="{{ date_filter }}"
@@ -371,7 +371,7 @@
         
         <h3 class="mb-4">Import Inventory CSV</h3>
         
-        <form action="{% url 'import_patients_csv' %}" method="POST" enctype="multipart/form-data">
+        <form action="{% url 'import_inventory_csv' %}" method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="mb-4">
                 <label class="small fw-bold text-secondary mb-2">Select CSV File <span class="text-danger">*</span></label>
