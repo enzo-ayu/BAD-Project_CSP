@@ -369,7 +369,7 @@ document.getElementById('addSupplierForm').addEventListener('submit', function()
 document.getElementById('updateSupplierForm').addEventListener('submit', function() {
     sessionStorage.setItem('lastSupplierModal', 'update');
     sessionStorage.setItem('lastSupplierData', JSON.stringify({
-        id: document.getElementById('upd_id_display').value,
+        id: document.getElementById('updateSupplierForm').action.split('/suppliers/')[1].replace('/update/', ''),
         name: document.getElementById('upd_name').value,
         contactPerson: document.getElementById('upd_contact_person').value,
         contactNumber: document.getElementById('upd_contact_number').value,

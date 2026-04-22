@@ -936,7 +936,7 @@ def inventory_db(request):
     return render(request, 'clinic/inventory_db.html', {
         'shipments': shipments.order_by('-date_received'),
         'products': Product.objects.filter(is_deleted=False).order_by('product_name'),
-        'suppliers': Supplier.objects.all().order_by('supplier_name'),
+        'suppliers': Supplier.objects.filter(is_deleted=False).order_by('supplier_name'),
         'branches': ClinicBranch.objects.all().order_by('branch_location'),
         'query': query,
         'date_filter': date_filter,
@@ -1256,7 +1256,7 @@ def producttreatment_db(request):
         'product_types': product_types,
         'treatment_types': treatment_types,
         'branch': branch,
-        'suppliers': Supplier.objects.all().order_by('supplier_name'),
+        'suppliers': Supplier.objects.filter(is_deleted=False).order_by('supplier_name'),
         'branches': ClinicBranch.objects.all().order_by('branch_location'),
         'user_is_owner': is_owner(request.user),
     })
@@ -1676,7 +1676,7 @@ def check_supplier(request):
     name = request.GET.get('name', '').strip()
     exclude_id = request.GET.get('exclude_id')
 
-    qs = Supplier.objects.filter(supplier_name__iexact=name)
+    qs = Supplier.objects.filter(supplier_name__iexact=name, is_deleted=False)
     if exclude_id:
         qs = qs.exclude(supplier_id=exclude_id)
 
@@ -1707,7 +1707,7 @@ def supplier_db(request):
             return redirect('supplier_db')
 
         # 3. CHECK FOR DUPLICATES (Case-insensitive)
-        if Supplier.objects.filter(supplier_name__iexact=name).exists():
+        if Supplier.objects.filter(supplier_name__iexact=name, is_deleted=False).exists():
             messages.error(request, 'Supplier already exists.')
             return redirect('supplier_db')
 
@@ -1723,7 +1723,7 @@ def supplier_db(request):
 
     # ── 2. DISPLAY THE PAGE & SEARCH (GET REQUEST) ──
     query = request.GET.get("q", "").strip()
-    suppliers = Supplier.objects.all()
+    suppliers = Supplier.objects.filter(is_deleted=False)
 
     if query:
         suppliers = suppliers.filter(
@@ -1741,10 +1741,9 @@ def supplier_db(request):
 @login_required(login_url='login')
 @role_required(['Owner', 'Aesthetician'])
 def supplier_details(request, supplier_id):
-    supplier = get_object_or_404(Supplier, supplier_id=supplier_id)
+    supplier = get_object_or_404(Supplier, supplier_id=supplier_id, is_deleted=False)
     # Get products provided by this supplier
-    products = Product.objects.filter(supplier=supplier)
-    
+    products = Product.objects.filter(supplier=supplier, is_deleted=False)    
     return render(request, 'clinic/supplier_details.html', {
         'supplier': supplier,
         'products': products
@@ -1755,7 +1754,7 @@ def supplier_details(request, supplier_id):
 @role_required(['Owner', 'Aesthetician'])
 def supplier_update(request, supplier_id):
     # Find the specific supplier in the database
-    supplier = get_object_or_404(Supplier, supplier_id=supplier_id)
+    supplier = get_object_or_404(Supplier, supplier_id=supplier_id, is_deleted=False)
 
     if not is_owner(request.user):
         messages.error(request, "You are not authorized to access this page.")
@@ -1787,7 +1786,7 @@ def supplier_update(request, supplier_id):
             
         # 4. CHECK FOR DUPLICATES
         # if they only want to update their contact number or address.
-        if Supplier.objects.filter(supplier_name__iexact=new_name).exclude(supplier_id=supplier_id).exists():
+        if Supplier.objects.filter(supplier_name__iexact=new_name, is_deleted=False).exclude(supplier_id=supplier_id).exists():
             messages.error(request, 'Supplier already exists.')
             return redirect('supplier_db')
             
@@ -1806,11 +1805,12 @@ def supplier_update(request, supplier_id):
 @login_required(login_url='login')
 @role_required(['Owner'])
 def supplier_delete(request, supplier_id):
-    supplier = get_object_or_404(Supplier, supplier_id=supplier_id)
+    supplier = get_object_or_404(Supplier, supplier_id=supplier_id, is_deleted=False)
 
     if request.method == 'POST':
         try:
-            supplier.delete()
+            supplier.is_deleted = True
+            supplier.save()
             messages.success(request, "Supplier deleted successfully.")
         except Exception as e:
             messages.error(request, f"Error deleting supplier: {str(e)}")

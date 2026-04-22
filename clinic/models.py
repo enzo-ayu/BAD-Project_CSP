@@ -32,6 +32,7 @@ class Supplier(models.Model):
     contact_person = models.CharField(max_length=100)
     supplier_contact_number = models.CharField(max_length=11) # INT(11) in dictionary
     supplier_address = models.CharField(max_length=300, blank=True, null=True)
+    is_deleted = models.BooleanField(default=False) #makes it soft delete
 
     def __str__(self):
         return self.supplier_name
