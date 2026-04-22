@@ -130,6 +130,7 @@
                         data-fullname="{{ employee.first_name }}"
                         data-date="{{ employee.date_joined|date:'Y-m-d' }}"
                         data-branch="{% if employee.employeeprofile.branch %}{{ employee.employeeprofile.branch.branch_id }}{% endif %}"
+                        data-allbranches="{% if employee.employeeprofile.all_branches %}true{% else %}false{% endif %}"
                         onclick="openUpdateModal(this)">
                         Update
                     </button>
@@ -438,8 +439,10 @@
         if (err) { err.style.display = 'none'; err.innerHTML = ''; }
     }
 
-    // --- UPDATE MODAL ---
     function openUpdateModal(buttonElement) {
+        updateCheckbox = document.getElementById('updateBranchesCheckbox');
+        updateBranch = document.getElementById('update_branch');
+
         const empId       = buttonElement.getAttribute('data-id');
         const username    = buttonElement.getAttribute('data-username');
         const isActive    = buttonElement.getAttribute('data-active');
@@ -455,22 +458,18 @@
         document.getElementById('update_date_created').value = dateCreated;
         document.getElementById('update_status').value       = isActive;
 
-        if (role)     document.getElementById('update_role').value   = role;
-        if (branchId) document.getElementById('update_branch').value = branchId;
-
-        // Owner auto-check or restore from data attribute
-        const isOwnerRole = role === 'Owner';
-        if (isOwnerRole) {
-            updateCheckbox.checked = true;
-            updateBranch.disabled  = true;
-            updateBranch.value     = '';
-        } else {
-            updateCheckbox.checked = allBranches;
-            updateBranch.disabled  = allBranches;
-            if (allBranches) updateBranch.value = '';
+        if (role) {
+            document.getElementById('update_role').value = role;
         }
 
-        // Clear password fields
+        if (branchId) {
+            document.getElementById('update_branch').value = branchId;
+        } else {
+            document.getElementById('update_branch').value = '';
+        }
+
+        document.getElementById('update_role').dispatchEvent(new Event('change'));
+
         document.querySelectorAll('#updateEmployeeModal input[type="password"]').forEach(i => i.value = '');
 
         document.getElementById('updateEmployeeForm').action = `/employees/${empId}/update/`;
@@ -551,27 +550,55 @@
             if (this.checked) updateBranch.value = '';
         });
 
-        // ADD role → auto-check Owner
-        const addRoleSelect = document.querySelector('#addEmployeeForm select[name="role"]');
-        if (addRoleSelect) {
-            addRoleSelect.addEventListener('change', function () {
-                const isOwner = this.value === 'Owner';
-                addCheckbox.checked = isOwner;
-                addBranch.disabled  = isOwner;
-                if (isOwner) addBranch.value = '';
-            });
-        }
+// ADD role logic
+const addRoleSelect = document.querySelector('#addEmployeeForm select[name="role"]');
+if (addRoleSelect) {
+    addRoleSelect.addEventListener('change', function () {
+        const role = this.value;
 
-        // UPDATE role → auto-check Owner
-        const updateRoleSelect = document.getElementById('update_role');
-        if (updateRoleSelect) {
-            updateRoleSelect.addEventListener('change', function () {
-                const isOwner = this.value === 'Owner';
-                updateCheckbox.checked = isOwner;
-                updateBranch.disabled  = isOwner;
-                if (isOwner) updateBranch.value = '';
-            });
-        }  // ← this closing brace was missing before
+        if (role === 'Owner') {
+            addCheckbox.checked = true;
+            addCheckbox.disabled = true;
+            addBranch.disabled = true;
+            addBranch.value = '';
+        } 
+        else if (role === 'Aesthetician') {
+            addCheckbox.checked = false;
+            addCheckbox.disabled = true;
+            addBranch.disabled = false;
+        } 
+        else {
+            addCheckbox.disabled = false;
+            addBranch.disabled = addCheckbox.checked;
+            if (addCheckbox.checked) addBranch.value = '';
+        }
+    });
+}
+
+// UPDATE role logic
+const updateRoleSelect = document.getElementById('update_role');
+if (updateRoleSelect) {
+    updateRoleSelect.addEventListener('change', function () {
+        const role = this.value;
+
+        if (role === 'Owner') {
+            updateCheckbox.checked = true;
+            updateCheckbox.disabled = true;
+            updateBranch.disabled = true;
+            updateBranch.value = '';
+        } 
+        else if (role === 'Aesthetician') {
+            updateCheckbox.checked = false;
+            updateCheckbox.disabled = true;
+            updateBranch.disabled = false;
+        } 
+        else {
+            updateCheckbox.disabled = false;
+            updateBranch.disabled = updateCheckbox.checked;
+            if (updateCheckbox.checked) updateBranch.value = '';
+        }
+    });
+}
     });
 </script>
 

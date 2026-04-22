@@ -6,8 +6,9 @@ from django.contrib.auth.forms import UserCreationForm
 class RoleBasedRegistrationForm(UserCreationForm):
     # We create a dropdown for the roles based on Django Groups
     ROLE_CHOICES = (
-        ('Aesthetician', 'Aesthetician/Sales'),
         ('Owner', 'Owner'),
+        ('Aesthetician', 'Aesthetician'),
+        ('Sales', 'Sales'),
     )
     role = forms.ChoiceField(choices=ROLE_CHOICES, required=True)
 

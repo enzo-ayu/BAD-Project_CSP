@@ -1881,6 +1881,10 @@ def check_username(request):
 def add_employee(request):
     if request.method == 'POST':
         role_name = request.POST.get('role')
+        if role_name == 'Owner':
+            all_branches = True
+        elif role_name == 'Aesthetician':
+            all_branches = False
         branch_id = request.POST.get('branch_id')
         all_branches = request.POST.get('all_branches') == 'on'
         username = request.POST.get('username', '').strip()
@@ -1941,6 +1945,10 @@ def update_employee(request, employee_id):
         all_branches = request.POST.get('all_branches') == 'on'
         user = get_object_or_404(User, id=employee_id)
         role_name = request.POST.get('role')
+        if role_name == 'Owner':
+            all_branches = True
+        elif role_name == 'Aesthetician':
+            all_branches = False
         branch_id = request.POST.get('branch_id')
         username = request.POST.get('username', '').strip()
         is_active = request.POST.get('is_active') == 'True'
