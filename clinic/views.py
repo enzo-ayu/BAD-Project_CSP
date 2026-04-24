@@ -2693,18 +2693,18 @@ def low_stock_alerts(request):
             branch=branch,
             stock_quantity__lte=models.F('quantity_minimum'),
             quantity_minimum__gt=0
-        ).select_related('product__supplier', 'branch')
+        ).select_related('product__supplier', 'branch').order_by('branch__branch_location', 'product__product_name')
     else:
         low_stock_items = BranchProduct.objects.filter(
             stock_quantity__lte=models.F('quantity_minimum'),
             quantity_minimum__gt=0
-        ).select_related('product__supplier', 'branch')
-
+        ).select_related('product__supplier', 'branch').order_by('branch__branch_location', 'product__product_name')
     return JsonResponse({
         'count': low_stock_items.count(),
         'items': [
             {
                 'product_name':  item.product.product_name,
+                'branch_id':     item.branch.branch_id,
                 'branch':        item.branch.branch_location,
                 'stock':         item.stock_quantity,
                 'minimum':       item.quantity_minimum,
@@ -2713,7 +2713,7 @@ def low_stock_alerts(request):
             }
             for item in low_stock_items
         ]
-    })    
+    })
 
 # ─────────────────────────────────────────────
 # DASHBOARD

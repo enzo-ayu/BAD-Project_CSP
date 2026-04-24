@@ -444,7 +444,27 @@
                         <tbody>`;
 
                 data.items.forEach(item => {
-                    const rowClass = item.stock === 0 ? 'table-danger' : 'table-warning';
+                    const branchColors = [
+                        'table-danger',
+                        'table-warning',
+                        'table-info',
+                        'table-success',
+                        'table-primary',
+                        'table-secondary'
+                    ];
+
+                    // Create a consistent mapping
+                    if (!window.branchColorMap) {
+                        window.branchColorMap = {};
+                        window.branchColorIndex = 0;
+                    }
+
+                    if (!(item.branch_id in window.branchColorMap)) {
+                        window.branchColorMap[item.branch_id] = branchColors[window.branchColorIndex % branchColors.length];
+                        window.branchColorIndex++;
+                    }
+
+                    const rowClass = window.branchColorMap[item.branch_id];
                     html += `
                         <tr class="${rowClass}">
                             <td>${item.product_name}</td>
