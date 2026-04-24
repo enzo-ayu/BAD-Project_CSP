@@ -188,13 +188,13 @@
                 <!-- Account Name -->
                 <div class="col-md-6">
                     <label class="small fw-bold text-secondary mb-1">Account Name</label>
-                    <input type="text" name="full_name" class="form-control" required>
+                    <input type="text" name="full_name" class="form-control" maxlength="100" required>
                 </div>
 
                 <!-- Username -->
                 <div class="col-md-6">
                     <label class="small fw-bold text-secondary mb-1">Username</label>
-                    <input type="text" name="username" class="form-control" required>
+                    <input type="text" name="username" class="form-control" maxlength="20" required>
                 </div>
 
                 <!-- Status -->
@@ -267,7 +267,7 @@
 
                 <div class="col-md-6">
                     <label class="small fw-bold text-secondary mb-1">Account Name<span class="text-danger">*</span></label>
-                    <input type="text" name="full_name" id="update_full_name" class="form-control" required>
+                    <input type="text" name="full_name" id="update_full_name" class="form-control" maxlength="100" required>
                 </div>
 
                 <div class="col-md-6">
@@ -297,7 +297,7 @@
 
                 <div class="col-md-6">
                     <label class="small fw-bold text-secondary mb-1">Username <span class="text-danger">*</span></label>
-                    <input type="text" name="username" id="update_username" class="form-control" required>
+                    <input type="text" name="username" id="update_username" class="form-control" maxlength="20" required>
                 </div>
 
                 <div class="col-md-6">
@@ -409,6 +409,7 @@
         if (!fullName) errors.push('Account Name is required.');
         if (!username) errors.push('Username is required.');
         if (!password) errors.push('Password is required.');
+        else if (password.length < 8) errors.push('Password must contain atleast 8 characters.');
         if (!allBranches && !branch) errors.push('Please select a branch or check All Branches.');
 
         if (username) {
@@ -492,6 +493,7 @@
         if (!role) errors.push('Account Type is required.');
         if (!username) errors.push('Username is required.');
         if (!allBranches && !branch) errors.push('Please select a branch or check All Branches.');
+        if (newPassword && newPassword.length < 8) errors.push('Password must contain atleast 8 characters.');
         if (newPassword && newPassword !== confirmPassword) errors.push('New passwords do not match.');
 
         if (username) {

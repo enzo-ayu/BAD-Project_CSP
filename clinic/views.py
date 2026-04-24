@@ -2692,12 +2692,14 @@ def low_stock_alerts(request):
         low_stock_items = BranchProduct.objects.filter(
             branch=branch,
             stock_quantity__lte=models.F('quantity_minimum'),
-            quantity_minimum__gt=0
+            quantity_minimum__gt=0,
+            product__is_deleted=False
         ).select_related('product__supplier', 'branch').order_by('branch__branch_location', 'product__product_name')
     else:
         low_stock_items = BranchProduct.objects.filter(
             stock_quantity__lte=models.F('quantity_minimum'),
-            quantity_minimum__gt=0
+            quantity_minimum__gt=0,
+            product__is_deleted=False
         ).select_related('product__supplier', 'branch').order_by('branch__branch_location', 'product__product_name')
     return JsonResponse({
         'count': low_stock_items.count(),
