@@ -1,0 +1,491 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinic Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    
+<style>
+        /* Global Modal Styling to match your aesthetic */
+        /* Force the nav to take up the whole sidebar so Flexbox works */
+        #sidebar nav {
+            height: 100%;
+        }
+        .custom-confirm-modal {
+            border-radius: 15px;
+            border: none;
+        }
+        .global-confirm-btn {
+            background-color: #CE548D;
+            color: white;
+            border-radius: 8px;
+        }
+        .global-confirm-btn:hover {
+            background-color: #b04375;
+            color: white;
+        }
+        .global-cancel-btn {
+            background-color: #e0e0e0;
+            color: #333;
+            border-radius: 8px;
+        }
+         #lowStockModal thead th {
+            color: white !important;
+            background-color: #CE548D !important;
+            border-color: #CE548D !important;
+        }
+        
+        /* --- LOW STOCK SIDEBAR BUTTON FIXES --- */
+        
+        /* 1. Push it to the bottom of the sidebar */
+        #sidebar li#low-stock-nav-item {
+            margin-top: auto; 
+            margin-bottom: 10px; /* Optional spacing at the bottom */
+        }
+
+        /* 2. Remove the pink background on hover */
+        #sidebar li#low-stock-nav-item a:hover {
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #CE548D !important; 
+        }
+
+        /* 3. Badge styling */
+        #low-stock-badge {
+            display: none;
+            position: absolute;
+            top: -4px;
+            right: -2px;
+            background: #dc3545;
+            color: #fff;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: 700;
+            min-width: 18px;
+            height: 16px;
+            line-height: 16px;
+            text-align: center;
+            padding: 0 4px;
+        }
+
+        /* Make ONLY the Low Stock image bigger */
+        #sidebar li#low-stock-nav-item img {
+            width: 45px !important;  /* Change this number to go bigger/smaller */
+            height: 50px !important; /* Keep it the same as width to prevent stretching */
+            left: 19px; /* You might need to adjust this to keep it centered since it's wider now */
+}
+    </style>
+</head>
+<!--
+<script>
+    function switchBranch(branchId) {
+        fetch("{% url 'set_branch_session' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ branch_id: branchId })  
+        }).then(() => location.reload());
+    }
+</script>
+-->
+<body id="body">
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container-fluid px-4">
+            
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <img src="{% static 'images/Chona_Logo.png' %}" alt="Logo" width="35" height="35" class="d-inline-block align-text-top me-2 rounded-circle">
+                <span class="fw-bold">Chona's Skincare Place</span>
+            </a>
+
+            <div class="d-flex align-items-center gap-3">
+                {% if request.user.is_authenticated %}
+                        {% for group in request.user.groups.all %}
+                        {% if group.name == 'Owner' %}
+                        <div class="m-0"> <select name="branch_view" class="form-select form-select-sm text-dark border-0"
+                                    style="background-color: #fff3f9; min-width: 160px; cursor: pointer;"
+                                    data-url="{% url 'set_branch_session' %}"
+                                    onchange="switchBranch(this)"> <option value="" {% if not request.session.selected_branch %}selected{% endif %}>
+                                    All Branches
+                                </option>
+                                {% for branch in all_branches %}
+                                    <option value="{{ branch.branch_id }}"
+                                        {% if request.session.selected_branch == branch.branch_id|stringformat:"s" %}selected{% endif %}>
+                                        {{ branch.branch_location }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        {% endfor %}                
+                    <span class="text-light">
+                        {{ request.user.username }}
+                    </span>
+
+                    <a href="{% url 'my_profile' %}" title="Account Details">
+                        <img src="{% static 'images/LoggedIn_Details.png' %}" 
+                             alt="Profile" 
+                             width="32" height="32"
+                             >
+                    </a>
+
+                    <form action="{% url 'logout' %}" method="post" class="m-0 p-0 d-flex align-items-center" id="logoutForm">
+                        {% csrf_token %}
+                        <button type="button" class="btn p-0 border-0 bg-transparent" title="Logout"
+                                onclick="document.getElementById('logoutConfirmModal').style.display='flex'">
+                            <img src="{% static 'images/Logout.png' %}" 
+                                data-hover="{% static 'images/Logout_Icon_Hover.png' %}" 
+                                alt="Logout" 
+                                width="32" height="32"
+                                class="hover-icon">
+                        </button>
+                    </form>
+
+                {% endif %}
+            </div>
+
+        </div>
+    </nav>
+
+    <aside id="sidebar">
+        <nav>
+            <ul>
+                <li>
+                    <a href="#" id="resize-btn">
+                        <img src="{% static 'images/Extend_SB2.png' %}" 
+                             data-hover="{% static 'images/Extend_SB_Hover2.png' %}" 
+                             alt="Expand Sidebar">
+                        <span class="sidebar-text">Collapse</span>
+                    </a>
+                </li>
+
+                {% for group in request.user.groups.all %}{% if group.name != 'Sales' %}
+                <li>
+                    <a href="{% url 'patient_db' %}">
+                        <img src="{% static 'images/Patient_Database_SB2.png' %}" 
+                            data-hover="{% static 'images/Patient_Data_SB_Hover2.png' %}" 
+                            alt="Patient Database">
+                        <span class="sidebar-text">Patient List</span>
+                    </a>
+                </li>
+                {% endif %}{% endfor %}
+
+                <li>
+                    <a href="{% url 'sales_db' %}">
+                        <img src="{% static 'images/Sales_Database_SB2.png' %}" 
+                             data-hover="{% static 'images/Sales_SB_Hover2.png' %}" 
+                             alt="Sales Database">
+                        <span class="sidebar-text">Sales List</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{% url 'inventory_db' %}"> <img src="{% static 'images/Inventory_Database_SB2.png' %}" 
+                             data-hover="{% static 'images/Inventory_Database_SB_Hover2.png' %}" 
+                             alt="Inventory Database">
+                        <span class="sidebar-text">Inventory List</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{% url 'producttreatment_db' %}"> <img src="{% static 'images/Product_Inventory_SB2.png' %}" 
+                             data-hover="{% static 'images/Product_Inventory_SB_Hover2.png' %}" 
+                             alt="Products & Treatments">
+                        <span class="sidebar-text">Products & Treatments</span>
+                    </a>
+                </li>
+
+                {% for group in request.user.groups.all %}{% if group.name != 'Aesthetician' %}
+                <li>
+                    <a href="{% url 'dashboard' %}">
+                        <img src="{% static 'images/Dashboard_SB2.png' %}" 
+                            data-hover="{% static 'images/Dashboard_SB_Hover2.png' %}" 
+                            alt="Dashboard">
+                        <span class="sidebar-text">Dashboard</span>
+                    </a>
+                </li>
+                {% endif %}{% endfor %}
+
+                {% for group in request.user.groups.all %}{% if group.name != 'Sales' %}
+                <li>
+                    <a href="{% url 'chargeslip' %}">
+                        <img src="{% static 'images/New_Chargeslip_SB2.png' %}" 
+                             data-hover="{% static 'images/New_Chargeslip_SB_Hover2.png' %}" 
+                             alt="Charge Slip">
+                        <span class="sidebar-text">Charge Slip</span>
+                    </a>
+                </li>
+                {% endif %}{% endfor %}
+
+                {% for group in request.user.groups.all %}
+                    {% if group.name == 'Owner' %}
+                        <li>
+                            <a href="{% url 'employee_list' %}">
+                                <img src="{% static 'images/Accounts_Database3.png' %}" 
+                                     data-hover="{% static 'images/Accounts_Database_Hover3.png' %}" 
+                                     alt="Expand Sidebar">
+                                <span class="sidebar-text">Employees List</span>
+                            </a>
+                        </li>                
+                        <li>
+                            <a href="{% url 'branch_list' %}">
+                                <img src="{% static 'images/Branch_Database.png' %}" 
+                                     data-hover="{% static 'images/Branch_Database_Hover2.png' %}" 
+                                     alt="Expand Sidebar">
+                                <span class="sidebar-text">Branches List</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- low stock notif addition -->
+                    <li id="low-stock-nav-item">
+                        <a href="#" id="low-stock-btn" onclick="openLowStockModal(); return false;" style="position: relative;">
+                            
+                            <img src="{% static 'images/Notif2.png' %}" 
+                                data-hover="{% static 'images/Notif_Hover2.png' %}" 
+                                alt="Low Stock">
+                            <span id="low-stock-badge"></span>
+
+                            <span class="sidebar-text">Low Stock</span>
+                            
+                        </a>
+                    </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <main id="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <div id="logoutConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+        background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+        <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
+            <h5 class="fw-bold mb-2">Confirm Logout</h5>
+            <p class="mb-3 text-muted">Are you sure you want to logout?</p>
+            <div class="d-flex justify-content-end gap-2">
+                <button class="btn btn-secondary"
+                        onclick="document.getElementById('logoutConfirmModal').style.display='none'">Cancel</button>
+                <button class="btn text-white px-3" style="background-color:#CE548D;"
+                        onclick="document.getElementById('logoutForm').submit()">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="globalConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content custom-confirm-modal">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="globalModalTitle">Confirm Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p id="globalModalMessage" class="mb-0">Are you sure you want to proceed?</p>
+                    <div class="d-flex justify-content-end mt-4">
+                        <button type="button" class="btn global-cancel-btn me-3 px-4" data-bs-dismiss="modal">No</button>
+                        <button type="button" id="globalConfirmSubmitBtn" class="btn global-confirm-btn px-4">Yes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{% static 'js/sidebar-hover.js' %}"></script>
+
+    <script>
+        window.setupGlobalConfirmation = function(formId, title, message) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+
+            const modalEl = document.getElementById('globalConfirmModal');
+            const confirmBtn = document.getElementById('globalConfirmSubmitBtn');
+            const modalInstance = new bootstrap.Modal(modalEl);
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault(); 
+
+                document.getElementById('globalModalTitle').innerText = title;
+                document.getElementById('globalModalMessage').innerText = message;
+
+                modalInstance.show();
+
+                confirmBtn.onclick = function() {
+                    form.querySelectorAll('input, select, textarea').forEach(el => {
+                        el.disabled = false;
+                    });
+                    form.submit();
+                };
+            });
+        };
+    </script>
+    <script>
+    function switchBranch(selectElement) {
+        const branchId = selectElement.value;
+        const url = selectElement.getAttribute('data-url');
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken') // Django needs this for POST requests
+            },
+            body: JSON.stringify({
+                'branch_id': branchId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                // Reload the page to reflect the newly selected branch
+                window.location.reload(); 
+            } else {
+                console.error('Error switching branch');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    // Helper to get the CSRF token securely
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    </script>
+    <!-- ✅ ADD THIS BLOCK BEFORE </body> -->
+
+    <!-- Low Stock Modal -->
+    <div class="modal fade" id="lowStockModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius:15px; border:none;">
+                <div class="modal-header border-0 pb-0">
+                    <h3 class="modal-title fw-bold">
+                        ⚠️ Low Stock Products
+                    </h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body pt-3 px-4 p-4">
+                    <p class="text-muted mb-3" style="font-size:0.9rem;">
+                        The following products have fallen below the product quantity minimum and need restocking.
+                    </p>
+                    <div id="low-stock-table-wrap">
+                        <p class="text-center text-muted">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function refreshLowStockBadge() {
+        fetch("{% url 'low_stock_alerts' %}")
+            .then(r => r.json())
+            .then(data => {
+                const badge = document.getElementById('low-stock-badge');
+                const navItem = document.getElementById('low-stock-nav-item');
+                if (!badge) return;
+
+                if (data.count > 0) {
+                    badge.textContent = data.count;
+                    badge.style.display = 'inline-block';
+                    if (navItem) navItem.style.display = '';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(() => {});
+    }
+
+    function openLowStockModal() {
+        const wrap = document.getElementById('low-stock-table-wrap');
+        wrap.innerHTML = '<p class="text-center text-muted">Loading...</p>';
+
+        const modal = new bootstrap.Modal(document.getElementById('lowStockModal'));
+        modal.show();
+
+        fetch("{% url 'low_stock_alerts' %}")
+            .then(r => r.json())
+            .then(data => {
+                if (data.count === 0) {
+                    wrap.innerHTML = '<p class="text-center text-success fw-bold">All products are sufficiently stocked!</p>';
+                    return;
+                }
+
+                let html = `
+                    <table class="table table-hover table-bordered align-middle" style="font-size:0.9rem;">
+                        <thead style="background-color:#CE548D; color:white;">
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Branch</th>
+                                <th>Current Stock</th>
+                                <th>Minimum</th>
+                                <th>Unit Cost</th>
+                                <th>Supplier</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                data.items.forEach(item => {
+                    const branchColors = [
+                        'table-danger',
+                        'table-warning',
+                        'table-info',
+                        'table-success',
+                        'table-primary',
+                        'table-secondary'
+                    ];
+
+                    // Create a consistent mapping
+                    if (!window.branchColorMap) {
+                        window.branchColorMap = {};
+                        window.branchColorIndex = 0;
+                    }
+
+                    if (!(item.branch_id in window.branchColorMap)) {
+                        window.branchColorMap[item.branch_id] = branchColors[window.branchColorIndex % branchColors.length];
+                        window.branchColorIndex++;
+                    }
+
+                    const rowClass = window.branchColorMap[item.branch_id];
+                    html += `
+                        <tr class="${rowClass}">
+                            <td>${item.product_name}</td>
+                            <td>${item.branch}</td>
+                            <td><strong>${item.stock}</strong></td>
+                            <td>${item.minimum}</td>
+                            <td>₱${parseFloat(item.unit_cost).toLocaleString('en-PH', {minimumFractionDigits:2})}</td>
+                            <td>${item.supplier_name}</td>
+                        </tr>`;
+                });
+
+                html += '</tbody></table>';
+                wrap.innerHTML = html;
+            })
+            .catch(() => {
+                wrap.innerHTML = '<p class="text-center text-danger">Failed to load stock data.</p>';
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', refreshLowStockBadge);
+    </script>
+
+</body>
+</html>

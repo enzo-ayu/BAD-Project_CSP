@@ -1,0 +1,115 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Chona's Skincare Place</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Madimi+One&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background-image: url('{% static "images/Login_BG2.png" %}');
+            background-color: #f4f7f6;
+            background-size: cover;         
+            background-repeat: no-repeat;   
+            background-position: center;    
+            background-attachment: fixed;   
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-card {
+            background: white;
+            padding: 3rem; 
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 480px; 
+        }
+        
+        /* --- LOGO & TITLE STYLES --- */
+        .brand-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 25px; 
+            margin-bottom: 2.5rem; /* Increased to separate header from inputs */
+        }
+        .brand-logo {
+            width: 110px; 
+            height: auto;
+            object-fit: contain;
+        }
+        .brand-title {
+            color: #CE548D;
+            font-family: 'Madimi One', sans-serif;
+            font-weight: 600; 
+            margin-bottom: 0; 
+            font-size: 2.0rem; 
+            line-height: 1.1; 
+            text-align: left; 
+        }
+
+        .btn-custom {
+            background-color: #CE548D;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px; /* Slightly thicker button */
+            font-weight: 500;
+        }
+        .btn-custom:hover {
+            background-color: #b04375;
+            color: white;
+        }
+        .form-control:focus {
+            border-color: #CE548D;
+            box-shadow: 0 0 0 0.2rem rgba(206, 84, 141, 0.25);
+        }
+        
+        /* Optional: Makes the placeholder text slightly lighter */
+        ::placeholder {
+            color: #a0a0a0 !important;
+            opacity: 1; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="brand-header">
+            <img src="{% static 'images/Chona_Logo.png' %}" alt="Chona's Logo" class="brand-logo">
+            <h3 class="brand-title">Chona's Skincare<br>Place</h3>
+        </div>
+
+    {% if error %}
+    <div style="color: red; font-weight: bold; margin-bottom: 10px;">
+        {{ error }}
+    </div>
+    {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <input type="text" name="username" class="form-control py-2" placeholder="Username" required>
+            </div>
+
+            <div class="mb-4">
+                <input type="password" name="password" class="form-control py-2" placeholder="Password" required>
+            </div>
+
+            <button type="submit" class="btn btn-custom w-100 mt-2 fs-5">Log In</button>
+        </form>
+
+    </div>
+
+</body>
+</html>

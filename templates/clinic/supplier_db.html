@@ -1,0 +1,397 @@
+{% extends 'clinic/base.html' %}
+<!-- prettier-ignore -->
+{% block content %}
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+<div id="alert-container" class="mb-3"></div>
+
+<div class="mb-2">
+    <a href="{% url 'inventory_db' %}" class="text-decoration-none text-muted">← Back</a>
+</div>
+<div class="d-flex justify-content-between align-items-center mb-3 ml-2"> 
+    <div class="d-flex align-items-center gap-2">
+        <h2 class="mb-0 fw-bold" style="color: #CE548D;">Suppliers</h2>
+        {% if user_is_owner %}
+            <button type="button" class="btn text-white ms-2"
+                    style="background-color: #CE548D;"
+                    onclick="openAddModal()">+ Add Supplier</button>
+        {% else %}
+            <button type="button" class="btn text-white ms-2"
+                    style="background-color: #CE548D;"
+                    onclick="showAuthWarning()">+ Add Supplier</button>
+        {% endif %}
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <form method="GET" class="patient-db-search-form d-flex align-items-center gap-2">
+            <span class="patient-db-search-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"></circle>
+                    <path d="M20 20L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                </svg>
+            </span>
+
+            <input type="text"
+                   name="q"
+                   value="{{ query }}"
+                   class="patient-db-search-input"
+                   placeholder="  Search">
+
+            <button type="submit" class="btn btn-dark">Search</button>
+        </form>
+    </div>
+</div>
+
+<table class="table patient-db-table mb-0">
+    <thead class="table-dark">
+        <tr>
+            <th>Supplier Name</th>
+            <th>Contact Person</th>
+            <th>Contact Number</th>
+            <th>Address</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for supplier in suppliers %}
+        <tr>
+            <td>{{ supplier.supplier_name }}</td>
+            <td>{{ supplier.contact_person }}</td>
+            <td>{{ supplier.supplier_contact_number }}</td>
+            <td>{{ supplier.supplier_address|default:"" }}</td>
+            <td>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'supplier_details' supplier.supplier_id %}"
+                       class="btn btn-info btn-sm text-white">Details</a>
+                    {% if user_is_owner %}
+                        <button type="button" class="btn btn-warning btn-sm text-white"
+                                onclick="openUpdateModal(
+                                    '{{ supplier.supplier_id }}',
+                                    '{{ supplier.supplier_name|escapejs }}',
+                                    '{{ supplier.contact_person|escapejs }}',
+                                    '{{ supplier.supplier_contact_number|escapejs }}',
+                                    '{{ supplier.supplier_address|default:""|escapejs }}'
+                                )">Update</button>
+                    {% else %}
+                        <button type="button" class="btn btn-warning btn-sm text-white"
+                                onclick="showAuthWarning()">Update</button>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="text-center">
+                No suppliers found{% if query %} for "{{ query }}"{% endif %}.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+
+<!-- ── ADD SUPPLIER MODAL ── -->
+<div id="addSupplierOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="width:100%; max-width:500px;">
+        <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:#ffffff;">
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <h4 class="modal-title fw-bold mb-3" style="color:#CE548D;">Add Supplier</h4>
+                <button type="button" class="btn-close" onclick="closeAddModal()"></button> <!--  works but turns red idk why smthg to do with django daw  -->
+            </div>
+            <div class="modal-body px-4 pb-4">
+                <div id="addSupplierErrors" class="mb-3" style="display:none;"></div>
+                <form method="POST" action="{% url 'supplier_db' %}" id="addSupplierForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Supplier Name <span class="text-danger">*</span></label>
+                        <input type="text" name="supplier_name" class="form-control"
+                               maxlength="150" required placeholder="e.g. ABC Supplies Co.">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Contact Person <span class="text-danger">*</span></label>
+                        <input type="text" name="contact_person" class="form-control"
+                               maxlength="100" required placeholder="e.g. Juan Dela Cruz">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Contact Number <span class="text-danger">*</span></label>
+                        <input type="text" name="supplier_contact_number" class="form-control"
+                               maxlength="11" oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                               required placeholder="09XXXXXXXXX">
+                        <div class="form-text">Must be 11 digits.</div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Address <span class="text-danger">*</span></label>
+                        <input type="text" name="supplier_address" class="form-control"
+                               maxlength="300" required placeholder="e.g. 123 Street, City">
+                    </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
+                        <button type="button" class="btn text-white" style="background-color:#CE548D;"
+                                onclick="validateAndConfirmAddSupplier()">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Confirm -->
+<div id="addConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm</h5>
+        <p class="mb-3">Are you sure you want to add this supplier?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary"
+                    onclick="document.getElementById('addConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn text-white" style="background-color:#CE548D;"
+                    onclick="document.getElementById('addSupplierForm').submit()">Yes</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── UPDATE SUPPLIER MODAL ── -->
+<div id="updateSupplierOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="width:100%; max-width:500px;">
+        <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 8px 32px rgba(0,0,0,0.18); background:#ffffff;">
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <h4 class="modal-title fw-bold mb-3" style="color:#CE548D;">Update Supplier</h4>
+                <button type="button" class="btn-close" onclick="closeUpdateModal()"></button>
+            </div>
+            <div class="modal-body px-4 pb-4">
+                <div id="updateSupplierErrors" class="mb-3" style="display:none;"></div>
+                <form method="POST" action="" id="updateSupplierForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Supplier Name <span class="text-danger">*</span></label>
+                        <input type="text" name="supplier_name" id="upd_name"
+                               class="form-control" maxlength="150" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Contact Person <span class="text-danger">*</span></label>
+                        <input type="text" name="contact_person" id="upd_contact_person"
+                               class="form-control" maxlength="100" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Contact Number <span class="text-danger">*</span></label>
+                        <input type="text" name="supplier_contact_number" id="upd_contact_number"
+                               class="form-control" maxlength="11"
+                               oninput="this.value=this.value.replace(/[^0-9]/g,'')" required>
+                        <div class="form-text">Must be 11 digits.</div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Address <span class="text-danger">*</span></label>
+                        <input type="text" name="supplier_address" id="upd_address"
+                               class="form-control" maxlength="300" required>
+                    </div>
+                    <div class="d-flex justify-content-between gap-2">
+                        {% if user_is_owner %}
+                            <button type="button" class="btn btn-danger px-3"
+                                    onclick="openDeleteSupplierModal()">Delete</button>
+                        {% else %}
+                            <button type="button" class="btn btn-danger px-3" disabled
+                                    style="opacity:0.5; cursor:not-allowed;">Delete</button>
+                        {% endif %}
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-secondary" onclick="closeUpdateModal()">Cancel</button>
+                            <button type="button" class="btn text-white" style="background-color:#CE548D;"
+                                    onclick="validateAndConfirmUpdateSupplier()">Save</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Confirm -->
+<div id="updateConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2">Confirm</h5>
+        <p class="mb-3">Are you sure you want to save these changes?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary"
+                    onclick="document.getElementById('updateConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn text-white" style="background-color:#CE548D;"
+                    onclick="document.getElementById('updateSupplierForm').submit()">Yes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Supplier Confirm -->
+<div id="deleteSupplierConfirm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+    <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
+        <h5 class="fw-bold mb-2 text-danger">Confirm Delete</h5>
+        <p class="mb-3">Are you sure you want to delete this supplier?</p>
+
+        <form method="POST" id="deleteSupplierForm">
+            {% csrf_token %}
+        </form>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary"
+                    onclick="document.getElementById('deleteSupplierConfirm').style.display='none'">Cancel</button>
+            <button class="btn btn-danger"
+                    onclick="document.getElementById('deleteSupplierForm').submit()">Yes, Delete</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showAuthWarning() {
+    const alertContainer = document.getElementById('alert-container');
+    alertContainer.innerHTML = '';
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+    alertDiv.role = 'alert';
+    alertDiv.innerHTML = 'You are not authorized to access this page. <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+    alertContainer.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 5000);
+}
+function openAddModal() {
+    document.getElementById('addSupplierOverlay').style.display = 'flex';
+}
+async function validateAndConfirmAddSupplier() {
+    const errorContainer = document.getElementById('addSupplierErrors');
+    const errors = [];
+
+    const name = document.querySelector('#addSupplierForm [name=supplier_name]').value.trim();
+    const person = document.querySelector('#addSupplierForm [name=contact_person]').value.trim();
+    const number = document.querySelector('#addSupplierForm [name=supplier_contact_number]').value.trim();
+    const address = document.querySelector('#addSupplierForm [name=supplier_address]').value.trim();
+
+    if (!name) errors.push('Supplier Name is required.');
+    if (!person) errors.push('Contact Person is required.');
+    if (!number) errors.push('Contact Number is required.');
+    else if (number.length !== 11) errors.push('Contact Number must be exactly 11 digits.');
+    if (!address) errors.push('Address is required.');
+
+    if (name) {
+        const res = await fetch(`/check-supplier/?name=${encodeURIComponent(name)}`);
+        const data = await res.json();
+        if (data.taken) errors.push(`Supplier "${name}" already exists.`);
+    }
+
+    if (errors.length > 0) {
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+        return;
+    }
+
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
+    document.getElementById('addConfirmModal').style.display = 'flex';
+}
+function closeAddModal() {
+    document.getElementById('addSupplierOverlay').style.display = 'none';
+    document.getElementById('addConfirmModal').style.display = 'none';
+    const err = document.getElementById('addSupplierErrors');
+    if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+}
+
+function openUpdateModal(id, name, contactPerson, contactNumber, address) {
+    document.getElementById('upd_name').value = name;
+    document.getElementById('upd_contact_person').value = contactPerson;
+    document.getElementById('upd_contact_number').value = contactNumber;
+    document.getElementById('upd_address').value = address;
+    document.getElementById('updateSupplierForm').action = '/suppliers/' + id + '/update/';
+    document.getElementById('updateSupplierOverlay').style.display = 'flex';
+    document.getElementById('deleteSupplierForm').action = '/suppliers/' + id + '/delete/';
+}
+async function validateAndConfirmUpdateSupplier() {
+    const errorContainer = document.getElementById('updateSupplierErrors');
+    const errors = [];
+
+    const supplierId = document.getElementById('updateSupplierForm').action.split('/suppliers/')[1].replace('/update/', '');
+    const name = document.getElementById('upd_name').value.trim();
+    const person = document.getElementById('upd_contact_person').value.trim();
+    const number = document.getElementById('upd_contact_number').value.trim();
+    const address = document.getElementById('upd_address').value.trim();
+
+    if (!name) errors.push('Supplier Name is required.');
+    if (!person) errors.push('Contact Person is required.');
+    if (!number) errors.push('Contact Number is required.');
+    else if (number.length !== 11) errors.push('Contact Number must be exactly 11 digits.');
+    if (!address) errors.push('Address is required.');
+
+    if (name) {
+        const res = await fetch(`/check-supplier/?name=${encodeURIComponent(name)}&exclude_id=${supplierId}`);
+        const data = await res.json();
+        if (data.taken) errors.push(`Supplier "${name}" already exists.`);
+    }
+
+    if (errors.length > 0) {
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+        return;
+    }
+
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
+    document.getElementById('updateConfirmModal').style.display = 'flex';
+}
+function closeUpdateModal() {
+    document.getElementById('updateSupplierOverlay').style.display = 'none';
+    document.getElementById('updateConfirmModal').style.display = 'none';
+    const err = document.getElementById('updateSupplierErrors');
+    if (err) { err.style.display = 'none'; err.innerHTML = ''; }
+}
+function openDeleteSupplierModal() {
+    document.getElementById('deleteSupplierConfirm').style.display = 'flex';
+}
+
+document.getElementById('addSupplierForm').addEventListener('submit', function() {
+    sessionStorage.setItem('lastSupplierModal', 'add');
+});
+document.getElementById('updateSupplierForm').addEventListener('submit', function() {
+    sessionStorage.setItem('lastSupplierModal', 'update');
+    sessionStorage.setItem('lastSupplierData', JSON.stringify({
+        id: document.getElementById('updateSupplierForm').action.split('/suppliers/')[1].replace('/update/', ''),
+        name: document.getElementById('upd_name').value,
+        contactPerson: document.getElementById('upd_contact_person').value,
+        contactNumber: document.getElementById('upd_contact_number').value,
+        address: document.getElementById('upd_address').value,
+    }));
+});
+
+// Re-open modal on validation error
+window.addEventListener('DOMContentLoaded', function() {
+    const hasError = document.querySelector('.alert-error, .alert-danger') !== null;
+    if (hasError) {
+        const lastModal = sessionStorage.getItem('lastSupplierModal');
+        if (lastModal === 'add') {
+            openAddModal();
+        } else if (lastModal === 'update') {
+            const d = JSON.parse(sessionStorage.getItem('lastSupplierData') || '{}');
+            if (d.id) openUpdateModal(d.id, d.name, d.contactPerson, d.contactNumber, d.address);
+        }
+        sessionStorage.removeItem('lastSupplierModal');
+        sessionStorage.removeItem('lastSupplierData');
+    }
+});
+</script>
+
+{% endblock %}

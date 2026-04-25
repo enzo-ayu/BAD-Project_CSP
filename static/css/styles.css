@@ -1,0 +1,455 @@
+/* ----------------------------- */
+/* Root & Body Variables */
+/* ----------------------------- */
+:root {
+    --sb-width-collapsed: 80px;
+    --sb-width-expanded: 260px;
+}
+
+body {
+    --sb-width: var(--sb-width-collapsed);
+    margin: 0;
+    height: 100%;
+    font-family: system-ui, sans-serif;
+    background-color: #FFF3F9; 
+}
+
+body.sb-expanded {
+    --sb-width: var(--sb-width-expanded);
+}
+
+.card {
+    background-color: #ffffff; 
+}
+
+.navbar {
+    background-color: #CE548D;
+}
+
+/* ----------------------------- */
+/* Sidebar */
+/* ----------------------------- */
+#sidebar {
+    position: fixed;
+    top: 56px; /* leave space for header */
+    left: 0;
+    width: var(--sb-width);
+    height: calc(100vh - 58px);
+    background: #fff;
+    box-shadow: 5px 0 8px rgba(0,0,0,0.05);    
+    overflow-x: hidden;
+    z-index: 1000;
+    transition: width 0.3s ease;
+    cursor: default;
+}
+
+/* Sidebar list */
+#sidebar ul {
+    list-style: none;
+    margin: 0;
+    padding: 0px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+#sidebar li {
+    position: relative;
+    height: 60px; /* fixed height per button */
+}
+
+/* Sidebar links */
+#sidebar li a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: relative; /* for text positioning */
+    text-decoration: none;
+    color: #CE548D;
+    cursor: pointer;
+}
+
+/* Sidebar images: fixed to left edge */
+#sidebar li a img {
+    position: absolute;
+    left: 15px; /* spacing from left edge */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+/* Optional: smaller expand button */
+#resize-btn img {
+    width: 40px;
+    height: 40px;
+}
+
+/* Sidebar text labels: slide in/out */
+.sidebar-text {
+    position: absolute;
+    left: 75px; /* offset from left so it doesn't overlap the image */
+    top: 50%;
+    transform: translateY(-50%) translateX(-10px);
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+}
+
+body.sb-expanded .sidebar-text {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) translateX(0);
+}
+
+/* ----------------------------- */
+/* Hover styles */
+/* ----------------------------- */
+#sidebar li a:hover {
+    background: #CE548D; /* Figma hover color */
+    color: #fff;
+}
+
+#sidebar li a:hover img {
+    transform: translateY(-50%) scale(1.05); /* keeps vertical centering */
+}
+
+/* Push Low Stock to the bottom */
+#sidebar li#low-stock-nav-item {
+    margin-top: auto; 
+    margin-bottom: 20px; /* Optional: gives it a little breathing room at the very bottom */
+}
+
+/* Disable the background hover effect ONLY for the Low Stock notification */
+#sidebar li#low-stock-nav-item a:hover {
+    background: transparent !important; 
+    color: #CE548D !important; 
+}
+
+/* ----------------------------- */
+/* Main content */
+/* ----------------------------- */
+#main-content {
+    margin-left: var(--sb-width);
+    margin-top: 58px; /* below header */
+    padding: 20px;
+    transition: margin-left 0.3s ease;
+}
+
+
+
+
+/* CHARGESLIP */
+.patient-field:enabled {
+    background-color: #fffbea;
+}
+
+/* ----------------------------- */
+/* Readonly totals and cost fields */
+/* ----------------------------- */
+.form-control[readonly] {
+    background-color: #e9ecef;  
+    color: #000000;             
+    font-weight: 600;
+    cursor: default;
+}
+
+.form-control[readonly]:focus {
+    box-shadow: none;
+}
+
+/* ----------------------------- */
+/* Sales Table - Clean Card */
+/* ----------------------------- */
+
+.table {
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background-color: #ffffff;
+}
+
+/* Remove Bootstrap striping completely */
+.table tbody tr {
+    background-color: #ffffff !important;
+}
+
+/* Add line below every row */
+.table tbody tr {
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* Remove last row border */
+.table tbody tr:last-child {
+    border-bottom: none;
+}
+
+/* Remove default borders */
+.table-bordered th,
+.table-bordered td {
+    border: none;
+}
+
+/* Header styling */
+table.table > thead > tr > th {
+    background-color: #ffffff !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    padding: 14px;
+}
+
+/* Body cells */
+.table tbody td {
+    padding: 12px 14px;
+    color: #000000 !important;
+    vertical-align: middle;
+}
+
+
+.table tbody tr:hover {
+    background-color: #ffffff !important;
+}
+
+
+/* =======================================
+   Patient DB - Header search row 
+   ======================================= */
+
+.patient-db-header-row {
+    gap: 12px;
+
+}
+
+.patient-db-search-tools {
+    flex: 1;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+/* Filter button */
+.patient-db-filter-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #bfb5bc;
+    border-radius: 5px;
+    background: #f7f3f6;
+    color: #8e8189;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.patient-db-filter-btn:hover {
+    background: #f2ebf0;
+    color: #CE548D;
+}
+
+/* Search box */
+.patient-db-search-form {
+    position: relative;
+    width: 500px;     /* <- adjust na lang if ever */
+    max-width: 100%;
+    margin: 0;
+}
+
+.patient-db-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #aba3aa;
+    display: inline-flex;
+    align-items: center;
+    pointer-events: none;
+}
+
+.patient-db-search-input {
+    width: 100%;
+    height: 40px;
+    border: 1px solid #bfb5bc;
+    border-radius: 4px;
+    background: #f7f3f6;
+    padding: 0 10px 0 28px;
+    font-size: 16px;
+    color: #6f6a6e;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.patient-db-search-input::placeholder {
+    font-size: 16px;
+    color: #b0a7ae;
+}
+
+.patient-db-search-input:focus {
+    border-color: #CE548D;
+    box-shadow: 0 0 0 2px rgba(206, 84, 141, 0.12);
+    background: #fff;
+}
+
+/* =======================================
+   Patient DB - Tabke styling 
+   ======================================= */
+
+.patient-db-table > thead > tr > th,
+table.patient-db-table > thead > tr > th {
+    background-color: #ffffff !important;
+    color: #7f7f87 !important;          /* header text color */
+    font-weight: 600 !important;
+    border-bottom: 1px solid #dcd6dc !important;
+}
+
+.patient-db-table tbody td {
+    background-color: #ffffff !important;
+    color: #000 !important;         
+    border-bottom: 1px solid #ece7eb !important;
+}
+
+
+/* -------------*/
+/*   Sales DB   */
+/* -------------*/
+
+table.sales-db-table.table > thead > tr > th {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #7d7780 !important;
+    border-bottom: 1px solid #ddd6db !important;
+}
+
+.sales-db-table {
+    border-top: none !important;
+}
+
+.sales-db-table thead,
+.sales-db-table thead tr,
+.sales-db-table thead th {
+    border-top: none !important;
+}
+
+/* =======================================
+   Inventory DB - Table styling 
+   ======================================= */
+
+table.inventory-db-table.table > thead > tr > th {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #7d7780 !important; 
+    border-bottom: 1px solid #ddd6db !important; 
+}
+
+.inventory-db-table {
+    border-top: none !important;
+}
+
+.inventory-db-table thead,
+.inventory-db-table thead tr,
+.inventory-db-table thead th {
+    border-top: none !important;
+}
+
+
+/* =======================================
+   Product & Treatment DB - Table styling 
+   ======================================= */
+
+table.product-db-table > thead > tr > th,
+table.treatment-db-table > thead > tr > th {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #495057 !important; 
+    border-bottom: 1px solid #ddd6db !important;
+}
+
+.product-db-table, .treatment-db-table {
+    border-top: none !important;
+}
+
+.product-db-table thead, .product-db-table thead tr, .product-db-table thead th,
+.treatment-db-table thead, .treatment-db-table thead tr, .treatment-db-table thead th {
+    border-top: none !important;
+}
+
+.product-db-table,
+.treatment-db-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.product-db-table td,
+.treatment-db-table td {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+/* =======================================
+   Date fix 
+   ======================================= */
+
+.flatpickr-calendar { 
+    min-width: 450px !important; 
+    width: 550px !important;
+    overflow: visible !important; 
+    display: grid !important;
+    grid-template-columns: 160px auto !important; 
+    grid-template-rows: auto auto !important;     
+}
+
+.quick-ranges { 
+    background: white; 
+    padding: 10px; 
+    border-right: 1px solid #ddd; 
+    grid-column: 1 / 2 !important; 
+    grid-row: 1 / 3 !important; 
+}
+
+.flatpickr-months { 
+    grid-column: 2 / 3 !important; 
+    grid-row: 1 / 2 !important; 
+    display: flex !important; 
+    width: 100% !important; 
+    padding-top: 10px !important;
+}
+
+.flatpickr-innerContainer { 
+    grid-column: 2 / 3 !important; 
+    grid-row: 2 / 3 !important; 
+    display: block !important; 
+    min-height: 280px !important;
+}
+
+.flatpickr-rContainer {
+    display: inline-block !important;
+    padding: 20px !important;
+}
+
+.quick-ranges .quick-item { 
+    cursor: pointer; 
+    padding: 6px 8px; 
+    border-radius: 6px; 
+    color: #333; 
+    margin-bottom: 4px;
+}
+
+.quick-ranges .quick-item:hover { 
+    background: #f1f1f1; 
+}
+
+.export-icon {
+    width: 24px; /* Lower this number to make them smaller (e.g., 80px, 75px) */
+    height: auto; 
+    transition: transform 0.2s ease; /* Keeps that nice hover pop */
+}
+
+.export-icon:hover {
+    transform: scale(1.05); 
+}

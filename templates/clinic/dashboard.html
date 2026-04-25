@@ -1,0 +1,258 @@
+{% extends 'clinic/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h2 class="fw-bold m-0" style="color: #CE548D;">Dashboard</h2>
+            
+            <form method="GET" class="d-flex align-items-center gap-2 flex-nowrap m-0">
+                <input type="text" id="datePicker" name="date" value="{{ request.GET.date }}"
+                    class="form-control"
+                    placeholder="Select date or range"
+                    style="width: 300px; height: 40px;">
+
+                <button type="submit" class="btn btn-dark" style="height: 40px;">
+                    Filter
+                </button>
+                <a href="{% url 'dashboard' %}" 
+                class="btn btn-outline-secondary" 
+                style="height: 40px; display:flex; align-items:center;">
+                    Clear
+                </a>
+            </form>
+        </div>
+    </div>  
+    
+   <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 rounded-4">
+                <h6 class="text-muted mb-2">Total Transactions</h6>
+                <h3 class="fw-bold m-0" style="color: #333;">{{ total_transactions }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 rounded-4">
+                <h6 class="text-muted mb-2">Products Sold</h6>
+                <h3 class="fw-bold m-0" style="color: #333;">{{ products_sold }} units</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 rounded-4">
+                <h6 class="text-muted mb-2">Treatments Done</h6>
+                <h3 class="fw-bold m-0" style="color: #333;">{{ treatments_administered }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 rounded-4">
+                <h6 class="text-muted mb-2">Products Restocked</h6>
+                <h3 class="fw-bold m-0" style="color: #333;">{{ products_restocked }} units</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card p-4 shadow-sm border-0 rounded-4 h-100">
+                <h6 class="text-muted mb-3">Sales Trend (Last 30 days)</h6>
+                <canvas id="salesTrendChart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 shadow-sm border-0 rounded-4 h-100 position-relative">
+                <h6 class="text-muted mb-2">Revenue Breakdown</h6>
+                <h4 class="fw-bold text-center mb-3" style="color: #CE548D;">PHP {{ total_sales|floatformat:2 }}</h4>
+                <canvas id="revenueChart" style="max-height: 200px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-7">
+            <div class="card p-4 shadow-sm border-0 rounded-4 h-100">
+                <h6 class="text-muted mb-3">Most Restocked Products</h6>
+                <canvas id="mostRestockedChart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+        
+        <div class="col-md-5">
+            <div class="card p-4 shadow-sm border-0 rounded-4 h-100">
+                <h6 class="text-muted mb-3">Top Moving Inventory</h6>
+                <canvas id="topMovingChart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Clinic Brand Colors
+    const pinkMain = '#CE548D';
+    const pinkLight = '#F0A1C2';
+    const greenAccent = '#5EE55E';
+
+    // Parse Data from Django safely
+    const trendDates = {{ trend_dates|safe }};
+    const trendSales = {{ trend_sales|safe }};
+    
+    // Sales Trend Line Chart
+    if(trendDates.length > 0) {
+        new Chart(document.getElementById('salesTrendChart'), {
+            type: 'line',
+            data: {
+                labels: trendDates,
+                datasets: [{
+                    label: 'Daily Sales (PHP)',
+                    data: trendSales,
+                    borderColor: greenAccent,
+                    backgroundColor: 'rgba(94, 229, 94, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+   // Revenue Breakdown Doughnut Chart
+    const revProducts = {{ revenue_products|default:0 }};
+    const revTreatments = {{ revenue_treatments|default:0 }};
+    
+    if (revProducts > 0 || revTreatments > 0) {
+        new Chart(document.getElementById('revenueChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Products', 'Treatments'],
+                datasets: [{
+                    data: [revProducts, revTreatments],
+                    backgroundColor: [pinkMain, pinkLight],
+                    borderWidth: 0
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                // Get the current value and the total of both slices
+                                let value = context.raw || 0;
+                                let total = context.chart._metasets[context.datasetIndex].total;
+                                
+                                // Calculate the percentage
+                                let percentage = total > 0 ? Math.round((value / total) * 100) + '%' : '0%';
+                                
+                                // Percentage and formatted value
+                                let formattedValue = value.toLocaleString('en-PH', {minimumFractionDigits: 2});
+                                return `${context.label}: PHP ${formattedValue} (${percentage})`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Top Moving Inventory Bar Chart
+    const topNames = {{ top_product_names|safe }};
+    const topSales = {{ top_product_sales|safe }};
+    
+    if (topNames.length > 0) {
+        new Chart(document.getElementById('topMovingChart'), {
+            type: 'bar',
+            data: {
+                labels: topNames,
+                datasets: [{
+                    label: 'Units Sold',
+                    data: topSales,
+                    backgroundColor: pinkLight,
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                indexAxis: 'y', // Makes bars horizontal
+                responsive: true, 
+                maintainAspectRatio: false 
+            }
+        });
+    }
+
+    // NEW: Most Restocked Products Bar Chart
+    const restockedNames = {{ restocked_names|safe }};
+    const restockedCounts = {{ restocked_counts|safe }};
+    
+    if (restockedNames.length > 0) {
+        new Chart(document.getElementById('mostRestockedChart'), {
+            type: 'bar',
+            data: {
+                labels: restockedNames,
+                datasets: [{
+                    label: 'Units Restocked',
+                    data: restockedCounts,
+                    backgroundColor: pinkMain, // Uses the darker pink for contrast
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false 
+            }
+        });
+    }
+});
+</script>
+
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+    function addDays(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
+
+    flatpickr("#datePicker", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        minDate: "2014-01-01",
+        maxDate: "2030-12-31",
+        allowInput: true,
+        onReady: function(selectedDates, dateStr, instance) {
+            const panel = document.createElement("div");
+            panel.className = "quick-ranges";
+            panel.innerHTML = `
+                <div class="quick-item" data-range="today">Today</div>
+                <div class="quick-item" data-range="yesterday">Yesterday</div>
+                <div class="quick-item" data-range="lastweek">Last week</div>
+                <div class="quick-item" data-range="lastmonth">Last month</div>
+                <div class="quick-item" data-range="lastquarter">Last quarter</div>
+            `;
+            instance.calendarContainer.style.display = "flex";
+            instance.calendarContainer.insertBefore(panel, instance.calendarContainer.firstChild);
+            
+            panel.addEventListener("click", function(e) {
+                if (!e.target.classList.contains("quick-item")) return;
+                const type = e.target.dataset.range;
+                const today = startOfDay(new Date());
+                let start, end;
+                
+                if (type === "today") { start = end = today; }
+                else if (type === "yesterday") { start = end = addDays(today, -1); }
+                else if (type === "lastweek") { start = addDays(today, -6); end = today; }
+                else if (type === "lastmonth") { start = addDays(today, -29); end = today; }
+                else if (type === "lastquarter") { start = addDays(today, -89); end = today; }
+                
+                instance.setDate([start, end], true);
+                instance.close();
+            });
+        }
+    });
+});
+</script>
+{% endblock %}
