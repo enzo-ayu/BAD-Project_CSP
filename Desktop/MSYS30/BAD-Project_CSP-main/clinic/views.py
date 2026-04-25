@@ -333,9 +333,11 @@ def chargeslip(request):
                             'birthday': bday,
                             'sex': request.POST.get('sex', ''),
                         }
+# AFTER
+                        full_name = ' '.join(filter(None, [first, middle, last]))
                         messages.error(
                             request,
-                            f'A patient named {first} {middle} {last} with the same birthday already exists.'
+                            f'A patient named {full_name} with the same birthday already exists.'
                         )
                         return render(request, 'clinic/chargeslip.html', {
                             'patients': Patient.objects.filter(is_deleted=False).order_by('last_name'),
