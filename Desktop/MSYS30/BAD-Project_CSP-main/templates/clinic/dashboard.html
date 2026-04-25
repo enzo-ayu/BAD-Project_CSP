@@ -4,11 +4,33 @@
 {% block content %}
 <div class="container-fluid mt-3">
     
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h2 class="fw-bold m-0" style="color: #CE548D;">Dashboard</h2>
+            
+            <form method="GET" class="d-flex align-items-center gap-2 flex-nowrap m-0">
+                <input type="text" id="datePicker" name="date" value="{{ request.GET.date }}"
+                    class="form-control"
+                    placeholder="Select date or range"
+                    style="width: 300px; height: 40px;">
+
+                <button type="submit" class="btn btn-dark" style="height: 40px;">
+                    Filter
+                </button>
+                <a href="{% url 'dashboard' %}" 
+                class="btn btn-outline-secondary" 
+                style="height: 40px; display:flex; align-items:center;">
+                    Clear
+                </a>
+            </form>
+        </div>
+    </div>  
+    
    <div class="row mb-4">
         <div class="col-md-3">
             <div class="card p-3 shadow-sm border-0 rounded-4">
-                <h6 class="text-muted mb-2">Products Restocked</h6>
-                <h3 class="fw-bold m-0" style="color: #333;">{{ products_restocked }} units</h3>
+                <h6 class="text-muted mb-2">Total Transactions</h6>
+                <h3 class="fw-bold m-0" style="color: #333;">{{ total_transactions }}</h3>
             </div>
         </div>
         <div class="col-md-3">
@@ -25,8 +47,8 @@
         </div>
         <div class="col-md-3">
             <div class="card p-3 shadow-sm border-0 rounded-4">
-                <h6 class="text-muted mb-2">Total Transactions</h6>
-                <h3 class="fw-bold m-0" style="color: #333;">{{ total_transactions }}</h3>
+                <h6 class="text-muted mb-2">Products Restocked</h6>
+                <h3 class="fw-bold m-0" style="color: #333;">{{ products_restocked }} units</h3>
             </div>
         </div>
     </div>

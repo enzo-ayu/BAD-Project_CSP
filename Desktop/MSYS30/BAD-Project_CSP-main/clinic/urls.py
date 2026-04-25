@@ -76,15 +76,15 @@ urlpatterns = [
     path('branches/<int:branch_id>/update/', views.update_branch, name='update_branch'),
     path('branches/<int:branch_id>/delete/', views.delete_branch, name='delete_branch'),
 
-    # ── Export CSV ──
+# ── Export CSV ──
     path('inventory/export/', views.export_inventory_csv, name='export_inventory_csv'),
     path('patients/export/', views.export_patients_csv, name='export_patients_csv'),
     path('sales/export/', views.export_sales_csv, name='export_sales_csv'),
 
-
-    path('import-inventory/', views.import_inventory_csv, name='import_inventory'),
+    # ── Import CSV ──
+    path('import-inventory/', views.import_inventory_csv, name='import_inventory_csv'), 
     path('import-patients/', views.import_patients_csv, name='import_patients_csv'),
-
+    path('import-sales/', views.import_sales_csv, name='import_sales_csv'),            
     # ── Low Stock ──
     path('low-stock/', views.low_stock_alerts, name='low_stock_alerts'),
 ]

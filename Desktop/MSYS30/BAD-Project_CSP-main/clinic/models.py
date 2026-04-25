@@ -6,15 +6,24 @@ class Patient(models.Model):
     patient_id = models.AutoField(primary_key=True) # INT(4) 
     last_name = models.CharField(max_length=50)
     first_name = models.CharField(max_length=50)
-    middle_name = models.CharField(max_length=50, blank=True, null=True)
+    middle_name = models.CharField(max_length=50, blank=True, default="")
     suffix = models.CharField(max_length=10, blank=True, null=True)
     patient_address = models.CharField(max_length=300)
     patient_contact_number = models.CharField(max_length=11) # INT(11) in dictionary
     birthday = models.DateField()
     sex = models.CharField(max_length=1) # "M", "F", "O"
+    is_deleted = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.last_name}, {self.first_name}"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['last_name', 'first_name', 'middle_name', 'birthday'],
+                name='unique_patient_identity'
+            )
+        ]
 
 # 3. SUPPLIER 
 class Supplier(models.Model):
@@ -45,10 +54,16 @@ class ClinicBranch(models.Model):
     branch_id = models.AutoField(primary_key=True) 
     branch_location = models.CharField(max_length=255, unique=True)
     branch_address = models.CharField(max_length=500, null=True, blank=True)
+    
+    # 1. ADD THIS LINE: Tells Django to track soft deletes
+    is_deleted = models.BooleanField(default=False)
 
     def __str__(self):
+        # 2. ADD THIS LOGIC: Changes the name if it's deleted
+        if self.is_deleted:
+            return f"{self.branch_location} (deleted)"
+            
         return self.branch_location
-
 # 2. SALES_TRANSACTION 
 class SalesTransaction(models.Model):
     transaction_id = models.AutoField(primary_key=True) # INT(7) 

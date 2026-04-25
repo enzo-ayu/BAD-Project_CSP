@@ -134,14 +134,15 @@
                              >
                     </a>
 
-                    <form action="{% url 'logout' %}" method="post" class="m-0 p-0 d-flex align-items-center">
+                    <form action="{% url 'logout' %}" method="post" class="m-0 p-0 d-flex align-items-center" id="logoutForm">
                         {% csrf_token %}
-                        <button type="submit" class="btn p-0 border-0 bg-transparent" title="Logout">
+                        <button type="button" class="btn p-0 border-0 bg-transparent" title="Logout"
+                                onclick="document.getElementById('logoutConfirmModal').style.display='flex'">
                             <img src="{% static 'images/Logout.png' %}" 
-                                 data-hover="{% static 'images/Logout_Icon_Hover.png' %}" 
-                                 alt="Logout" 
-                                 width="32" height="32"
-                                 class="hover-icon">
+                                data-hover="{% static 'images/Logout_Icon_Hover.png' %}" 
+                                alt="Logout" 
+                                width="32" height="32"
+                                class="hover-icon">
                         </button>
                     </form>
 
@@ -261,6 +262,20 @@
     <main id="main-content">
         {% block content %}{% endblock %}
     </main>
+
+    <div id="logoutConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+        background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+        <div class="card p-4" style="max-width:380px; width:100%; border-radius:12px;">
+            <h5 class="fw-bold mb-2">Confirm Logout</h5>
+            <p class="mb-3 text-muted">Are you sure you want to logout?</p>
+            <div class="d-flex justify-content-end gap-2">
+                <button class="btn btn-secondary"
+                        onclick="document.getElementById('logoutConfirmModal').style.display='none'">Cancel</button>
+                <button class="btn text-white px-3" style="background-color:#CE548D;"
+                        onclick="document.getElementById('logoutForm').submit()">Yes</button>
+            </div>
+        </div>
+    </div>
 
     <div class="modal fade" id="globalConfirmModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
