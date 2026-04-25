@@ -1991,8 +1991,18 @@ def employee_details(request, id):
 @user_passes_test(is_owner, login_url='login')
 def branch_list(request):
     query = request.GET.get('q', '').strip()
-    branches = ClinicBranch.objects.filter(branch_location__icontains=query) if query else ClinicBranch.objects.all()
+    
+    # 1. Filter out deleted branches from the main list
+    if query:
+        branches = ClinicBranch.objects.filter(
+            branch_location__icontains=query, 
+            is_deleted=False  # Only show active branches in search results
+        )
+    else:
+        branches = ClinicBranch.objects.filter(is_deleted=False)
         
+    # 2. Keep next_branch_id calculation based on ALL branches (including deleted)
+    # This ensures you don't accidentally reuse a Primary Key that already exists
     last_branch = ClinicBranch.objects.order_by('branch_id').last()
     next_branch_id = (last_branch.branch_id + 1) if last_branch else 1
         
@@ -2001,7 +2011,6 @@ def branch_list(request):
         'query': query,
         'next_branch_id': next_branch_id,
     })
-
 @never_cache
 @login_required(login_url='login')
 @user_passes_test(is_owner, login_url='login')
