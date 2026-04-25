@@ -1,0 +1,60 @@
+{% extends 'clinic/base.html' %}
+{% block content %}
+
+<div style="max-width: 600px;" class="mx-auto">
+    <div class="d-flex align-items-center justify-content-between mb-2"> 
+        <h2 class="mb-0 fw-bold" style="color: #CE548D;">My Profile</h2>
+        <button onclick="history.back()" class="btn btn-link text-muted p-0 border-0 text-decoration-none btn-sm me-2">
+            ← Back
+        </button>
+    </div>
+
+    <div class="card shadow-sm mx-auto">
+        <div class="row g-4 p-4">
+            <div class="col-md-4">
+                <small class="text-muted fw-bold">Account ID</small>
+                <div class="mt-1">{{ employee.id }}</div>
+            </div>
+
+            <div class="col-md-4">
+                <small class="text-muted fw-bold">Account Type</small>
+                <div class="mt-1">
+                    {% for group in employee.groups.all %}
+                        {{ group.name }}
+                    {% empty %}
+                        <span class="text-muted fst-italic">Unassigned</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <small class="text-muted fw-bold">Account Name</small>
+                <div class="mt-1">{{ employee.get_full_name|default:employee.username }}</div>
+            </div>
+
+            <div class="col-md-4">
+                <small class="text-muted fw-bold">Username</small>
+                <div class="mt-1">{{ employee.username }}</div>
+            </div>
+
+            <div class="col-md-4">
+                <small class="text-muted fw-bold">Branch</small>
+                <div class="mt-1">
+                    {% if employee.employeeprofile.branch %}
+                        {{ employee.employeeprofile.branch.branch_location }}
+                    {% elif employee.employeeprofile.all_branches %}
+                        All Branches
+                    {% else %}
+                        <span class="text-muted fst-italic">Unassigned</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <small class="text-muted fw-bold">Date Created</small>
+                <div class="mt-1">{{ employee.date_joined|date:"Y-m-d" }}</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends 'clinic/base.html' %}
+{% block content %}
+
+<div class="container mt-4">
+
+<div class="card shadow-sm p-4">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between mb-3">
+        <a href="{% url 'patient_details' transaction.patient.patient_id %}" class="text-decoration-none text-muted">← Back</a>
+    </div>
+
+    <br>
+    
+    <div class="row">
+        <div class="col-md-3">
+            <strong>Trans. Date:</strong>
+            {{ transaction.transaction_date }}
+        </div>
+
+        <div class="col-md-3">
+            <strong>Branch:</strong>
+            {{ transaction.branch}}
+        </div>
+        
+        <div class="col-md-3">
+            <strong>Trans. ID:</strong>
+            {{ transaction.transaction_id }}
+        </div>
+
+        <div class="col-md-3">
+            <strong>Patient ID:</strong>
+            {{ patient.patient_id }}
+        </div>
+    </div>
+    <hr>
+
+    <!-- PATIENT INFO -->
+    <div class="row mb-3">
+
+        <div class="col-md-3">
+            <small class="text-muted fw-semibold">Last Name</small>
+            <div>{{ patient.last_name }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted fw-semibold">First Name</small>
+            <div>{{ patient.first_name }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted fw-semibold">Middle Name</small>
+            <div>{{ patient.middle_name }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted fw-semibold">Suffix</small>
+            <div>{{ patient.suffix|default:"-" }}</div>
+        </div>
+
+    </div>
+    <br>
+    <div class="row mb-4">
+
+        <div class="col-md-3">
+            <small class="text-muted fw-semibold">Address</small>
+            <div>{{ patient.patient_address }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted fw-semibold">Contact No.</small>
+            <div>{{ patient.patient_contact_number }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted fw-semibold">Birthday</small>
+            <div>{{ patient.birthday }}</div>
+        </div>
+
+        <div class="col-md-3">
+            <small class="text-muted fw-semibold">Sex</small>
+            <div>{{ patient.sex }}</div>
+        </div>
+    </div>
+    <!-- <br> -->
+    <hr>
+
+    <!-- PRODUCTS + TREATMENTS -->
+    <div class="row">
+        <!-- TREATMENTS -->
+        <div class="col-md-5">
+            <h6 class="fw-bold">Treatment Availed</h6>
+
+            {% for item in treatments %}
+            <div class="d-flex justify-content-between">
+                <div>• {{ item.treatment.treatment_name }}</div>
+                <div>Qty: {{ item.quantity_purchased }}</div>
+                <div>Php {{ item.subtotal }}</div>
+            </div>
+            {% empty %}
+            <small>No treatments</small>
+            {% endfor %}
+
+            <hr>
+            <div class="text-end fw-bold">
+                Treatment Total: Php {{ treatment_total }}
+            </div>
+        </div>
+        <div class="col-md-1"></div>
+        <!-- PRODUCTS -->
+        <div class="col-md-6">
+            <h6 class="fw-bold">Products Availed</h6>
+
+            {% for item in products %}
+            <div class="d-flex justify-content-between">
+                <div>• {{ item.product.product_name }}</div>
+                <div>Qty: {{ item.quantity_purchased }}</div>
+                <div>Php {{ item.subtotal }}</div>
+            </div>
+            {% empty %}
+            <small>No products</small>
+            {% endfor %}
+
+            <hr>
+            <div class="text-end fw-bold">
+                Product Total: Php {{ product_total }}
+            </div>
+        </div>
+
+    </div>
+
+    <hr>
+
+    <!-- PAYMENT -->
+    <div class="row mt-3">
+
+        <div class="col-md-6">
+            <strong>Mode of Payment:</strong>
+            {{ transaction.mode_of_payment }}
+        </div>
+
+        <div class="col-md-6 text-end">
+            <strong>Total Amount:</strong>
+            Php {{ transaction.total_amount }}
+        </div>
+
+    </div>
+
+    <hr>
+
+    <!-- NOTES -->
+    <div>
+        <strong>Patient Notes:</strong>
+        <div class="mt-2 text-muted">
+            {{ transaction.notes|default:"-" }}
+        </div>
+    </div>
+
+</div>
+</div>
+
+{% endblock %}
