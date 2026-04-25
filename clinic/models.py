@@ -71,6 +71,8 @@ class SalesTransaction(models.Model):
     notes = models.TextField(blank=True, null=True)
     branch = models.ForeignKey(ClinicBranch, on_delete=models.SET_NULL, null=True, blank=True)
 
+    is_deleted = models.BooleanField(default=False)
+
     def __str__(self):
         return f"TXN-{self.transaction_id}"
 

@@ -41,7 +41,7 @@
                 <small class="text-muted fw-bold">Branch</small>
                 <div class="mt-1">
                     {% if employee.employeeprofile.branch %}
-                        {{ employee.employeeprofile.branch.branch_location }}
+                        {{ employee.employeeprofile.branch }}
                     {% elif employee.employeeprofile.all_branches %}
                         All Branches
                     {% else %}

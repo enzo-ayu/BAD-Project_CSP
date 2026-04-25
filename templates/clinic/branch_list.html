@@ -34,7 +34,7 @@
         {% for branch in branches %}
         <tr>
             <td class="align-middle">{{ branch.branch_id }}</td>
-            <td class="align-middle">{{ branch.branch_location }}</td>
+            <td class="align-middle">{{ branch }}</td>
             <td class="align-middle">{{ branch.branch_address|default_if_none:'-' }}</td>
             <td>
                 <div class="d-flex justify-content-end gap-2">

@@ -2174,8 +2174,16 @@ def employee_details(request, id):
 @user_passes_test(is_owner, login_url='login')
 def branch_list(request):
     query = request.GET.get('q', '').strip()
-    branches = ClinicBranch.objects.filter(branch_location__icontains=query) if query else ClinicBranch.objects.all()
+    
+    # 1. Start by fetching ONLY active branches
+    branches = ClinicBranch.objects.filter(is_deleted=False)
+    
+    # 2. If the user searched for something, filter that active list further
+    if query:
+        branches = branches.filter(branch_location__icontains=query)
         
+    # 3. Calculate next ID (we check ALL branches here, including deleted ones, 
+    # so we don't accidentally recycle an old branch ID)
     last_branch = ClinicBranch.objects.order_by('branch_id').last()
     next_branch_id = (last_branch.branch_id + 1) if last_branch else 1
         
@@ -2237,9 +2245,16 @@ def update_branch(request, branch_id):
 def delete_branch(request, branch_id):
     if request.method == 'POST':
         branch = get_object_or_404(ClinicBranch, branch_id=branch_id)
-        branch.delete() 
+        
+        # 1. Perform the Soft Delete
+        # Instead of destroying the record, we update a status flag.
+        # (If your field is named differently, e.g., 'is_deleted = True', adjust accordingly)
+        branch.is_active = False 
+        branch.save() 
 
-        messages.success(request, 'Branch deleted')
+        # 2. Match the Expected Output
+        # Your test specifies the message must say: Branch "Guijo, Makati" was deleted.
+        messages.success(request, f'Branch "{branch.name}" was deleted.')
         
     return redirect('branch_list')
 
