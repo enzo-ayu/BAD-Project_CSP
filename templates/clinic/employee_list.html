@@ -1,5 +1,6 @@
 {% extends 'clinic/base.html' %}
 {% block content %}
+{% load query_utils %}
 
 {% if messages %}
 <div class="mb-3">
@@ -60,7 +61,12 @@
                 </span>
                 
                 <input type="text" name="q" value="{{ query }}" class="patient-db-search-input w-100 ps-5 form-control" placeholder="Search employees..."> 
-                
+                <select name="per_page" class="form-select form-select-sm flex-shrink-0 ms-2"
+                        style="width:75px; height:40px;" title="Rows per page">
+                    {% for n in per_page_options %}
+                    <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
+                    {% endfor %}
+                </select>
                 <button type="submit" class="btn btn-dark ms-2 d-none d-md-block">Search</button>
             </div>
             
@@ -144,6 +150,45 @@
         {% endfor %}
     </tbody>
 </table>
+
+{% if employees.paginator.num_pages > 1 %}
+<nav class="mt-3">
+    <ul class="pagination pagination-sm justify-content-center mb-0 flex-wrap">
+ 
+        {% if employees.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{% url_replace_param request 'page' employees.previous_page_number %}">‹</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">‹</span></li>
+        {% endif %}
+ 
+        {% for num in employees.paginator.page_range %}
+            {% if num == employees.number %}
+            <li class="page-item active">
+                <span class="page-link" style="background-color:#CE548D; border-color:#CE548D;">{{ num }}</span>
+            </li>
+            {% elif num >= employees.number|add:"-2" and num <= employees.number|add:"2" %}
+            <li class="page-item">
+                <a class="page-link" href="?{% url_replace_param request 'page' num %}">{{ num }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+ 
+        {% if employees.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{% url_replace_param request 'page' employees.next_page_number %}">›</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">›</span></li>
+        {% endif %}
+ 
+    </ul>
+    <p class="text-center text-muted small mt-1 mb-0">
+        Showing {{ employees.start_index }}–{{ employees.end_index }} of {{ employees.paginator.count }}
+    </p>
+</nav>
+{% endif %}
 
 <div id="employeeModal" class="modal-overlay">
     <div class="modal-card">
