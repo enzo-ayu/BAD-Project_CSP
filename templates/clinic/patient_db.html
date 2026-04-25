@@ -1,6 +1,7 @@
 {% extends 'clinic/base.html' %}
 {% block content %}
 {% load static %}
+{% load query_utils %}
 
 {% if messages %}
 <div class="mb-3">
@@ -16,74 +17,35 @@
 <div class="d-flex justify-content-between align-items-center mb-3 patient-db-header-row">
     <h2 class="mb-0 fw-bold" style="color: #CE548D;">Patient List</h2>
     <div class="patient-db-search-tools d-flex align-items-center gap-2">
-        <!-- Filter button (left of search)
-        <button type="button" class="patient-db-filter-btn" title="Filter">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 6h16l-6 7v5l-4 2v-7L4 6z"
-                      stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-            </svg>
-        </button> -->
-
-        <!-- <button type="button" onclick="openImportModal()" class="btn btn-outline-secondary text-nowrap">
-            <i class="fas fa-upload"></i> Import CSV
-        </button> -->
-        <!-- <a href="#" onclick="openImportModal(); return false;" class="import-link">
-            <img src="{% static 'images/Import4.png' %}" 
-                data-hover="{% static 'images/Import_Hover4.png' %}" 
+        <a href="#" onclick="openImportModal(); return false;" class="import-link">
+            <img src="{% static 'images/Import4.png' %}"
+                data-hover="{% static 'images/Import_Hover4.png' %}"
                 alt="Import CSV"
                 class="export-icon"
                 style="width: 40px; height: auto;">
-        </a> -->
-
-
-
-        <form method="GET" class="patient-db-search-form">
-            <span class="patient-db-search-icon" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"></circle>
-                    <path d="M20 20L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
-                </svg>
-            </span>
+        </a>
+        <form method="GET" id="patientSearchForm" class="d-flex align-items-center gap-2">
             <input type="text"
                    name="q"
                    value="{{ query }}"
-                   class="patient-db-search-input"
-                   placeholder="  Search">
+                   class="form-control"
+                   placeholder="Search"
+                   style="width: 500px; height: 40px; background-color: #fff;">
+            <select name="per_page" class="form-select form-select-sm" style="width:75px; height:40px;" title="Rows per page">
+                {% for n in per_page_options %}
+                <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-dark">Search</button>
+
         </form>
-        <button type="submit"
-                form="patientSearchForm"
-                class="btn btn-dark">
-            Search
-        </button>
-
-
-        
-        <a href="#" onclick="openImportModal(); return false;" class="import-link">
-            <img src="{% static 'images/Import4.png' %}" 
-                data-hover="{% static 'images/Import_Hover4.png' %}" 
-                alt="Import CSV"
-                class="export-icon"
-                style="width: 40px; height: auto;">
-        </a>
-
-
-
-        <!-- <a href="{% url 'export_patients_csv' %}?{{ request.GET.urlencode }}"
-            class="btn btn-secondary ms-auto"
-            style="white-space:nowrap;">
-            Export
-        </a> -->
-        <a href="{% url 'export_patients_csv' %}?{{ request.GET.urlencode }}" class="ms-auto export-link">
-            <img src="{% static 'images/Export4.png' %}" 
-                data-hover="{% static 'images/Export_Hover4.png' %}" 
+        <a href="{% url 'export_patients_csv' %}?{{ request.GET.urlencode }}" class="export-link">
+            <img src="{% static 'images/Export4.png' %}"
+                data-hover="{% static 'images/Export_Hover4.png' %}"
                 alt="Export Patients"
                 class="export-icon"
                 style="width: 40px; height: auto;">
-
         </a>
-
-
-
     </div>
 </div>
 
@@ -137,6 +99,46 @@
         {% endfor %}
     </tbody>
 </table>
+
+<!-- Pagination -->
+{% if patients.paginator.num_pages > 1 %}
+<nav class="mt-3">
+    <ul class="pagination pagination-sm justify-content-center mb-0 flex-wrap">
+
+        {% if patients.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{% url_replace_param request 'page' patients.previous_page_number %}">‹</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">‹</span></li>
+        {% endif %}
+
+        {% for num in patients.paginator.page_range %}
+            {% if num == patients.number %}
+            <li class="page-item active">
+                <span class="page-link" style="background-color:#CE548D; border-color:#CE548D;">{{ num }}</span>
+            </li>
+            {% elif num >= patients.number|add:"-2" and num <= patients.number|add:"2" %}
+            <li class="page-item">
+                <a class="page-link" href="?{% url_replace_param request 'page' num %}">{{ num }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if patients.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{% url_replace_param request 'page' patients.next_page_number %}">›</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">›</span></li>
+        {% endif %}
+
+    </ul>
+    <p class="text-center text-muted small mt-1 mb-0">
+        Showing {{ patients.start_index }}–{{ patients.end_index }} of {{ patients.paginator.count }}
+    </p>
+</nav>
+{% endif %}
 
 <!-- ── UPDATE PATIENT MODAL ── -->
 <div id="updatePatientOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
@@ -209,12 +211,12 @@
                     {% if user_is_owner or user_is_aesthetician %}
                         <button type="button" class="btn btn-danger px-4"
                                 onclick="closeUpdatePatientModal(); openDeletePatientModal()">
-                            Delete 
+                            Delete
                         </button>
                     {% else %}
                         <button type="button" class="btn btn-danger px-4" disabled
                                 style="opacity:0.5; cursor:not-allowed;">
-                            Delete 
+                            Delete
                         </button>
                     {% endif %}
                     <button type="button" class="btn text-white px-3" style="background-color:#CE548D;"
@@ -258,15 +260,16 @@
     </div>
 </div>
 
+<!-- Import Modal -->
 <div id="importModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
     <div class="modal-card" style="background-color: #ffffff; padding: 30px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 5px 25px rgba(0,0,0,0.2);">
-        
+
         <div class="mb-3">
             <a href="javascript:void(0)" onclick="closeImportModal()" class="text-decoration-none text-muted fs-5">&larr; Back</a>
         </div>
-        
+
         <h3 class="mb-4">Import Patients CSV</h3>
-        
+
         <form action="{% url 'import_patients_csv' %}" method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="mb-4">
@@ -308,27 +311,22 @@ function validateAndConfirmUpdatePatient() {
     const errorContainer = document.getElementById('updatePatientErrors');
     const errors = [];
 
-    if (!document.getElementById('upd_last_name').value.trim()) errors.push('Last Name is required.');
+    if (!document.getElementById('upd_last_name').value.trim())  errors.push('Last Name is required.');
     if (!document.getElementById('upd_first_name').value.trim()) errors.push('First Name is required.');
-    if (!document.getElementById('upd_address').value.trim()) errors.push('Address is required.');
-    if (!document.getElementById('upd_contact').value.trim()) errors.push('Contact Number is required.');
-    if (document.getElementById('upd_contact').value.trim() && document.getElementById('upd_contact').value.trim().length !== 11) {
+    if (!document.getElementById('upd_address').value.trim())    errors.push('Address is required.');
+    if (!document.getElementById('upd_contact').value.trim())    errors.push('Contact Number is required.');
+    if (document.getElementById('upd_contact').value.trim() &&
+        document.getElementById('upd_contact').value.trim().length !== 11) {
         errors.push('Invalid contact number length.');
     }
-    const birthdayInput = document.getElementById('upd_birthday').value;
 
+    const birthdayInput = document.getElementById('upd_birthday').value;
     if (!birthdayInput.trim()) {
         errors.push('Birthday is required.');
     } else {
         const selectedDate = new Date(birthdayInput);
-        const minDate = new Date('1900-01-01');
-        const maxDate = new Date('2026-12-31');
-
-        if (selectedDate < minDate) {
-            errors.push('Value must be 01/01/1900 or later');
-        } else if (selectedDate > maxDate) {
-            errors.push('Value must be 12/31/2026 or earlier');
-        }
+        if (selectedDate < new Date('1900-01-01')) errors.push('Value must be 01/01/1900 or later.');
+        if (selectedDate > new Date('2026-12-31')) errors.push('Value must be 12/31/2026 or earlier.');
     }
     if (!document.getElementById('upd_sex').value.trim()) errors.push('Sex is required.');
 
@@ -369,7 +367,6 @@ function submitPatientUpdateAjax() {
         document.getElementById('updatePatientConfirm').style.display = 'none';
         if (data.success) {
             closeUpdatePatientModal();
-            // Show success message and reload table
             location.reload();
         } else {
             const errorContainer = document.getElementById('updatePatientErrors');
@@ -392,19 +389,17 @@ function openDeletePatientModal() {
     document.getElementById('deletePatientConfirm').style.display = 'flex';
 }
 
+function openImportModal() {
+    document.getElementById('importModal').style.display = 'flex';
+}
+
+function closeImportModal() {
+    document.getElementById('importModal').style.display = 'none';
+}
+
 window.addEventListener('click', function(e) {
     if (e.target === document.getElementById('updatePatientOverlay')) closeUpdatePatientModal();
 });
-</script>
-
-<script>
-    function openImportModal() {
-        document.getElementById('importModal').style.display = 'flex';
-    }
-
-    function closeImportModal() {
-        document.getElementById('importModal').style.display = 'none';
-    }
 </script>
 
 {% endblock %}

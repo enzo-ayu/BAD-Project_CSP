@@ -486,24 +486,40 @@ def chargeslip(request):
 # ─────────────────────────────────────────────
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician']) 
+@role_required(['Owner', 'Aesthetician'])
 def patient_db(request):
-    query = request.GET.get("q", "").strip()
+    query    = request.GET.get("q", "").strip()
+    per_page = request.GET.get("per_page", 10)
+    page     = request.GET.get("page", 1)
+    PER_PAGE_OPTIONS = [5, 10, 25, 50]
+ 
+    try:
+        per_page = int(per_page)
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = 10
+    except (ValueError, TypeError):
+        per_page = 10
+ 
     patients = Patient.objects.filter(is_deleted=False)
-    
     if query:
         patients = patients.filter(
-            Q(last_name__icontains=query) |
-            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query)   |
+            Q(first_name__icontains=query)  |
             Q(middle_name__icontains=query) |
             Q(suffix__icontains=query)
         )
-    
+    patients = patients.order_by("last_name", "first_name")
+    from django.core.paginator import Paginator
+    paginator   = Paginator(patients, per_page)
+    page_obj    = paginator.get_page(page)
+ 
     return render(request, "clinic/patient_db.html", {
-        "patients": patients.order_by("last_name", "first_name"),
-        "query": query,
-        "user_is_owner": is_owner(request.user),
-        "user_is_aesthetician": is_aesthetician(request.user),
+        "patients":          page_obj,
+        "query":             query,
+        "per_page":          per_page,
+        "per_page_options":  PER_PAGE_OPTIONS,
+        "user_is_owner":         is_owner(request.user),
+        "user_is_aesthetician":  is_aesthetician(request.user),
     })
 
 @never_cache
@@ -650,30 +666,38 @@ def patient_delete(request, patient_id):
 # ─────────────────────────────────────────────
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician', 'Sales']) 
+@role_required(['Owner', 'Aesthetician', 'Sales'])
 def sales_db(request):
-    query = request.GET.get("q", "").strip()
+    query       = request.GET.get("q", "").strip()
     date_filter = request.GET.get("date", "").strip()
-    sales = SalesTransaction.objects.all().select_related("patient", "branch")
+    per_page    = request.GET.get("per_page", 10)
+    page        = request.GET.get("page", 1)
+    PER_PAGE_OPTIONS = [5, 10, 25, 50]
 
+    try:
+        per_page = int(per_page)
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = 10
+    except (ValueError, TypeError):
+        per_page = 10
+
+    sales = SalesTransaction.objects.all().select_related("patient", "branch")
     branch = get_user_branch(request)
     if branch:
         sales = sales.filter(branch=branch)
-
     if query:
         sales = sales.filter(
-            Q(patient__last_name__icontains=query) |
-            Q(patient__first_name__icontains=query) |
+            Q(patient__last_name__icontains=query)   |
+            Q(patient__first_name__icontains=query)  |
             Q(patient__middle_name__icontains=query) |
             Q(patient__suffix__icontains=query)
         )
-    
     if date_filter:
         try:
             if " to " in date_filter:
                 start_str, end_str = date_filter.split(" to ")
                 start_date = datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
-                end_date = datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+                end_date   = datetime.strptime(end_str.strip(),   "%Y-%m-%d").date()
                 sales = sales.filter(transaction_date__range=[start_date, end_date])
             else:
                 single_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
@@ -681,13 +705,20 @@ def sales_db(request):
         except ValueError:
             pass
 
+    sales = sales.order_by("-transaction_date", "-transaction_id")
+    from django.core.paginator import Paginator
+    paginator = Paginator(sales, per_page)
+    page_obj  = paginator.get_page(page)
+
     return render(request, "clinic/sales_db.html", {
-        "sales": sales.order_by("-transaction_date", "-transaction_id"),
-        "query": query,
-        "date_filter": date_filter,
-        "user_is_owner": is_owner(request.user),
-        "all_products": Product.objects.all().order_by('product_type', 'product_name'),
-        "all_treatments": Treatment.objects.all().order_by('treatment_type', 'treatment_name'),
+        "sales":           page_obj,
+        "query":           query,
+        "date_filter":     date_filter,
+        "per_page":        per_page,
+        "per_page_options": PER_PAGE_OPTIONS,
+        "user_is_owner":   is_owner(request.user),
+        "all_products":    Product.objects.all().order_by('product_type', 'product_name'),
+        "all_treatments":  Treatment.objects.all().order_by('treatment_type', 'treatment_name'),
     })
 
 def _get_chargeslip_context(transaction_id):
@@ -902,10 +933,21 @@ def sales_delete(request, transaction_id):
 @login_required(login_url='login')
 @role_required(['Owner', 'Aesthetician', 'Sales'])
 def inventory_db(request):
-    query = request.GET.get("q", "").strip()
+    query       = request.GET.get("q", "").strip()
     date_filter = request.GET.get("date", "").strip()
+    per_page    = request.GET.get("per_page", 10)
+    page        = request.GET.get("page", 1)
 
-    branch = get_user_branch(request)  
+    PER_PAGE_OPTIONS = [5, 10, 25, 50]
+
+    try:
+        per_page = int(per_page)
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = 10
+    except (ValueError, TypeError):
+        per_page = 10
+
+    branch = get_user_branch(request)
     shipments = InventoryShipment.objects.select_related(
         'supplier', 'branch'
     ).prefetch_related('received_products__product')
@@ -925,7 +967,7 @@ def inventory_db(request):
             if " to " in date_filter:
                 start_str, end_str = date_filter.split(" to ")
                 start_date = datetime.strptime(start_str.strip(), "%Y-%m-%d").date()
-                end_date = datetime.strptime(end_str.strip(), "%Y-%m-%d").date()
+                end_date   = datetime.strptime(end_str.strip(),   "%Y-%m-%d").date()
                 shipments = shipments.filter(date_received__range=[start_date, end_date])
             else:
                 single_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
@@ -933,15 +975,23 @@ def inventory_db(request):
         except ValueError:
             pass
 
+    shipments = shipments.order_by('-date_received')
+
+    from django.core.paginator import Paginator
+    paginator = Paginator(shipments, per_page)
+    page_obj  = paginator.get_page(page)
+
     return render(request, 'clinic/inventory_db.html', {
-        'shipments': shipments.order_by('-date_received'),
-        'products': Product.objects.filter(is_deleted=False).order_by('product_name'),
-        'suppliers': Supplier.objects.filter(is_deleted=False).order_by('supplier_name'),
-        'branches': ClinicBranch.objects.all().order_by('branch_location'),
-        'query': query,
-        'date_filter': date_filter,
-        'user_is_owner': is_owner(request.user),
-        'user_branch': branch,
+        'shipments':         page_obj,
+        'products':          Product.objects.filter(is_deleted=False).order_by('product_name'),
+        'suppliers':         Supplier.objects.filter(is_deleted=False).order_by('supplier_name'),
+        'branches':          ClinicBranch.objects.all().order_by('branch_location'),
+        'query':             query,
+        'date_filter':       date_filter,
+        'per_page':          per_page,
+        'per_page_options':  PER_PAGE_OPTIONS,
+        'user_is_owner':     is_owner(request.user),
+        'user_branch':       branch,
     })
 
 @never_cache
@@ -1144,14 +1194,34 @@ def inventory_details(request, record_id):
 @role_required(['Owner', 'Aesthetician', 'Sales'])
 def producttreatment_db(request):
 
-    product_query = request.GET.get("product_q", "").strip()
+    product_query   = request.GET.get("product_q", "").strip()
     treatment_query = request.GET.get("treatment_q", "").strip()
-    product_sort = request.GET.get("product_sort", "")
-    treatment_sort = request.GET.get("treatment_sort", "")
-    product_type = request.GET.get("product_type", "")
-    treatment_type = request.GET.get("treatment_type", "")
+    product_sort    = request.GET.get("product_sort", "")
+    treatment_sort  = request.GET.get("treatment_sort", "")
+    product_type    = request.GET.get("product_type", "")
+    treatment_type  = request.GET.get("treatment_type", "")
 
-    # ── Determine branch first ──
+    # ── Per-page & page numbers ──────────────────────────────
+    PER_PAGE_OPTIONS = [5, 10, 25, 50]
+
+    try:
+        product_per_page = int(request.GET.get("product_per_page", 10))
+        if product_per_page not in PER_PAGE_OPTIONS:
+            product_per_page = 10
+    except (ValueError, TypeError):
+        product_per_page = 10
+
+    try:
+        treatment_per_page = int(request.GET.get("treatment_per_page", 10))
+        if treatment_per_page not in PER_PAGE_OPTIONS:
+            treatment_per_page = 10
+    except (ValueError, TypeError):
+        treatment_per_page = 10
+
+    product_page   = request.GET.get("product_page", 1)
+    treatment_page = request.GET.get("treatment_page", 1)
+
+    # ── Determine branch ────────────────────────────────────
     if is_owner(request.user):
         selected_branch = request.session.get('selected_branch')
         if selected_branch == 'all' or not selected_branch:
@@ -1161,10 +1231,11 @@ def producttreatment_db(request):
     else:
         branch = get_user_branch(request)
 
-    # ── Now filter products/treatments by branch ──
-    products = Product.objects.filter(is_deleted=False)
+    # ── Base querysets ───────────────────────────────────────
+    products   = Product.objects.filter(is_deleted=False)
     treatments = Treatment.objects.filter(is_deleted=False)
 
+    # ── Search filters ───────────────────────────────────────
     if product_query:
         products = products.filter(
             Q(product_name__icontains=product_query) |
@@ -1180,53 +1251,73 @@ def producttreatment_db(request):
     if treatment_type:
         treatments = treatments.filter(treatment_type=treatment_type)
 
-    # PRODUCTS
-    if product_sort == "price_desc":
-        products = products.order_by('-unit_cost')
-    elif product_sort == "price_asc":
-        products = products.order_by('unit_cost')
-    elif product_sort == "name_desc":
-        products = products.order_by('-product_name')
-    else:
-        products = products.order_by('product_name')
+    # ── "This Branch Only" treatment filter ─────────────────
+    # Must run before sort so the queryset is already narrowed
+    if treatment_sort == "this_branch":
+        if branch:
+            branch_treatment_ids = BranchTreatment.objects.filter(
+                branch=branch
+            ).values_list('treatment_id', flat=True)
+        else:
+            # No specific branch selected — show all (nothing to narrow to)
+            branch_treatment_ids = BranchTreatment.objects.values_list(
+                'treatment_id', flat=True
+            )
+        treatments = treatments.filter(treatment_id__in=branch_treatment_ids)
 
-    # TREATMENTS
+    # ── Stock map (needed before stock sort) ─────────────────
+    if branch:
+        branch_stock_qs = BranchProduct.objects.filter(
+            branch=branch
+        ).values('product_id', 'stock_quantity', 'quantity_minimum', 'branch_id')
+        stock_map = {bp['product_id']: bp for bp in branch_stock_qs}
+    else:
+        from django.db.models import Sum
+        branch_stock_qs = BranchProduct.objects.values('product_id').annotate(
+            stock_quantity=Sum('stock_quantity'),
+            quantity_minimum=Sum('quantity_minimum')
+        )
+        stock_map = {bp['product_id']: bp for bp in branch_stock_qs}
+
+    # Annotate products with branch_stock so stock sort works correctly
+    products = list(products)
+    for product in products:
+        bp = stock_map.get(product.product_id)
+        product.branch_stock        = bp['stock_quantity']  if bp else 0
+        product.branch_minimum      = bp['quantity_minimum'] if bp else 0
+        product.branch_id_val       = bp.get('branch_id')   if (bp and 'branch_id' in bp) else None
+        product.branch_location_val = branch.branch_location if branch else ''
+        product.is_out_of_stock     = product.branch_stock == 0
+        product.is_low_stock        = product.branch_stock <= product.branch_minimum
+
+    # ── Product sort ─────────────────────────────────────────
+    if product_sort == "price_desc":
+        products = sorted(products, key=lambda p: p.unit_cost, reverse=True)
+    elif product_sort == "price_asc":
+        products = sorted(products, key=lambda p: p.unit_cost)
+    elif product_sort == "name_desc":
+        products = sorted(products, key=lambda p: p.product_name, reverse=True)
+    elif product_sort == "stock_desc":
+        products = sorted(products, key=lambda p: p.branch_stock, reverse=True)
+    elif product_sort == "stock_asc":
+        products = sorted(products, key=lambda p: p.branch_stock)
+    else:
+        # Default: A-Z
+        products = sorted(products, key=lambda p: p.product_name)
+
+    # ── Treatment sort ───────────────────────────────────────
     if treatment_sort == "price_desc":
         treatments = treatments.order_by('-treatment_cost')
     elif treatment_sort == "price_asc":
         treatments = treatments.order_by('treatment_cost')
     elif treatment_sort == "name_desc":
         treatments = treatments.order_by('-treatment_name')
+    elif treatment_sort == "this_branch":
+        treatments = treatments.order_by('treatment_name')
     else:
         treatments = treatments.order_by('treatment_name')
 
-    product_types = Product.objects.filter(is_deleted=False).values_list('product_type', flat=True).distinct()
-    treatment_types = Treatment.objects.filter(is_deleted=False).values_list('treatment_type', flat=True).distinct()
-
-    # ── Stock map ──
-    if branch:
-        branch_stock = BranchProduct.objects.filter(
-            branch=branch
-        ).values('product_id', 'stock_quantity', 'quantity_minimum', 'branch_id')
-        stock_map = {bp['product_id']: bp for bp in branch_stock}
-    else:
-        from django.db.models import Sum
-        branch_stock = BranchProduct.objects.values('product_id').annotate(
-            stock_quantity=Sum('stock_quantity'),
-            quantity_minimum=Sum('quantity_minimum')
-        )
-        stock_map = {bp['product_id']: bp for bp in branch_stock}
-
-    for product in products:
-        bp = stock_map.get(product.product_id)
-        product.branch_stock    = bp['stock_quantity'] if bp else 0
-        product.branch_minimum  = bp['quantity_minimum'] if bp else 0
-        product.branch_id_val = bp.get('branch_id') if (bp and 'branch_id' in bp) else None
-        product.branch_location_val = branch.branch_location if branch else ''
-        product.is_out_of_stock = product.branch_stock == 0
-        product.is_low_stock    = product.branch_stock <= product.branch_minimum
-
-    # ── Treatment availability ──
+    # ── Treatment availability ───────────────────────────────
     if branch:
         available_treatment_ids = set(
             BranchTreatment.objects.filter(
@@ -1241,25 +1332,63 @@ def producttreatment_db(request):
             ).values_list('treatment_id', flat=True)
         )
 
+    treatments = list(treatments)
     for treatment in treatments:
         treatment.is_unavailable = treatment.treatment_id not in available_treatment_ids
+        # Attach branch_id_val for the update modal
+        bt = BranchTreatment.objects.filter(
+            treatment_id=treatment.treatment_id,
+            branch=branch
+        ).first() if branch else None
+        treatment.branch_id_val = bt.branch_id if bt else None
+
+    # ── Pagination ───────────────────────────────────────────
+    from django.core.paginator import Paginator
+
+    product_paginator   = Paginator(products, product_per_page)
+    treatment_paginator = Paginator(treatments, treatment_per_page)
+
+    products_page   = product_paginator.get_page(product_page)
+    treatments_page = treatment_paginator.get_page(treatment_page)
+
+    # ── Low-stock alerts ─────────────────────────────────────
+    low_stock_alerts = []
+    if branch:
+        low_stock_alerts = BranchProduct.objects.filter(
+            branch=branch
+        ).select_related('product', 'branch')
+        low_stock_alerts = [
+            bp for bp in low_stock_alerts
+            if bp.stock_quantity <= bp.quantity_minimum
+        ]
+
+    product_types   = Product.objects.filter(is_deleted=False).values_list('product_type',   flat=True).distinct()
+    treatment_types = Treatment.objects.filter(is_deleted=False).values_list('treatment_type', flat=True).distinct()
 
     return render(request, 'clinic/producttreatment_db.html', {
-        'products': products,
-        'treatments': treatments,
-        'product_query': product_query,
-        'treatment_query': treatment_query,
-        'product_sort': product_sort,
-        'treatment_sort': treatment_sort,
-        'product_type': product_type,
-        'treatment_type': treatment_type,
-        'product_types': product_types,
-        'treatment_types': treatment_types,
-        'branch': branch,
-        'suppliers': Supplier.objects.filter(is_deleted=False).order_by('supplier_name'),
-        'branches': ClinicBranch.objects.all().order_by('branch_location'),
-        'user_is_owner': is_owner(request.user),
+        'products':               products_page,
+        'treatments':             treatments_page,
+        'product_query':          product_query,
+        'treatment_query':        treatment_query,
+        'product_sort':           product_sort,
+        'treatment_sort':         treatment_sort,
+        'product_type':           product_type,
+        'treatment_type':         treatment_type,
+        'product_types':          product_types,
+        'treatment_types':        treatment_types,
+        'product_per_page':       product_per_page,
+        'treatment_per_page':     treatment_per_page,
+        'product_page':           product_page,
+        'treatment_page':         treatment_page,
+        'product_per_page_options':   PER_PAGE_OPTIONS,
+        'treatment_per_page_options': PER_PAGE_OPTIONS,
+        'branch':                 branch,
+        'low_stock_alerts':       low_stock_alerts,
+        'suppliers':              Supplier.objects.filter(is_deleted=False).order_by('supplier_name'),
+        'branches':               ClinicBranch.objects.all().order_by('branch_location'),
+        'user_is_owner':          is_owner(request.user),
     })
+
 
 MAX_NAME_LENGTH = 100
 MAX_COST = 999999.99
@@ -1691,27 +1820,23 @@ def supplier_db(request):
         if not is_owner(request.user):
             messages.error(request, "You are not authorized to access this page.")
             return redirect('supplier_db')
-        name = request.POST.get('supplier_name', '').strip()
-        person = request.POST.get('contact_person', '').strip()
-        number = request.POST.get('supplier_contact_number', '').strip()
+        name    = request.POST.get('supplier_name', '').strip()
+        person  = request.POST.get('contact_person', '').strip()
+        number  = request.POST.get('supplier_contact_number', '').strip()
         address = request.POST.get('supplier_address', '').strip()
-
-        # 1. Check if required fields are missing
+ 
         if not name or not person:
             messages.error(request, 'Supplier Name and Contact Person are required.')
             return redirect('supplier_db')
-
-        # 2. CHECK FOR CHARACTER LENGTHS (Matched to your models.py)
+ 
         if len(name) > 150 or len(person) > 100 or len(number) > 11 or len(address) > 300:
             messages.error(request, 'Some fields exceed maximum character length.')
             return redirect('supplier_db')
-
-        # 3. CHECK FOR DUPLICATES (Case-insensitive)
+ 
         if Supplier.objects.filter(supplier_name__iexact=name, is_deleted=False).exists():
             messages.error(request, 'Supplier already exists.')
             return redirect('supplier_db')
-
-        # 4. If all clear, create the supplier
+ 
         Supplier.objects.create(
             supplier_name=name,
             contact_person=person,
@@ -1720,21 +1845,41 @@ def supplier_db(request):
         )
         messages.success(request, f'Supplier "{name}" added successfully.')
         return redirect('supplier_db')
-
+ 
     # ── 2. DISPLAY THE PAGE & SEARCH (GET REQUEST) ──
-    query = request.GET.get("q", "").strip()
+    query    = request.GET.get("q", "").strip()
+    per_page = request.GET.get("per_page", 10)
+    page     = request.GET.get("page", 1)
+ 
+    PER_PAGE_OPTIONS = [5, 10, 25, 50]
+ 
+    try:
+        per_page = int(per_page)
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = 10
+    except (ValueError, TypeError):
+        per_page = 10
+ 
     suppliers = Supplier.objects.filter(is_deleted=False)
-
+ 
     if query:
         suppliers = suppliers.filter(
             Q(supplier_name__icontains=query) |
-            Q(contact_person__icontains=query) 
+            Q(contact_person__icontains=query)
         )
-        
+ 
+    suppliers = suppliers.order_by('supplier_name')
+ 
+    from django.core.paginator import Paginator
+    paginator = Paginator(suppliers, per_page)
+    page_obj  = paginator.get_page(page)
+ 
     return render(request, 'clinic/supplier_db.html', {
-        'suppliers': suppliers.order_by('supplier_name'),
-        'query': query,
-        'user_is_owner': is_owner(request.user),
+        'suppliers':        page_obj,
+        'query':            query,
+        'per_page':         per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
+        'user_is_owner':    is_owner(request.user),
     })
 
 @never_cache
@@ -1826,42 +1971,54 @@ def supplier_delete(request, supplier_id):
 def employee_list(request):
     last_user = User.objects.order_by('id').last()
     next_account_id = (last_user.id + 1) if last_user else 1
-
-    # Start with all users
+ 
     employees = User.objects.all().order_by('username')
-    
-    # ─── FIXED: Apply Branch Filter from Session ───
+ 
+    # ─── Apply Branch Filter from Session ───
     selected_branch = request.session.get('selected_branch')
-
     profile = getattr(request.user, 'employeeprofile', None)
-
     if selected_branch and profile and profile.all_branches == False:
         employees = employees.filter(employeeprofile__branch_id=selected_branch)
-    # ───────────────────────────────────────────────
-    
-    query = request.GET.get('q', '').strip()
+    # ────────────────────────────────────────
+ 
+    query         = request.GET.get('q', '').strip()
     status_filter = request.GET.get('status', '')
-    
+    per_page      = request.GET.get('per_page', 10)
+    page          = request.GET.get('page', 1)
+ 
+    PER_PAGE_OPTIONS = [5, 10, 25, 50]
+ 
+    try:
+        per_page = int(per_page)
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = 10
+    except (ValueError, TypeError):
+        per_page = 10
+ 
     if query:
         employees = employees.filter(
-            Q(first_name__icontains=query) | 
+            Q(first_name__icontains=query) |
             Q(username__icontains=query)
         )
-        
+ 
     if status_filter == 'active':
         employees = employees.filter(is_active=True)
     elif status_filter == 'inactive':
         employees = employees.filter(is_active=False)
-
-    context = {
-        'employees': employees,
-        'groups': Group.objects.all(),
-        'branches': ClinicBranch.objects.all(),
-        'next_account_id': next_account_id,
-        'query': query,
-    }
-    
-    return render(request, 'clinic/employee_list.html', context)
+ 
+    from django.core.paginator import Paginator
+    paginator = Paginator(employees, per_page)
+    page_obj  = paginator.get_page(page)
+ 
+    return render(request, 'clinic/employee_list.html', {
+        'employees':        page_obj,
+        'groups':           Group.objects.all(),
+        'branches':         ClinicBranch.objects.all(),
+        'next_account_id':  next_account_id,
+        'query':            query,
+        'per_page':         per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
+    })
 
 @never_cache
 @login_required(login_url='login')
