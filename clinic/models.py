@@ -56,8 +56,14 @@ class ClinicBranch(models.Model):
     branch_location = models.CharField(max_length=255, unique=True)
     branch_address = models.CharField(max_length=500, null=True, blank=True)
 
+    is_deleted = models.BooleanField(default=False)
+
     def __str__(self):
-        return self.branch_location
+            # 2. ADD THIS BACK: Changes the name if it's deleted
+            if self.is_deleted:
+                return f"{self.branch_location} (deleted)"
+                
+            return self.branch_location
 
 # 2. SALES_TRANSACTION 
 class SalesTransaction(models.Model):
