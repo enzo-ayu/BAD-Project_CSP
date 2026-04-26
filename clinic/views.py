@@ -2292,12 +2292,12 @@ def delete_branch(request, branch_id):
         # 1. Perform the Soft Delete
         # Instead of destroying the record, we update a status flag.
         # (If your field is named differently, e.g., 'is_deleted = True', adjust accordingly)
-        branch.is_active = False 
+        branch.is_deleted = True 
         branch.save() 
 
         # 2. Match the Expected Output
         # Your test specifies the message must say: Branch "Guijo, Makati" was deleted.
-        messages.success(request, f'Branch "{branch.name}" was deleted.')
+        messages.success(request, f'Branch "{branch.branch_location}" was deleted.')
         
     return redirect('branch_list')
 
