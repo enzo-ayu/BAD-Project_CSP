@@ -1313,7 +1313,16 @@ def producttreatment_db(request):
     elif treatment_sort == "name_desc":
         treatments = treatments.order_by('-treatment_name')
     elif treatment_sort == "this_branch":
-        treatments = treatments.order_by('treatment_name')
+        if branch:
+            branch_treatment_ids = BranchTreatment.objects.filter(
+                branch=branch,
+                availability_status=True
+            ).values_list('treatment_id', flat=True)
+        else:
+            branch_treatment_ids = BranchTreatment.objects.filter(
+                availability_status=True
+            ).values_list('treatment_id', flat=True)
+        treatments = treatments.filter(treatment_id__in=branch_treatment_ids).order_by('treatment_name')  # ← this line was missing
     else:
         treatments = treatments.order_by('treatment_name')
 
@@ -1593,15 +1602,27 @@ def product_details(request, product_id):
     except:
         employee_branch = ClinicBranch.objects.first()
 
-    branch_product = BranchProduct.objects.filter(
-        product=product, branch=employee_branch
-    ).first()
+    # Check if "All Branches" is selected (adjust the sentinel value to match yours)
+    is_all_branches = (employee_branch is None or str(employee_branch) == 'All Branches')
+
+    if is_all_branches:
+        cumulative_stock = BranchProduct.objects.filter(
+            product=product
+        ).aggregate(total=Sum('stock_quantity'))['total'] or 0
+        branch_product = None
+    else:
+        cumulative_stock = None
+        branch_product = BranchProduct.objects.filter(
+            product=product, branch=employee_branch
+        ).first()
 
     return render(request, 'clinic/product_details.html', {
         'product': product,
         'supplier': supplier,
         'branch': employee_branch,
         'branch_product': branch_product,
+        'cumulative_stock': cumulative_stock,
+        'is_all_branches': is_all_branches,
         'query_string': query_string
     })
 
@@ -1774,15 +1795,37 @@ def treatment_details(request, treatment_id):
     query_string = request.GET.urlencode()
     branch = get_user_branch(request)
 
-    branch_treatment = BranchTreatment.objects.filter(
-        treatment=treatment,
-        branch=branch
-    ).first() if branch else None
+    is_all_branches = (branch is None or str(branch) == 'All Branches')
 
+    if is_all_branches:
+        branch_treatment = None
+        statuses = list(BranchTreatment.objects.filter(
+            treatment=treatment
+        ).values_list('availability_status', flat=True))
+
+        if not statuses:
+            all_branches_availability = None
+        elif all(s is True for s in statuses):
+            all_branches_availability = True
+        elif all(s is False for s in statuses):
+            all_branches_availability = False
+        else:
+            all_branches_availability = None
+    else:
+        branch_treatment = BranchTreatment.objects.filter(
+            treatment=treatment,
+            branch=branch
+        ).first()
+        all_branches_availability = None
+    print("DEBUG branch:", branch, "| is_all_branches:", is_all_branches)
+    print("DEBUG statuses:", statuses if is_all_branches else "N/A")
+    print("DEBUG all_branches_availability:", all_branches_availability if is_all_branches else "N/A")
     return render(request, 'clinic/treatment_details.html', {
         'treatment': treatment,
         'branch': branch,
         'branch_treatment': branch_treatment,
+        'is_all_branches': is_all_branches,
+        'all_branches_availability': all_branches_availability,
         'query_string': query_string
     })
 

@@ -43,7 +43,15 @@
 
                 <div class="d-flex mb-3">
                     <div class="text-muted fw-semibold" style="width: 35%;">Availability:</div>
-                    {% if branch_treatment %}
+                    {% if is_all_branches %}
+                        {% if all_branches_availability == True %}
+                            <div class="fw-bold text-success">Available</div>
+                        {% elif all_branches_availability == False %}
+                            <div class="fw-bold text-danger">Not Available</div>
+                        {% else %}
+                            <div class="text-muted fw-medium">-</div>
+                        {% endif %}
+                    {% elif branch_treatment %}
                         <div class="fw-bold {% if branch_treatment.availability_status %}text-success{% else %}text-danger{% endif %}">
                             {% if branch_treatment.availability_status %}Available{% else %}Not Available{% endif %}
                         </div>
