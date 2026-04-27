@@ -63,7 +63,7 @@
         <div class="col-md-4">
             <div class="card p-4 shadow-sm border-0 rounded-4 h-100 position-relative">
                 <h6 class="text-muted mb-2">Revenue Breakdown</h6>
-                <h4 class="fw-bold text-center mb-3" style="color: #CE548D;">PHP {{ total_sales|floatformat:2 }}</h4>
+                <h4 class="fw-bold text-center mb-3" style="color: #CE548D;">PHP {{ total_sales|floatformat:"2g" }}</h4>
                 <canvas id="revenueChart" style="max-height: 200px;"></canvas>
             </div>
         </div>
@@ -89,124 +89,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Clinic Brand Colors
-    const pinkMain = '#CE548D';
-    const pinkLight = '#F0A1C2';
-    const greenAccent = '#5EE55E';
 
-    // Parse Data from Django safely
-    const trendDates = {{ trend_dates|safe }};
-    const trendSales = {{ trend_sales|safe }};
-    
-    // Sales Trend Line Chart
-    if(trendDates.length > 0) {
-        new Chart(document.getElementById('salesTrendChart'), {
-            type: 'line',
-            data: {
-                labels: trendDates,
-                datasets: [{
-                    label: 'Daily Sales (PHP)',
-                    data: trendSales,
-                    borderColor: greenAccent,
-                    backgroundColor: 'rgba(94, 229, 94, 0.2)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-    }
-
-   // Revenue Breakdown Doughnut Chart
-    const revProducts = {{ revenue_products|default:0 }};
-    const revTreatments = {{ revenue_treatments|default:0 }};
-    
-    if (revProducts > 0 || revTreatments > 0) {
-        new Chart(document.getElementById('revenueChart'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Products', 'Treatments'],
-                datasets: [{
-                    data: [revProducts, revTreatments],
-                    backgroundColor: [pinkMain, pinkLight],
-                    borderWidth: 0
-                }]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false,
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                // Get the current value and the total of both slices
-                                let value = context.raw || 0;
-                                let total = context.chart._metasets[context.datasetIndex].total;
-                                
-                                // Calculate the percentage
-                                let percentage = total > 0 ? Math.round((value / total) * 100) + '%' : '0%';
-                                
-                                // Percentage and formatted value
-                                let formattedValue = value.toLocaleString('en-PH', {minimumFractionDigits: 2});
-                                return `${context.label}: PHP ${formattedValue} (${percentage})`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    // Top Moving Inventory Bar Chart
-    const topNames = {{ top_product_names|safe }};
-    const topSales = {{ top_product_sales|safe }};
-    
-    if (topNames.length > 0) {
-        new Chart(document.getElementById('topMovingChart'), {
-            type: 'bar',
-            data: {
-                labels: topNames,
-                datasets: [{
-                    label: 'Units Sold',
-                    data: topSales,
-                    backgroundColor: pinkLight,
-                    borderRadius: 4
-                }]
-            },
-            options: { 
-                indexAxis: 'y', // Makes bars horizontal
-                responsive: true, 
-                maintainAspectRatio: false 
-            }
-        });
-    }
-
-    // NEW: Most Restocked Products Bar Chart
-    const restockedNames = {{ restocked_names|safe }};
-    const restockedCounts = {{ restocked_counts|safe }};
-    
-    if (restockedNames.length > 0) {
-        new Chart(document.getElementById('mostRestockedChart'), {
-            type: 'bar',
-            data: {
-                labels: restockedNames,
-                datasets: [{
-                    label: 'Units Restocked',
-                    data: restockedCounts,
-                    backgroundColor: pinkMain, // Uses the darker pink for contrast
-                    borderRadius: 4
-                }]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false 
-            }
-        });
-    }
-});
-</script>
 
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
