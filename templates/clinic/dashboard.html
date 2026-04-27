@@ -89,7 +89,125 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
 
+    const pinkMain = '#CE548D';
+    const pinkLight = '#F0A1C2';
+    const greenAccent = '#5EE55E';
+    
+    const rainbowPalette = ['#E53935', '#FF9800', '#7CB342', '#1E88E5', '#8E24AA'];
+
+    const trendDates = {{ trend_dates|safe }};
+    const trendSales = {{ trend_sales|safe }};
+    
+    // Sales Trend Line Chart
+    if(trendDates.length > 0) {
+        new Chart(document.getElementById('salesTrendChart'), {
+            type: 'line',
+            data: {
+                labels: trendDates,
+                datasets: [{
+                    label: 'Daily Sales (PHP)',
+                    data: trendSales,
+                    borderColor: greenAccent,
+                    backgroundColor: 'rgba(94, 229, 94, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+   // Revenue Breakdown Doughnut Chart
+    const revProducts = {{ revenue_products|default:0 }};
+    const revTreatments = {{ revenue_treatments|default:0 }};
+    
+    if (revProducts > 0 || revTreatments > 0) {
+        new Chart(document.getElementById('revenueChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Products', 'Treatments'],
+                datasets: [{
+                    data: [revProducts, revTreatments],
+                    backgroundColor: [pinkMain, pinkLight],
+                    borderWidth: 0
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let value = context.raw || 0;
+                                let total = context.chart._metasets[context.datasetIndex].total;
+                                let percentage = total > 0 ? Math.round((value / total) * 100) + '%' : '0%';
+                                let formattedValue = value.toLocaleString('en-PH', {minimumFractionDigits: 2});
+                                return `${context.label}: PHP ${formattedValue} (${percentage})`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Top Moving Inventory 
+    const topNames = {{ top_product_names|safe }};
+    const topSales = {{ top_product_sales|safe }};
+    
+    if (topNames.length > 0) {
+        new Chart(document.getElementById('topMovingChart'), {
+            type: 'bar',
+            data: {
+                labels: topNames,
+                datasets: [{
+                    label: 'Units Sold',
+                    data: topSales,
+                    backgroundColor: '#FFD700', 
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false } 
+                }
+            }
+        });
+    }
+
+    const restockedNames = {{ restocked_names|safe }};
+    const restockedCounts = {{ restocked_counts|safe }};
+    
+    if (restockedNames.length > 0) {
+        new Chart(document.getElementById('mostRestockedChart'), {
+            type: 'bar',
+            data: {
+                labels: restockedNames,
+                datasets: [{
+                    label: 'Units Restocked',
+                    data: restockedCounts,
+                    backgroundColor: rainbowPalette, 
+                    borderRadius: 4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false } 
+                }
+            }
+        });
+    }
+});
+</script>
 
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
