@@ -56,7 +56,7 @@
     <div class="row mb-4">
         <div class="col-md-8">
             <div class="card p-4 shadow-sm border-0 rounded-4 h-100">
-                <h6 class="text-muted mb-3">Sales Trend (Last 30 days)</h6>
+                <h6 class="text-muted mb-3">Sales Trend</h6>
                 <canvas id="salesTrendChart" style="max-height: 250px;"></canvas>
             </div>
         </div>
@@ -94,14 +94,41 @@ document.addEventListener('DOMContentLoaded', function() {
     const pinkMain = '#CE548D';
     const pinkLight = '#F0A1C2';
     const greenAccent = '#5EE55E';
-    
     const rainbowPalette = ['#E53935', '#FF9800', '#7CB342', '#1E88E5', '#8E24AA'];
+
+    function drawEmptyChart(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext('2d');
+        canvas.parentElement.style.position = 'relative';
+
+        const msg = document.createElement('div');
+        msg.style.cssText = `
+            position:absolute; top:55%; left:50%; transform:translate(-50%,-50%);
+            color:#aaa; font-size:0.9rem; text-align:center; pointer-events:none;
+        `;
+        msg.innerHTML = `<div style="font-size:2rem;">📭</div>No data available`;
+        canvas.parentElement.appendChild(msg);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: { labels: [], datasets: [{ data: [] }] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { display: false } },
+                    y: { grid: { display: false }, ticks: { display: false } }
+                }
+            }
+        });
+    }
 
     const trendDates = {{ trend_dates|safe }};
     const trendSales = {{ trend_sales|safe }};
-    
+
     // Sales Trend Line Chart
-    if(trendDates.length > 0) {
+    if (trendDates.length > 0) {
         new Chart(document.getElementById('salesTrendChart'), {
             type: 'line',
             data: {
@@ -118,12 +145,14 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
+    } else {
+        drawEmptyChart('salesTrendChart');
     }
 
-   // Revenue Breakdown Doughnut Chart
+    // Revenue Breakdown Doughnut Chart
     const revProducts = {{ revenue_products|default:0 }};
     const revTreatments = {{ revenue_treatments|default:0 }};
-    
+
     if (revProducts > 0 || revTreatments > 0) {
         new Chart(document.getElementById('revenueChart'), {
             type: 'doughnut',
@@ -135,17 +164,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     borderWidth: 0
                 }]
             },
-            options: { 
-                responsive: true, 
+            options: {
+                responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                let value = context.raw || 0;
-                                let total = context.chart._metasets[context.datasetIndex].total;
-                                let percentage = total > 0 ? Math.round((value / total) * 100) + '%' : '0%';
-                                let formattedValue = value.toLocaleString('en-PH', {minimumFractionDigits: 2});
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? Math.round((value / total) * 100) + '%' : '0%';
+                                const formattedValue = value.toLocaleString('en-PH', { minimumFractionDigits: 2 });
                                 return `${context.label}: PHP ${formattedValue} (${percentage})`;
                             }
                         }
@@ -153,12 +182,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+    } else {
+        drawEmptyChart('revenueChart');
     }
 
-    // Top Moving Inventory 
+    // Top Moving Inventory
     const topNames = {{ top_product_names|safe }};
     const topSales = {{ top_product_sales|safe }};
-    
+
     if (topNames.length > 0) {
         new Chart(document.getElementById('topMovingChart'), {
             type: 'bar',
@@ -167,24 +198,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Units Sold',
                     data: topSales,
-                    backgroundColor: '#FFD700', 
+                    backgroundColor: '#FFD700',
                     borderRadius: 4
                 }]
             },
-            options: { 
-
-                responsive: true, 
+            options: {
+                responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false } 
-                }
+                plugins: { legend: { display: false } }
             }
         });
+    } else {
+        drawEmptyChart('topMovingChart');
     }
 
+    // Most Restocked Products
     const restockedNames = {{ restocked_names|safe }};
     const restockedCounts = {{ restocked_counts|safe }};
-    
+
     if (restockedNames.length > 0) {
         new Chart(document.getElementById('mostRestockedChart'), {
             type: 'bar',
@@ -193,19 +224,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Units Restocked',
                     data: restockedCounts,
-                    backgroundColor: rainbowPalette, 
+                    backgroundColor: rainbowPalette,
                     borderRadius: 4
                 }]
             },
-            options: { 
-                responsive: true, 
+            options: {
+                responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false } 
-                }
+                plugins: { legend: { display: false } }
             }
         });
+    } else {
+        drawEmptyChart('mostRestockedChart');
     }
+
 });
 </script>
 
@@ -215,6 +247,33 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    function drawEmptyChart(canvasId, label) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext('2d');
+        canvas.parentElement.style.position = 'relative';
+
+        const msg = document.createElement('div');
+        msg.style.cssText = `
+            position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+            color:#aaa; font-size:0.9rem; text-align:center; pointer-events:none;
+        `;
+        msg.innerHTML = `<div style="font-size:2rem;">📭</div>No data available`;
+        canvas.parentElement.appendChild(msg);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: { labels: [], datasets: [{ data: [] }] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { display: false } },
+                    y: { grid: { display: false }, ticks: { display: false } }
+                }
+            }
+        });
+    }
     function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
     function addDays(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
 

@@ -3015,11 +3015,19 @@ def dashboard_view(request):
     restocked_counts = [p['total_restocked'] for p in most_restocked]
 
     # Sales Trend
-    thirty_days_ago = timezone.now().date() - timedelta(days=30)
-    trend_data = sales_qs.filter(transaction_date__gte=thirty_days_ago) \
+    if date_filter:
+        trend_qs = sales_qs  # already filtered above
+    else:
+        thirty_days_ago = timezone.now().date() - timedelta(days=30)
+        trend_qs = sales_qs.filter(transaction_date__gte=thirty_days_ago)
+
+    trend_data = trend_qs \
         .values('transaction_date') \
         .annotate(daily_sales=Sum('total_amount')) \
         .order_by('transaction_date')
+
+    trend_dates = [t['transaction_date'].strftime('%d %b %y') for t in trend_data]
+    trend_sales = [float(t['daily_sales']) for t in trend_data]
 
     trend_dates = [t['transaction_date'].strftime('%d %b %y') for t in trend_data]
     trend_sales = [float(t['daily_sales']) for t in trend_data]
