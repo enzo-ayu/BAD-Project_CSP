@@ -59,7 +59,8 @@
             display: none;
             position: absolute;
             top: -4px;
-            right: -2px;
+            left: 55px; /* Anchors it to the left side, near the icon */
+            right: auto; /* Ensures the old right property doesn't conflict */
             background: #dc3545;
             color: #fff;
             border-radius: 50%;
@@ -70,7 +71,7 @@
             line-height: 16px;
             text-align: center;
             padding: 0 4px;
-        }
+        }       
 
         /* Make ONLY the Low Stock image bigger */
         #sidebar li#low-stock-nav-item img {
@@ -370,7 +371,6 @@
         return cookieValue;
     }
     </script>
-    <!-- ✅ ADD THIS BLOCK BEFORE </body> -->
 
     <!-- Low Stock Modal -->
     <div class="modal fade" id="lowStockModal" tabindex="-1" aria-hidden="true">
