@@ -25,7 +25,7 @@ class Patient(models.Model):
             )
         ]
 
-# 3. SUPPLIER 
+# 2. SUPPLIER 
 class Supplier(models.Model):
     supplier_id = models.AutoField(primary_key=True) # INT(3) 
     supplier_name = models.CharField(max_length=150)
@@ -37,7 +37,7 @@ class Supplier(models.Model):
     def __str__(self):
         return self.supplier_name
 
-# 4. PRODUCT 
+# 3. PRODUCT 
 class Product(models.Model):
     product_id = models.AutoField(primary_key=True) # INT(5) 
     product_name = models.CharField(max_length=100)
@@ -50,7 +50,7 @@ class Product(models.Model):
     def __str__(self):
         return self.product_name
 
-# 5. CLINIC_BRANCH 
+# 4. CLINIC_BRANCH 
 class ClinicBranch(models.Model):
     branch_id = models.AutoField(primary_key=True) 
     branch_location = models.CharField(max_length=255, unique=True)
@@ -65,7 +65,7 @@ class ClinicBranch(models.Model):
                 
             return self.branch_location
 
-# 2. SALES_TRANSACTION 
+# 5. SALES_TRANSACTION 
 class SalesTransaction(models.Model):
     transaction_id = models.AutoField(primary_key=True) # INT(7) 
     transaction_date = models.DateField(auto_now_add=True)
@@ -145,17 +145,7 @@ class BranchTreatment(models.Model):
     class Meta:
         unique_together = (('branch', 'treatment'),)
 
-# 12. TREATMENT_PRODUCT (Associative) 
-class TreatmentProduct(models.Model):
-    branch = models.ForeignKey(ClinicBranch, on_delete=models.CASCADE)
-    treatment = models.ForeignKey(Treatment, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity_used = models.IntegerField() # INT(2), Range 1-20
-
-    class Meta:
-        unique_together = (('branch', 'treatment', 'product'),)
-
-# 13. TRANSACTION_ITEM 
+# 12. TRANSACTION_ITEM 
 class TransactionItem(models.Model):
     item_id = models.AutoField(primary_key=True) # INT(7) 
     quantity_purchased = models.IntegerField() # Range 1-20
@@ -164,7 +154,7 @@ class TransactionItem(models.Model):
     treatment = models.ForeignKey(Treatment, on_delete=models.SET_NULL, null=True, blank=True)
     transaction = models.ForeignKey(SalesTransaction, on_delete=models.CASCADE)
 
-#14 LOGIN RESTRICTIONS
+#13 LOGIN RESTRICTIONS
 class UserLockout(models.Model):
     # Links directly to Django's auth_user table
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='lockout_profile')

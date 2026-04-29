@@ -5,7 +5,7 @@ from django.contrib import admin
 from .models import (
     Patient, Supplier, Product, ClinicBranch, SalesTransaction,
     EmployeeProfile, InventoryShipment, ReceivedProduct, BranchProduct,
-    Treatment, BranchTreatment, TreatmentProduct, TransactionItem
+    Treatment, BranchTreatment, TransactionItem
 )
 
 # This makes all your tables appear in the Admin Dashboard
@@ -20,5 +20,4 @@ admin.site.register(ReceivedProduct)
 admin.site.register(BranchProduct)
 admin.site.register(Treatment)
 admin.site.register(BranchTreatment)
-admin.site.register(TreatmentProduct)
 admin.site.register(TransactionItem)
