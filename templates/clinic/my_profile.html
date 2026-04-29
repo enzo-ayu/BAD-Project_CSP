@@ -1,60 +1,77 @@
 {% extends 'clinic/base.html' %}
 {% block content %}
 
-<div style="max-width: 600px;" class="mx-auto">
-    <div class="d-flex align-items-center justify-content-between mb-2"> 
-        <h2 class="mb-0 fw-bold" style="color: #CE548D;">My Profile</h2>
-        <button onclick="history.back()" class="btn btn-link text-muted p-0 border-0 text-decoration-none btn-sm me-2">
+<div style="max-width: 800px;" class="mx-auto mt-4">
+    <div class="d-flex align-items-center justify-content-between mb-4"> 
+        <h3 class="mb-0 fw-bold" style="color: #CE548D;">My Profile</h3>
+        <button onclick="history.back()" class="btn btn-outline-secondary btn-sm rounded-pill px-4">      
             ← Back
         </button>
     </div>
 
-    <div class="card shadow-sm mx-auto">
-        <div class="row g-4 p-4">
-            <div class="col-md-4">
-                <small class="text-muted fw-bold">Account ID</small>
-                <div class="mt-1">{{ employee.id }}</div>
-            </div>
-
-            <div class="col-md-4">
-                <small class="text-muted fw-bold">Account Type</small>
-                <div class="mt-1">
-                    {% for group in employee.groups.all %}
-                        {{ group.name }}
-                    {% empty %}
-                        <span class="text-muted fst-italic">Unassigned</span>
-                    {% endfor %}
+    <div class="card shadow-sm border-0 rounded-3 overflow-hidden">
+        
+        <div class="card-body p-4 p-md-5">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="p-3 bg-light border rounded-3 h-100">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Account ID</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">{{ employee.id }}</div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="col-md-4">
-                <small class="text-muted fw-bold">Account Name</small>
-                <div class="mt-1">{{ employee.get_full_name|default:employee.username }}</div>
-            </div>
-
-            <div class="col-md-4">
-                <small class="text-muted fw-bold">Username</small>
-                <div class="mt-1">{{ employee.username }}</div>
-            </div>
-
-            <div class="col-md-4">
-                <small class="text-muted fw-bold">Branch</small>
-                <div class="mt-1">
-                    {% if employee.employeeprofile.branch %}
-                        {{ employee.employeeprofile.branch }}
-                    {% elif employee.employeeprofile.all_branches %}
-                        All Branches
-                    {% else %}
-                        <span class="text-muted fst-italic">Unassigned</span>
-                    {% endif %}
+            <div class="col-md-6">
+                    <div class="p-3 bg-light border rounded-3 h-100">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Account Name</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">{{ employee.get_full_name|default:employee.username }}</div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="col-md-4">
-                <small class="text-muted fw-bold">Date Created</small>
-                <div class="mt-1">{{ employee.date_joined|date:"Y-m-d" }}</div>
+                <div class="col-md-6">
+                    <div class="p-3 bg-light border rounded-3 h-100">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Username</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">{{ employee.username }}</div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="p-3 bg-light border rounded-3 h-100">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Account Type</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">
+                            {% for group in employee.groups.all %}
+                                {{ group.name }}
+                            {% empty %}
+                                <span class="text-muted fst-italic fs-6">Unassigned</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="p-3 bg-light border rounded-3 h-100">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Branch</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">
+                            {% if employee.employeeprofile.branch %}
+                                {{ employee.employeeprofile.branch }}
+                            {% elif employee.employeeprofile.all_branches %}
+                                All Branches
+                            {% else %}
+                                <span class="text-muted fst-italic fs-6">Unassigned</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="p-3 bg-light border rounded-3 h-100">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Date Created</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">{{ employee.date_joined|date:"Y-m-d" }}</div>
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
+    
 </div>
-
 {% endblock %}
