@@ -10,7 +10,7 @@ SECRET_KEY = 'django-insecure-)^nl)2lz35l1dps7fqcyw^a4$2my(bm8-b#kqvd^83mn+^6)&+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = [168.144.109.128]
+ALLOWED_HOSTS = ['168.144.109.128']
 #put ip v4 address, shold be connected to the same wifi network, python m 0.0.0.0:8000
 
 # Application definition
