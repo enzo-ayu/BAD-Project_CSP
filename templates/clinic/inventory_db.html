@@ -210,7 +210,7 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Date Received <span class="text-danger">*</span></label>
                         <input type="date" name="date_received" id="add_date_received" class="form-control" required
-                                min="1900-01-01">
+                                min="2000-01-01">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Expiration Date <span class="text-danger">*</span></label>
@@ -316,7 +316,7 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Date Received <span class="text-danger">*</span></label>
                         <input type="date" name="date_received" id="upd_date_received"
-                               class="form-control" required min="1900-01-01">
+                               class="form-control" required min="2000-01-01">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Expiration Date <span class="text-danger">*</span></label>
@@ -547,8 +547,8 @@ function validateAndConfirmAddShipment() {
 
     if (!dateReceived) {
         errors.push('Please enter a date received.');
-    } else if (dateReceived < '1900-01-01') {
-        errors.push('Valid date must be 01/01/1900 or later.');
+    } else if (dateReceived < '2000-01-01') {
+        errors.push('Valid date must be 01/01/2000 or later.');
     } else if (dateReceived > today) {
         errors.push('Date received cannot be later than today.');
     }
@@ -597,8 +597,8 @@ function validateAndConfirmUpdateShipment() {
 
     if (!dateReceived) {
         errors.push('Please enter a date received.');
-    } else if (dateReceived < '1900-01-01') {
-        errors.push('Valid date must be 01/01/1900 or later.');
+    } else if (dateReceived < '2000-01-01') {
+        errors.push('Valid date must be 01/01/2000 or later.');
     } else if (dateReceived > today) {
         errors.push('Date received cannot be later than today.');
     }
