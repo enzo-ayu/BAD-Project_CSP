@@ -12,10 +12,19 @@
 </div>
 {% endif %}
 
+<div class="d-flex align-items-center mb-3 gap-4">
+    <div class="d-flex align-items-center gap-3 flex-shrink-0">
+        <h2 class="mb-0 fw-bold text-nowrap" style="color: #CE548D;">Branch List</h2>
+        <button type="button" onclick="openModal()" class="btn text-white text-nowrap" style="background-color: #CE548D;">
+            + Add Branch
+        </button>
+    </div>
+</div>
+
 <table class="table table-bordered bg-white sales-db-table" style="table-layout: fixed;">
     <thead>
         <tr>
-            <th style="width: 100px; text-align: center;">Branch ID</th>
+            <th style="width: 100px;">Branch ID</th>
             <th style="width: 30%;">Branch Location</th>
             <th style="width: 40%;">Branch Address</th>
             <th style="width: 150px;"></th> 
@@ -37,7 +46,7 @@
 
             <!-- Keep button aligned right but not glued -->
             <td class="align-middle">
-                <div class="d-flex justify-content-end pe-3">
+                <div class="d-flex justify-content-center pe-3">
                     <button type="button" class="btn btn-warning btn-sm text-white px-3"
                         data-id="{{ branch.branch_id }}"
                         data-location="{{ branch.branch_location }}"
