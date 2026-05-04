@@ -12,32 +12,32 @@
 </div>
 {% endif %}
 
-<div class="d-flex align-items-center mb-3 gap-4">
-    <div class="d-flex align-items-center gap-3 flex-shrink-0">
-        <h2 class="mb-0 fw-bold text-nowrap" style="color: #CE548D;">Branch List</h2>
-        <button type="button" onclick="openModal()" class="btn text-white text-nowrap" style="background-color: #CE548D;">
-            + Add Branch
-        </button>
-    </div>
-</div>
-
 <table class="table table-bordered bg-white sales-db-table" style="table-layout: fixed;">
     <thead>
         <tr>
-            <th style="width: 120px;">Branch ID</th>
-            <th>Branch Location</th>
-            <th>Branch Address</th>
-            <th style="width: 120px;"></th> 
+            <th style="width: 100px; text-align: center;">Branch ID</th>
+            <th style="width: 30%;">Branch Location</th>
+            <th style="width: 40%;">Branch Address</th>
+            <th style="width: 150px;"></th> 
         </tr>
     </thead>
     <tbody>
         {% for branch in branches %}
         <tr>
-            <td class="align-middle">{{ branch.branch_id }}</td>
-            <td class="align-middle">{{ branch }}</td>
-            <td class="align-middle">{{ branch.branch_address|default_if_none:'-' }}</td>
-            <td>
-                <div class="d-flex justify-content-end gap-2">
+            <!-- Center Branch ID -->
+            <td class="align-middle text-center">{{ branch.branch_id }}</td>
+
+            <!-- Add padding so it's not too close -->
+            <td class="align-middle ps-4">{{ branch }}</td>
+
+            <!-- Slight spacing as well -->
+            <td class="align-middle ps-4">
+                {{ branch.branch_address|default_if_none:'-' }}
+            </td>
+
+            <!-- Keep button aligned right but not glued -->
+            <td class="align-middle">
+                <div class="d-flex justify-content-end pe-3">
                     <button type="button" class="btn btn-warning btn-sm text-white px-3"
                         data-id="{{ branch.branch_id }}"
                         data-location="{{ branch.branch_location }}"
@@ -50,7 +50,9 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="4" class="text-center py-4 text-muted fst-italic">No branches found.</td>
+            <td colspan="4" class="text-center py-4 text-muted fst-italic">
+                No branches found.
+            </td>
         </tr>
         {% endfor %}
     </tbody>
@@ -217,6 +219,10 @@
         if (!location) errors.push('Branch Location is required.');
         if (!address) errors.push('Branch Address is required.');
 
+        const existingBranches = [...document.querySelectorAll('.sales-db-table tbody tr td:nth-child(2)')];
+        const isDuplicate = existingBranches.some(td => td.textContent.trim().toLowerCase() === location.toLowerCase());
+        if (location && isDuplicate) errors.push('Branch name already exists.');
+
         if (errors.length > 0) {
             errorContainer.innerHTML = errors.map(e =>
                 `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
@@ -258,11 +264,22 @@
         const errorContainer = document.getElementById('updateBranchErrors');
         const errors = [];
 
+        const branchId = document.getElementById('update_branch_id').value;
         const location = document.getElementById('update_branch_location').value.trim();
         const address = document.getElementById('update_branch_address').value.trim();
 
         if (!location) errors.push('Branch Location is required.');
         if (!address) errors.push('Branch Address is required.');
+
+        const existingBranches = [...document.querySelectorAll('.sales-db-table tbody tr')];
+        const isDuplicate = existingBranches.some(row => {
+            const idCell = row.querySelector('td:nth-child(1)');
+            const nameCell = row.querySelector('td:nth-child(2)');
+            return nameCell &&
+                   idCell.textContent.trim() !== branchId &&
+                   nameCell.textContent.trim().toLowerCase() === location.toLowerCase();
+        });
+        if (location && isDuplicate) errors.push('Branch name already exists.');
 
         if (errors.length > 0) {
             errorContainer.innerHTML = errors.map(e =>
@@ -301,47 +318,6 @@
         if (event.target === addOverlay) closeModal();
         else if (event.target === updateOverlay) closeUpdateModal();
     }
-
-    {% if add_branch_error %}
-    document.addEventListener('DOMContentLoaded', function() {
-        const errors = [];
-        errors.push('{{ add_branch_error }}');
-        const errorContainer = document.getElementById('addBranchErrors');
-        errorContainer.innerHTML = errors.map(e =>
-            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
-                ${e}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>`
-        ).join('');
-        errorContainer.style.display = 'block';
-        document.getElementById('branchModal').style.display = 'flex';
-    });
-    {% endif %}
-
-    {% if update_branch_error %}
-    document.addEventListener('DOMContentLoaded', function() {
-        const errors = [];
-        errors.push('{{ update_branch_error }}');
-        const errorContainer = document.getElementById('updateBranchErrors');
-        errorContainer.innerHTML = errors.map(e =>
-            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
-                ${e}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>`
-        ).join('');
-        errorContainer.style.display = 'block';
-
-        {% if update_branch_form %}
-        document.getElementById('update_branch_id').value = '{{ update_branch_form.branch_id }}';
-        document.getElementById('update_branch_location').value = '{{ update_branch_form.branch_location }}';
-        document.getElementById('update_branch_address').value = '{{ update_branch_form.branch_address }}';
-        document.getElementById('updateBranchForm').action = `/branches/{{ update_branch_form.branch_id }}/update/`;
-        document.getElementById('deleteBranchForm').action = `/branches/{{ update_branch_form.branch_id }}/delete/`;
-        {% endif %}
-
-        document.getElementById('updateBranchModal').style.display = 'flex';
-    });
-    {% endif %}
 </script>
 
 {% endblock %}
