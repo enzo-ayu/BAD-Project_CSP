@@ -64,7 +64,10 @@ def role_required(allowed_roles=[]):
             
             # 2. If they are logged in but WRONG role, don't send them to login! 
             if request.user.is_authenticated:
-                return HttpResponseForbidden("<h1>403 Forbidden</h1><p>You do not have the correct role to view this page.</p><a href='/'>Go back</a>")
+                messages.error(request, "You do not have permission to access this page.") #Sales Team Change
+                referer = request.META.get('HTTP_REFERER')
+                return redirect(referer if referer else 'sales_db')
+                #return HttpResponseForbidden("<h1>403 Forbidden</h1><p>You do not have the correct role to view this page.</p><a href='/'>Go back</a>")
             
             # 3. If they are NOT logged in, send them to login
             messages.error(request, "Please log in to access this page.")
@@ -75,6 +78,8 @@ def role_required(allowed_roles=[]):
 def get_user_branch(request):
     try:
         profile = request.user.employeeprofile
+
+        # Owner uses the navbar branch selector
         if is_owner(request.user):
             branch_id = request.session.get('selected_branch')
             if branch_id:
@@ -82,8 +87,15 @@ def get_user_branch(request):
                     return ClinicBranch.objects.filter(pk=int(branch_id)).first()
                 except (ValueError, TypeError):
                     return None
-            return None  # All branches
+            return None  # Owner viewing all branches
+
+        # Only Sales users marked as all branches should see all branches
+        if is_sales(request.user) and profile.all_branches:
+            return None
+
+        # Regular assigned-branch users only see their assigned branch
         return profile.branch or ClinicBranch.objects.first()
+
     except:
         return ClinicBranch.objects.first()
         
@@ -746,7 +758,7 @@ def view_chargeslip_patient(request, transaction_id):
 
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician']) 
+@role_required(['Owner', 'Aesthetician', 'Sales']) #Sales Team Change
 def view_chargeslip_sales(request, transaction_id):
     return render(request, 'clinic/chargeslip_view_sales.html', _get_chargeslip_context(transaction_id))
 
@@ -931,7 +943,7 @@ def sales_delete(request, transaction_id):
 # ─────────────────────────────────────────────
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician', 'Sales'])
+@role_required(['Owner', 'Aesthetician']) #, 'Sales' #Sales Team Change
 def inventory_db(request):
     query       = request.GET.get("q", "").strip()
     date_filter = request.GET.get("date", "").strip()
@@ -1137,7 +1149,7 @@ def inventory_update(request, record_id):
 
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician', 'Sales'])  
+@role_required(['Owner', 'Aesthetician'])  #, 'Sales'
 def inventory_delete(request, record_id):
     if not is_owner(request.user):
         messages.error(request, "You are not authorized to access this page.")
@@ -1167,7 +1179,7 @@ def inventory_delete(request, record_id):
 
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician', 'Sales'])
+@role_required(['Owner', 'Aesthetician']) #',Sales' #Sales Team Change
 def inventory_details(request, record_id):
     branch = get_user_branch(request)
 
@@ -1396,7 +1408,9 @@ def producttreatment_db(request):
         'suppliers':              Supplier.objects.filter(is_deleted=False).order_by('supplier_name'),
         'branches':               ClinicBranch.objects.all().order_by('branch_location'),
         'user_is_owner':          is_owner(request.user),
-    })
+        'user_is_aesthetician':   is_aesthetician(request.user),
+        'user_is_sales':          is_sales(request.user),
+    }) #Sales Team Change added two lines above^^
 
 
 MAX_NAME_LENGTH = 100
