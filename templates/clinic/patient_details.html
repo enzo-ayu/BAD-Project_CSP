@@ -17,8 +17,8 @@
         <h4>
             {{ patient.last_name }},
             {{ patient.first_name }}
-            {{ patient.middle_name }}
-            {{ patient.suffix }}
+            {% if patient.middle_name %} {{ patient.middle_name }}{% endif %}
+            {% if patient.suffix %} {{ patient.suffix }}{% endif %}
         </h4>
 
         <hr>
