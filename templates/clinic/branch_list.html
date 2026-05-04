@@ -83,10 +83,6 @@
                     <input type="text" name="branch_location" class="form-control"
                         value="{{ add_branch_form.branch_location|default:'' }}"
                         placeholder="e.g. Quezon City Branch" maxlength="100" required>
-
-                    <textarea name="branch_address" class="form-control" rows="2"
-                        placeholder="Complete physical address" maxlength="255"
-                        required>{{ add_branch_form.branch_address|default:'' }}</textarea>
                 </div>
             </div>
             <div class="mb-3">
@@ -306,9 +302,8 @@
         else if (event.target === updateOverlay) closeUpdateModal();
     }
 
-    // Re-open add modal with server error
     {% if add_branch_error %}
-    (function() {
+    document.addEventListener('DOMContentLoaded', function() {
         const errors = [];
         errors.push('{{ add_branch_error }}');
         const errorContainer = document.getElementById('addBranchErrors');
@@ -320,12 +315,11 @@
         ).join('');
         errorContainer.style.display = 'block';
         document.getElementById('branchModal').style.display = 'flex';
-    })();
+    });
     {% endif %}
 
-    // Re-open update modal with server error
     {% if update_branch_error %}
-    (function() {
+    document.addEventListener('DOMContentLoaded', function() {
         const errors = [];
         errors.push('{{ update_branch_error }}');
         const errorContainer = document.getElementById('updateBranchErrors');
@@ -346,7 +340,7 @@
         {% endif %}
 
         document.getElementById('updateBranchModal').style.display = 'flex';
-    })();
+    });
     {% endif %}
 </script>
 
