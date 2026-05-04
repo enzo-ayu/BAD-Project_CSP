@@ -2217,23 +2217,24 @@ def employee_details(request, id):
 @user_passes_test(is_owner, login_url='login')
 def branch_list(request):
     query = request.GET.get('q', '').strip()
-    
-    # 1. Start by fetching ONLY active branches
     branches = ClinicBranch.objects.filter(is_deleted=False)
-    
-    # 2. If the user searched for something, filter that active list further
     if query:
         branches = branches.filter(branch_location__icontains=query)
-        
-    # 3. Calculate next ID (we check ALL branches here, including deleted ones, 
-    # so we don't accidentally recycle an old branch ID)
     last_branch = ClinicBranch.objects.order_by('branch_id').last()
     next_branch_id = (last_branch.branch_id + 1) if last_branch else 1
+    add_branch_error = request.session.pop('add_branch_error', None)
+    add_branch_form = request.session.pop('add_branch_form', None)
+    update_branch_error = request.session.pop('update_branch_error', None)
+    update_branch_form = request.session.pop('update_branch_form', None)
         
     return render(request, 'clinic/branch_list.html', {
         'branches': branches,
         'query': query,
         'next_branch_id': next_branch_id,
+        'add_branch_error': add_branch_error,
+        'add_branch_form': add_branch_form,
+        'update_branch_error': update_branch_error,
+        'update_branch_form': update_branch_form,
     })
 
 @never_cache
@@ -2243,19 +2244,22 @@ def add_branch(request):
     if request.method == 'POST':
         location = request.POST.get('branch_location', '').strip()
         address = request.POST.get('branch_address', '').strip()
-        
+
         if not location or not address:
-            messages.error(request, 'All fields required.')
+            request.session['add_branch_error'] = 'All fields are required.'
+            request.session['add_branch_form'] = {'branch_location': location, 'branch_address': address}
             return redirect('branch_list')
-            
+
         if ClinicBranch.objects.filter(branch_location__iexact=location).exists():
-            messages.error(request, 'Branch name already exists.')
+            request.session['add_branch_error'] = 'Branch name already exists.'
+            request.session['add_branch_form'] = {'branch_location': location, 'branch_address': address}
             return redirect('branch_list')
+
         ClinicBranch.objects.create(branch_location=location, branch_address=address)
-        
-        messages.success(request, 'Branch creation successful')
-            
+        messages.success(request, 'Branch creation successful.')
+
     return redirect('branch_list')
+
 
 @never_cache
 @login_required(login_url='login')
@@ -2265,21 +2269,22 @@ def update_branch(request, branch_id):
         branch = get_object_or_404(ClinicBranch, branch_id=branch_id)
         new_location = request.POST.get('branch_location', '').strip()
         new_address = request.POST.get('branch_address', '').strip()
-        
+
         if not new_location or not new_address:
-            messages.error(request, 'All fields required.')
+            request.session['update_branch_error'] = 'All fields are required.'
+            request.session['update_branch_form'] = {'branch_id': branch_id, 'branch_location': new_location, 'branch_address': new_address}
             return redirect('branch_list')
-            
+
         if ClinicBranch.objects.filter(branch_location__iexact=new_location).exclude(branch_id=branch_id).exists():
-            messages.error(request, 'Branch name already exists.')
+            request.session['update_branch_error'] = 'Branch name already exists.'
+            request.session['update_branch_form'] = {'branch_id': branch_id, 'branch_location': new_location, 'branch_address': new_address}
             return redirect('branch_list')
-            
+
         branch.branch_location = new_location
         branch.branch_address = new_address
         branch.save()
-        
-        messages.success(request, 'Update successful')
-            
+        messages.success(request, 'Update successful.')
+
     return redirect('branch_list')
 
 @never_cache

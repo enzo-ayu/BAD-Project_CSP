@@ -21,13 +21,13 @@
     </div>
 </div>
 
-<table class="table table-bordered bg-white sales-db-table">
+<table class="table table-bordered bg-white sales-db-table" style="table-layout: fixed;">
     <thead>
         <tr>
-            <th>Branch ID</th>
+            <th style="width: 120px;">Branch ID</th>
             <th>Branch Location</th>
             <th>Branch Address</th>
-            <th></th> 
+            <th style="width: 120px;"></th> 
         </tr>
     </thead>
     <tbody>
@@ -62,7 +62,14 @@
             <a href="javascript:void(0)" onclick="closeModal()" class="text-decoration-none text-muted fs-5">&larr; Back</a>
         </div>
         <h3 class="mb-4">Add New Branch</h3>
-        <div id="addBranchErrors" class="mb-3" style="display:none;"></div>
+        <div id="addBranchErrors" class="mb-3" {% if not add_branch_error %}style="display:none;"{% endif %}>
+            {% if add_branch_error %}
+            <div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                {{ add_branch_error }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endif %}
+        </div>
         
         <form action="{% url 'add_branch' %}" method="POST" id="addBranchForm">
             {% csrf_token %}
@@ -73,7 +80,13 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="small fw-bold text-secondary mb-1">Branch Location <span class="text-danger">*</span></label>
-                    <input type="text" name="branch_location" class="form-control" placeholder="e.g. Quezon City Branch" maxlength="100" required>
+                    <input type="text" name="branch_location" class="form-control"
+                        value="{{ add_branch_form.branch_location|default:'' }}"
+                        placeholder="e.g. Quezon City Branch" maxlength="100" required>
+
+                    <textarea name="branch_address" class="form-control" rows="2"
+                        placeholder="Complete physical address" maxlength="255"
+                        required>{{ add_branch_form.branch_address|default:'' }}</textarea>
                 </div>
             </div>
             <div class="mb-3">
@@ -94,7 +107,14 @@
             <a href="javascript:void(0)" onclick="closeUpdateModal()" class="text-decoration-none text-muted fs-5">&larr; Back</a>
         </div>
         <h3 class="mb-4">Update Branch</h3>
-        <div id="updateBranchErrors" class="mb-3" style="display:none;"></div>
+        <div id="updateBranchErrors" class="mb-3" {% if not update_branch_error %}style="display:none;"{% endif %}>
+            {% if update_branch_error %}
+            <div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                {{ update_branch_error }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endif %}
+        </div>
         
         <form action="" method="POST" id="updateBranchForm">
             {% csrf_token %}
@@ -285,6 +305,49 @@
         if (event.target === addOverlay) closeModal();
         else if (event.target === updateOverlay) closeUpdateModal();
     }
+
+    // Re-open add modal with server error
+    {% if add_branch_error %}
+    (function() {
+        const errors = [];
+        errors.push('{{ add_branch_error }}');
+        const errorContainer = document.getElementById('addBranchErrors');
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+        document.getElementById('branchModal').style.display = 'flex';
+    })();
+    {% endif %}
+
+    // Re-open update modal with server error
+    {% if update_branch_error %}
+    (function() {
+        const errors = [];
+        errors.push('{{ update_branch_error }}');
+        const errorContainer = document.getElementById('updateBranchErrors');
+        errorContainer.innerHTML = errors.map(e =>
+            `<div class="alert alert-danger alert-dismissible fade show mb-1" role="alert">
+                ${e}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        ).join('');
+        errorContainer.style.display = 'block';
+
+        {% if update_branch_form %}
+        document.getElementById('update_branch_id').value = '{{ update_branch_form.branch_id }}';
+        document.getElementById('update_branch_location').value = '{{ update_branch_form.branch_location }}';
+        document.getElementById('update_branch_address').value = '{{ update_branch_form.branch_address }}';
+        document.getElementById('updateBranchForm').action = `/branches/{{ update_branch_form.branch_id }}/update/`;
+        document.getElementById('deleteBranchForm').action = `/branches/{{ update_branch_form.branch_id }}/delete/`;
+        {% endif %}
+
+        document.getElementById('updateBranchModal').style.display = 'flex';
+    })();
+    {% endif %}
 </script>
 
 {% endblock %}
