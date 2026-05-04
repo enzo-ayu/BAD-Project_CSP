@@ -4,7 +4,7 @@
 <div class="container-fluid d-flex justify-content-center">
     <div class="card shadow-sm p-4 w-100" style="max-width: 900px; border-radius: 12px; border: none;">
 
-        <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
+        <div class="d-flex justify-content-between align-items-start mb-2 border-bottom pb-3">
             <div>
                 <a href="{% url 'producttreatment_db' %}?{{ query_string }}" class="text-decoration-none text-muted mb-2 d-inline-block">← Back</a>
                 <h3 class="fw-bold mb-1" style="color:#CE548D;">{{ product.product_name }}</h3>
@@ -12,7 +12,7 @@
             </div>
         </div>
 
-        <div class="row g-5 mt-2">
+        <div class="row g-5 pt-2">
             
             <div class="col-md-6">
                 <h6 class="fw-bold text-uppercase mb-4" style="color: #6c757d; letter-spacing: 1px;">General Information</h6>

@@ -1,63 +1,125 @@
 {% extends 'clinic/base.html' %}
 {% block content %}
 
-<div class="container mt-4">
-    <div class="card shadow-sm p-4">
-        <div class="d-flex justify-content-between mb-4">
-            <a href="{% url 'employee_list' %}" class="text-decoration-none text-muted">← Back</a>
+<style>
+    .role-theme {
+        --role-primary: #6c757d;
+        --role-gradient: #ced4da;
+    }
+    {% for group in employee.groups.all %}
+        {% if group.name == 'Owner' %}
+            .role-theme {
+                --role-primary: #CE548D;
+                --role-gradient: #f0a1c2;
+            }
+        {% elif group.name == 'Aesthetician' %}
+            .role-theme {
+                --role-primary: #0ea5e9;
+                --role-gradient: #7dd3fc;
+            }
+        {% endif %}
+    {% endfor %}
+</style>
+
+<div style="max-width: 800px;" class="mx-auto mt-4 role-theme">
+    
+    <div class="d-flex align-items-center justify-content-between mb-4"> 
+        <h3 class="mb-0 fw-bold" style="color: #CE548D;">Employee Details</h3>
+        <a href="{% url 'employee_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-4 text-decoration-none">
+            ← Back
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        
+        <div class="py-5 text-center" style="background: linear-gradient(135deg, var(--role-primary) 0%, var(--role-gradient) 100%); color: white;">
+            
+            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto shadow-sm mb-3" 
+                 style="width: 80px; height: 80px; background-color: white; color: var(--role-primary); font-size: 2.5rem; font-weight: bold;">
+                {{ employee.username|make_list|first|upper }}
+            </div>
+            
+            <h4 class="mb-1 fw-bold">{{ employee.first_name|default:employee.username }}</h4>
+            
+            <div class="badge bg-white text-dark rounded-pill px-4 py-2 shadow-sm mt-2 fs-6">
+                {% for group in employee.groups.all %}
+                    {{ group.name }}
+                {% empty %}
+                    <span class="text-muted fst-italic">Unassigned</span>
+                {% endfor %}
+            </div>
         </div>
+        
+        <div class="card-body p-4 p-md-5 bg-white">
+            <div class="row g-4">
+                
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 h-100 d-flex flex-column justify-content-center shadow-sm" style="border-left: 5px solid var(--role-primary) !important; background-color: #fafafa;">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Account ID</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">{{ employee.id }}</div>
+                    </div>
+                </div>
 
-        <div class="row mb-5">
-            <div class="col-md-3">
-                <small class="text-muted fw-bold">Account ID</small>
-                <div class="mt-1">{{ employee.id }}</div>
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 h-100 d-flex flex-column justify-content-center shadow-sm" style="border-left: 5px solid var(--role-primary) !important; background-color: #fafafa;">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Account Type</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">
+                            {% for group in employee.groups.all %}
+                                {{ group.name }}
+                            {% empty %}
+                                <span class="text-muted fst-italic">Unassigned</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 h-100 d-flex flex-column justify-content-center shadow-sm" style="border-left: 5px solid var(--role-primary) !important; background-color: #fafafa;">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Account Name</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">{{ employee.first_name|default:employee.username }}</div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 h-100 d-flex flex-column justify-content-center shadow-sm" style="border-left: 5px solid var(--role-primary) !important; background-color: #fafafa;">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Username</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">{{ employee.username }}</div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 h-100 d-flex flex-column justify-content-center shadow-sm" style="border-left: 5px solid var(--role-primary) !important; background-color: #fafafa;">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Branch Name</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">
+                            {% if employee.employeeprofile.branch %}
+                                {{ employee.employeeprofile.branch }}
+                            {% else %}
+                                <span class="text-muted fst-italic">Unassigned</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 h-100 d-flex flex-column justify-content-center shadow-sm" style="border-left: 5px solid var(--role-primary) !important; background-color: #fafafa;">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">All Branches</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">
+                            {% if employee.employeeprofile.all_branches %}Yes{% else %}No{% endif %}
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
-            <div class="col-md-3">
-                <small class="text-muted fw-bold">Account Type</small>
-                <div class="mt-1">
-                    {% for group in employee.groups.all %}
-                        {{ group.name }}
-                    {% empty %}
-                        <span class="text-muted fst-italic">Unassigned</span>
-                    {% endfor %}
+            <div class="row justify-content-center mt-4">
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 h-100 d-flex flex-column justify-content-center shadow-sm" style="border-left: 5px solid var(--role-primary) !important; background-color: #fafafa;">
+                        <small class="text-muted fw-bold text-uppercase" style="letter-spacing: 0.5px;">Date Created</small>
+                        <div class="mt-1 fs-5 text-dark fw-semibold">{{ employee.date_joined|date:"Y-m-d" }}</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="col-md-3">
-                <small class="text-muted fw-bold">Account Name</small>
-                <div class="mt-1">{{ employee.first_name|default:employee.username }}</div>
-            </div>
-
-            <div class="col-md-3">
-                <small class="text-muted fw-bold">Username</small>
-                <div class="mt-1">{{ employee.username }}</div>
-            </div>
-        </div>
-
-        <div class="row mb-5">
-            <div class="col-md-3">
-                <small class="text-muted fw-bold">Date Created</small>
-                <div class="mt-1">{{ employee.date_joined|date:"Y-m-d" }}</div>
-            </div>
-
-            <div class="col-md-3">
-                <small class="text-muted fw-bold">All Branches</small>
-                <div class="mt-1">
-                    {% if employee.employeeprofile.all_branches %}Yes{% else %}No{% endif %}
-                </div>
-            </div>
-
-            <div class="col-md-3">
-                <small class="text-muted fw-bold">Branch Name</small>
-                <div class="mt-1">
-                    {% if employee.employeeprofile.branch %}
-                        {{ employee.employeeprofile.branch }}
-                    {% else %}
-                        <span class="text-muted fst-italic">Unassigned</span>
-                    {% endif %}
-                </div>
-            </div>
         </div>
     </div>
 </div>

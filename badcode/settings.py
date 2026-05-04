@@ -8,9 +8,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-)^nl)2lz35l1dps7fqcyw^a4$2my(bm8-b#kqvd^83mn+^6)&+'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['168.144.109.128']
+ALLOWED_HOSTS = []
 #put ip v4 address, shold be connected to the same wifi network, python m 0.0.0.0:8000
 
 # Application definition
@@ -71,9 +71,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'cims_db',
-        'USER': 'cims_user',
+        'USER': 'root',
         'PASSWORD': '',
-        'HOST': 'localhost',
+        'HOST': '127.0.0.1',
         'PORT': '3306',
         'OPTIONS': {
            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
