@@ -301,7 +301,7 @@ def chargeslip(request):
         try:
             employee_branch = get_user_branch(request)
             if not employee_branch:
-                raise Exception("No branch available. Please contact the owner.")
+                raise Exception("No branch selected. Please select a branch in the navigation bar.")
 
             with transaction.atomic():
 
