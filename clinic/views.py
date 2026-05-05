@@ -22,6 +22,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 # 3. Local Application Imports (Models and Forms)
 from .models import (
@@ -536,22 +537,41 @@ def patient_db(request):
 
 @never_cache
 @login_required(login_url='login')
-@role_required(['Owner', 'Aesthetician']) 
+@role_required(['Owner', 'Aesthetician'])
 def patient_details(request, patient_id):
     patient = get_object_or_404(Patient, patient_id=patient_id)
 
     transactions = SalesTransaction.objects.filter(
         patient=patient
     ).order_by('-transaction_date')
-    
+
     all_notes = transactions.exclude(notes__isnull=True)\
                             .exclude(notes__exact='')\
                             .values('notes', 'transaction_date', 'transaction_id')
+    # --- Pagination ---
+    PER_PAGE_OPTIONS = [5, 10, 25, 50]
+    per_page = request.GET.get('per_page', 5)
+    page     = request.GET.get('page', 1)
+
+    try:
+        per_page = int(per_page)
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = 5
+    except (ValueError, TypeError):
+        per_page = 5
+
+    paginator = Paginator(transactions, per_page)
+    try:
+        transactions_page = paginator.page(page)
+    except (PageNotAnInteger, EmptyPage):
+        transactions_page = paginator.page(1)
 
     return render(request, 'clinic/patient_details.html', {
         'patient': patient,
-        'transactions': transactions,
+        'transactions': transactions_page,
         'all_notes': all_notes,
+        'per_page': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
     })
 
 @never_cache
