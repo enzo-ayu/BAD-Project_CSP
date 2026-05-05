@@ -185,6 +185,7 @@
                     </a>
                 </li>
 
+                {% for group in request.user.groups.all %}{% if group.name != 'Sales' %}
                 <li>
                     <a href="{% url 'inventory_db' %}"> <img src="{% static 'images/Inventory_Database_SB2.png' %}" 
                              data-hover="{% static 'images/Inventory_Database_SB_Hover2.png' %}" 
@@ -192,6 +193,7 @@
                         <span class="sidebar-text">Inventory List</span>
                     </a>
                 </li>
+                {% endif %}{% endfor %}
 
                 <li>
                     <a href="{% url 'producttreatment_db' %}"> <img src="{% static 'images/Product_Inventory_SB2.png' %}" 
