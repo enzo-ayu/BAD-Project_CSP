@@ -2095,9 +2095,11 @@ def check_username(request):
 def add_employee(request):
     if request.method == 'POST':
         role_name = request.POST.get('role')
+        branch_id = request.POST.get('branch_id')
+        all_branches = request.POST.get('all_branches') == 'on'
         if role_name == 'Owner':
             all_branches = True
-        elif role_name == 'Aesthetician':
+        elif role_name in ('Aesthetician', 'Sales'):
             all_branches = False
         branch_id = request.POST.get('branch_id')
         all_branches = request.POST.get('all_branches') == 'on'
@@ -2156,12 +2158,13 @@ def add_employee(request):
 @user_passes_test(is_owner, login_url='login')
 def update_employee(request, employee_id):
     if request.method == 'POST':
-        all_branches = request.POST.get('all_branches') == 'on'
         user = get_object_or_404(User, id=employee_id)
         role_name = request.POST.get('role')
+        branch_id = request.POST.get('branch_id')
+        all_branches = request.POST.get('all_branches') == 'on'
         if role_name == 'Owner':
             all_branches = True
-        elif role_name == 'Aesthetician':
+        elif role_name in ('Aesthetician', 'Sales'):
             all_branches = False
         branch_id = request.POST.get('branch_id')
         username = request.POST.get('username', '').strip()
